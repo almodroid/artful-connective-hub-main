@@ -1,0 +1,92 @@
+.hide-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
+}
+
+/* Ensure the reel cards have proper aspect ratio */
+.reel-card-container {
+  aspect-ratio: 9/16;
+  max-height: 356px;
+}
+
+/* Animation for when a reel comes into view */
+@keyframes reel-fade-in {
+  from { opacity: 0.7; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.reel-active {
+  animation: reel-fade-in 0.3s ease-out forwards;
+}
+
+/* Responsive grid layout */
+@media (min-width: 640px) {
+  .reels-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 768px) {
+  .reels-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .reels-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Smooth scrolling container */
+.reels-scroll-container {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  scroll-padding: 1rem;
+  padding: 0.5rem 0;
+  margin: 0 -0.5rem;
+}
+
+/* Reel card snap points */
+.reel-card {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  transition: transform 0.3s ease;
+  padding: 0 0.5rem;
+}
+
+.reel-card:hover {
+  transform: translateY(-4px);
+}
+
+/* Add drop shadow on hover */
+.reel-card:hover .card {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 
+              0 8px 10px -6px rgba(0, 0, 0, 0.1);
+}
+
+/* Loading animation */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.reel-skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.1) 25%,
+    rgba(255, 255, 255, 0.2) 37%,
+    rgba(255, 255, 255, 0.1) 63%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+}

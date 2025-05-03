@@ -1,57 +1,58 @@
 
 import { Link } from "react-router-dom";
-import { Image } from "lucide-react";
+import { useTranslation } from "@/hooks/use-translation";
+import { Logo } from "./header/Logo";
+
+
 
 export function Footer() {
+  const { t, isRtl } = useTranslation();
   return (
     <footer className="border-t py-12 mt-20">
       <div className="container px-4 md:px-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>
-            <Link to="/" className="flex items-center gap-2 mb-4">
-              <div className="relative h-8 w-8">
-                <div className="absolute inset-0 bg-primary rounded-full opacity-20"></div>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Image className="h-5 w-5 text-primary" />
-                </div>
+            <Link to="/" className="flex items-center align-center gap-1 mb-4">
+              <div className="relative h-14">
+              <Logo  />
               </div>
               <span className="font-display font-bold text-xl">
-                آرت سبيس
+              {t('spaceArt')}
               </span>
             </Link>
             <p className="text-muted-foreground">
-              منصة فنية اجتماعية تتيح للفنانين والمصممين عرض أعمالهم والتواصل مع المجتمع الفني.
+              {t('footerDescription')}
             </p>
           </div>
           <div>
-            <h4 className="font-display font-bold text-lg mb-4">روابط مهمة</h4>
-            <ul className="space-y-2">
+            <h4 className="font-display font-bold text-lg mb-4">{t('footerLinksTitle')}</h4>
+            <ul className="space-y-2 ">
               <li>
                 <Link to="/" className="text-muted-foreground hover:text-foreground transition-colors">
-                  الرئيسية
+                  {t('home')}
                 </Link>
               </li>
               <li>
                 <Link to="/explore" className="text-muted-foreground hover:text-foreground transition-colors">
-                  استكشاف
+                  {t('explore')}
                 </Link>
               </li>
               <li>
                 <Link to="/about" className="text-muted-foreground hover:text-foreground transition-colors">
-                  عن المنصة
+                  {t('aboutUs')}
                 </Link>
               </li>
               <li>
                 <Link to="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">
-                  سياسة الخصوصية
+                  {t('privacyPolicy')}
                 </Link>
               </li>
             </ul>
           </div>
           <div>
-            <h4 className="font-display font-bold text-lg mb-4">تواصل معنا</h4>
+            <h4 className="font-display font-bold text-lg mb-4">{t('contactUs')}</h4>
             <p className="text-muted-foreground mb-2">
-              للاستفسارات والدعم: support@artspace.com
+              {t('forQuestions')}: support@artspacee.com
             </p>
             <div className="flex space-x-4 rtl:space-x-reverse mt-4">
               <a href="#" className="flex items-center justify-center w-10 h-10 rounded-full bg-secondary hover:bg-primary/10 transition-colors">

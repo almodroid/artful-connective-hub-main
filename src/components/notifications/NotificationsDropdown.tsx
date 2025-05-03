@@ -13,7 +13,7 @@ import { useNotificationsApi } from "@/hooks/use-notifications-api";
 import { useTranslation } from "@/hooks/use-translation";
 
 const NotificationsDropdown = () => {
-  const { t } = useTranslation();
+  const { t, isRtl } = useTranslation();
   const { 
     notifications, 
     markAsRead, 
@@ -46,8 +46,8 @@ const NotificationsDropdown = () => {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="end">
-        <div className="flex items-center justify-between border-b px-4 py-3">
+      <PopoverContent className="w-80 p-0" align="end" >
+        <div className="flex items-center justify-between border-b px-4 py-3" >
           <h3 className="font-medium">{t("notifications")}</h3>
           {unreadCount > 0 && (
             <Button 
@@ -60,7 +60,7 @@ const NotificationsDropdown = () => {
             </Button>
           )}
         </div>
-        <ScrollArea className="h-[300px]">
+        <ScrollArea className="h-[300px]" dir={isRtl ? "rtl" : "ltr"}>
           {notifications.length > 0 ? (
             <div className="divide-y">
               {notifications.map((notification) => (

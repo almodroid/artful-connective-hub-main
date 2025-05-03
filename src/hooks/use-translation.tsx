@@ -38,6 +38,8 @@ const translations = {
     loading: "Loading...",
     noResults: "No results found",
     seeAll: "See all",
+    spaceArt: "Art Space",
+    markAllAsRead: "Mark all as read",
     
     // Home
     forYou: "For You",
@@ -173,6 +175,14 @@ const translations = {
     loading: "جاري التحميل...",
     noResults: "لا توجد نتائج",
     seeAll: "عرض الكل",
+    spaceArt: " اّرت سبيس",
+    markAllAsRead: "تحديد الكل كمقروء",
+    all: "الكل",
+    new: "جديد",
+    popular: "شائع",
+    
+    
+   
     
     // Home
     forYou: "مخصص لك",
@@ -180,6 +190,12 @@ const translations = {
     trending: "الأكثر رواجاً",
     noFollowing: "أنت لا تتابع أحداً حتى الآن",
     startFollowingPrompt: "تابع مستخدمين آخرين لرؤية منشوراتهم هنا",
+
+    // Explore
+    searchPlaceholder: "ابحث عن مشاريع...",
+    hashtags: "الوسوم",
+    hashtagsPlaceholder: "أضف وسوماً (اضغط على Enter بعد كل وسم)", 
+    mentions: "الإشارات",
     
     // Reels
     reels: "الريلز",
@@ -263,9 +279,9 @@ const translations = {
     success: "تم بنجاح!",
     
     // Arter AI translations
-    meetArter: "تعرف على آرتر، مساعدك الذكي للفن والتصميم",
+    meetArter: "تعرف على سبيس Ai، مساعدك الذكي للفن والتصميم",
     arterDescription: "احصل على مساعدة إبداعية في لوحات الألوان، ملاحظات التصميم، التقنيات الفنية، وغير ذلك.",
-    askArter: "أسأل آرتر عن التصميم، الفن أو الأفكار الإبداعية...",
+    askArter: "أسأل سبيس Ai عن التصميم، الفن أو الأفكار الإبداعية...",
     clearChat: "مسح المحادثة",
     suggestColorPalette: "اقترح لوحة ألوان لموقعًا بسيطًا",
     suggestDesignFeedback: "كيف يمكنني تحسين تكويني؟",
@@ -280,6 +296,16 @@ const translations = {
     importChat: "استيراد المحادثة",
     chatHistory: "سجل المحادثات",
     clearHistory: "مسح السجل",
+
+    // Footer translations
+    footerTitle: "سبيس Ai",
+    footerDescription: "منصة فنية اجتماعية تتيح للفنانين والمصممين عرض أعمالهم والتواصل مع المجتمع الفني.",
+    footerLinksTitle: "روابط هامة",
+    aboutUs: "عنا",
+    contactUs: "اتصل بنا",
+    termsOfService: "شروط الخدمة",
+    privacyPolicy: "سياسة الخصوصية",
+    forQuestions: "للاستفسارات والدعم"
   }
 };
 

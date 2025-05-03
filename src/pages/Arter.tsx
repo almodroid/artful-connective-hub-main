@@ -6,6 +6,7 @@ import { ChatInput } from "@/components/ui-custom/ChatInput";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/hooks/use-translation";
 import { Trash2 } from "lucide-react";
+import { Logo } from "@/components/layout/header/Logo";
 
 const ArterPage = () => {
   const { messages, isLoading, sendMessage, clearChat } = useChat();
@@ -15,7 +16,9 @@ const ArterPage = () => {
     <Layout>
       <div className="max-w-3xl mx-auto h-[calc(100vh-16rem)] flex flex-col">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold">Arter AI</h1>
+          <div className="flex text-center align-center items-center">
+          <Logo /><h1 className="text-2xl font-bold">Space Ai</h1>
+          </div>
           {messages.length > 0 && (
             <Button
               variant="ghost"

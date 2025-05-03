@@ -1,5 +1,5 @@
 
-import { Moon, Sun } from "lucide-react";
+import { MoonStar, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useEffect, useState } from "react";
@@ -26,7 +26,7 @@ export function ThemeToggle() {
       aria-label={theme === 'dark' ? 'تبديل إلى وضع النهار' : 'تبديل إلى وضع الليل'}
     >
       <Sun className={`h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all duration-300 ${theme === 'dark' ? 'opacity-0 scale-0' : 'opacity-100'}`} />
-      <Moon className={`absolute h-[1.2rem] w-[1.2rem] rotate-90 transition-all duration-300 ${theme === 'dark' ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 scale-0'}`} />
+      <MoonStar className={`absolute h-[1.2rem] w-[1.2rem]  transition-all duration-300 ${theme === 'dark' ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 scale-0'}`} />
     </Button>
   );
 }

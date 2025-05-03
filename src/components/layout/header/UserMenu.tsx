@@ -55,9 +55,9 @@ export function UserMenu() {
             </Avatar>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-56" dir={isRtl ? "rtl" : "ltr"}>
-          <DropdownMenuLabel className="font-normal">
-            <div className="flex flex-col space-y-1 text-right">
+        <DropdownMenuContent align={isRtl ? "start" : "end"} className="w-56" >
+          <DropdownMenuLabel className="font-normal" dir={isRtl ? "rtl" : "ltr"}>
+            <div className="flex flex-col space-y-1">
               <p className="text-sm font-medium leading-none">{user?.displayName}</p>
               <p className="text-xs leading-none text-muted-foreground">
                 @{user?.username}
@@ -66,20 +66,20 @@ export function UserMenu() {
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
-            <Link to={`/profile/${user?.username}`} className="cursor-pointer w-full text-right">
+            <Link to={`/profile/${user?.username}`} className="cursor-pointer w-full text-right hover:text-primary" dir={isRtl ? "rtl" : "ltr"}>
               <User className={`h-4 w-4 ${isRtl ? 'ml-2' : 'mr-2'} float-right`} />
               <span>{t("profile")}</span>
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link to="/edit-profile" className="cursor-pointer w-full text-right">
+            <Link to="/edit-profile" className="cursor-pointer w-full text-right hover:text-primary" dir={isRtl ? "rtl" : "ltr"}>
               <Settings className={`h-4 w-4 ${isRtl ? 'ml-2' : 'mr-2'} float-right`} />
               <span>{t("settings")}</span>
             </Link>
           </DropdownMenuItem>
           {user?.isAdmin && (
             <DropdownMenuItem asChild>
-              <Link to="/admin" className="cursor-pointer w-full text-right">
+              <Link to="/admin" className="cursor-pointer w-full text-right hover:text-primary" dir={isRtl ? "rtl" : "ltr"}>
                 <Settings className={`h-4 w-4 ${isRtl ? 'ml-2' : 'mr-2'} float-right`} />
                 <span>{t("adminPanel")}</span>
               </Link>
@@ -87,8 +87,9 @@ export function UserMenu() {
           )}
           <DropdownMenuSeparator />
           <DropdownMenuItem 
-            className="cursor-pointer text-destructive focus:text-destructive text-right w-full"
+            className="cursor-pointer text-destructive focus:text-destructive text-right w-full text-red-600 dark:text-red-400 hover:text-destructive hover:text-red-400 dark:hover:text-red-200 focus:outline-none focus:ring-0"
             onClick={handleLogout}
+            dir={isRtl ? "rtl" : "ltr"}
           >
             <LogOut className={`h-4 w-4 ${isRtl ? 'ml-2' : 'mr-2'} float-right`} />
             <span>{t("logout")}</span>

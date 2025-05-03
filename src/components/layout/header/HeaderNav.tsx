@@ -33,7 +33,7 @@ export function HeaderNav() {
       icon: <PlusSquare className="h-5 w-5 mx-2" />
     },
     {
-      label: "Arter AI",
+      label: "Space Ai",
       href: "/arter",
       icon: <Wand className="h-5 w-5 mx-2" />
     }

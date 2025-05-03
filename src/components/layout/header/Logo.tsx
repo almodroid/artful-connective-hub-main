@@ -8,7 +8,7 @@ export function Logo() {
   const { theme } = useTheme();
   
   return (
-    <Link to="/" className={`hidden sm:block ${isRtl ? 'ml-4' : 'mr-4'}`}>
+    <Link to="/" className={`${isRtl ? 'ml-4' : 'mr-4'} sm:block flex justify-center`}>
       <img 
         src={theme === 'light' ? '/assets/logolight.png' : '/assets/logo.png'}
         alt="Artful Connective Hub Logo" 

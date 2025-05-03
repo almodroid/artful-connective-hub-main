@@ -180,7 +180,7 @@ const translations = {
     all: "الكل",
     new: "جديد",
     popular: "شائع",
-    
+    comments: "التعليقات",
     
    
     

@@ -14,6 +14,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "@/hooks/use-translation";
 import NotificationsDropdown from "../../notifications/NotificationsDropdown";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export function UserMenu() {
   const { user, logout, isAuthenticated } = useAuth();
@@ -37,6 +38,7 @@ export function UserMenu() {
       </>
     );
   }
+
   
   return (
     <>

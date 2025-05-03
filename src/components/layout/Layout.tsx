@@ -32,7 +32,7 @@ export function Layout({ children, hideFooter = false }: LayoutProps) {
 
   return (
     <div className="flex min-h-screen flex-col" dir={isRtl ? "rtl" : "ltr"}>
-      <div className="hidden md:block mb-12">
+      <div className=" md:block md:mb-12 ">
         <Header />
       </div>
       <main className="flex-1 container px-4 md:px-8 py-6 pb-24 md:py-12">

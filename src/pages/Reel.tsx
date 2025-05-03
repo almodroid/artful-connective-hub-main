@@ -162,7 +162,7 @@ export default function Reel() {
                 className="fixed bottom-3 left-20 z-20 bg-background/95 backdrop-blur rounded-full shadow-lg hover:shadow-xl transition-shadow"
                 onClick={() => setIsCommentsOpen(true)}
               >
-                <MessageCircle className="h-6 w-6" />{t('common.comments')}
+                <MessageCircle className="h-6 w-6" />{t('comments')}
               </Button>
 
               <Dialog open={isCommentsOpen} onOpenChange={setIsCommentsOpen}>

@@ -337,19 +337,20 @@ export function ReelCardSingle({ reel, onLike, onView, isActive = false, onDelet
       <CardContent className="p-0 relative h-full">
         <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-black/70 to-transparent p-4">
           <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 rounded-full bg-black/50 backdrop-blur mt-[-2px]"
-              onClick={() => window.history.back()}
-            >
-              {isRtl ? (
-                <ArrowRight className="h-4 w-4 " />
-              ) : (
-                <ArrowLeft className="h-4 w-4 " />
-              )}
+          
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 rounded-full bg-black/50 backdrop-blur mt-[-2px]"
+                onClick={() => window.history.back()}
+              >
+                {isRtl ? (
+                  <ArrowRight className="h-4 w-4" />
+                ) : (
+                  <ArrowLeft className="h-4 w-4" />
+                )}
+              </Button>
               
-            </Button>
             <Avatar className="h-10 w-10 border border-white/50">
               <AvatarImage src={reel.user.avatar} alt={reel.user.displayName} />
               <AvatarFallback>{reel.user.displayName.charAt(0)}</AvatarFallback>

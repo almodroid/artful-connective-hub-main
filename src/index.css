@@ -1,5 +1,22 @@
 
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@200;300;400;500;600;700;800;900&family=Tajawal:wght@200;300;400;500;700;800;900&display=swap');
+@font-face {
+  font-family: 'Cairo';
+  src: local('Cairo'), local('Cairo-Regular'),
+       url('/fonts/Cairo-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Cairo';
+  src: local('Cairo'), 
+       url('/fonts/Cairo-Regular.ttf') format('truetype'),
+       url('https://fonts.gstatic.com/s/cairo/v28/SLXVc1nY6HkvangtZmpQdkhzfH5lkSscRiyS.woff2') format('woff2');
+  font-weight: 200 900;
+  font-style: normal;
+  font-display: swap;
+}
 
 @tailwind base;
 @tailwind components;
@@ -102,6 +119,20 @@
   
   .rtl-mirror {
     @apply rtl:scale-x-[-1];
+  }
+}
+
+/* iPhone specific styles */
+@media only screen and (max-device-width: 812px) and (-webkit-min-device-pixel-ratio: 2) {
+  body {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    font-family: 'Cairo', local('Cairo'), sans-serif;
+  }
+  
+  input, textarea, select {
+    font-size: 16px !important;
+    font-family: 'Cairo', local('Cairo'), sans-serif;
   }
 }
 

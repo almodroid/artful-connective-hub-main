@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
-import { Heart, MessageCircle, Share2, Play, Pause, Volume2, VolumeX, Link as LinkIcon, MoreVertical, Flag, Trash } from "lucide-react";
+import { Heart, MessageCircle, Share2, Play, Pause, Volume2, VolumeX, Link as LinkIcon, MoreVertical, Flag, Trash, ArrowLeft, ArrowRight } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -31,6 +31,7 @@ import { useNotificationsApi } from "@/hooks/use-notifications-api";
 import { useTranslation } from "@/hooks/use-translation";
 import { ReelWithUser, useReels } from "@/hooks/use-reels";
 import { cn } from "@/lib/utils";
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 // Define an interface for animated hearts
 interface AnimatedHeart {
@@ -52,7 +53,7 @@ interface ReelCardProps {
   className?: string;
 }
 
-export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, className }: ReelCardProps) {
+export function ReelCardSingle({ reel, onLike, onView, isActive = false, onDelete, className }: ReelCardProps) {
   const { isAuthenticated, user } = useAuth();
   const { isRtl, t } = useTranslation();
   const location = useLocation();
@@ -75,6 +76,7 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
   const videoRef = useRef<HTMLVideoElement>(null);
   const { sendInteractionNotification } = useNotificationsApi();
   const { deleteReel, reportReel } = useReels();
+  const isMobile = useMediaQuery("(max-width: 768px)");
   
   // Check if the current user is the owner of this reel
   const isOwner = isAuthenticated && user?.id === reel.user.id;
@@ -335,6 +337,19 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
       <CardContent className="p-0 relative h-full">
         <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-black/70 to-transparent p-4">
           <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 rounded-full bg-black/50 backdrop-blur mt-[-2px]"
+              onClick={() => window.history.back()}
+            >
+              {isRtl ? (
+                <ArrowRight className="h-4 w-4 " />
+              ) : (
+                <ArrowLeft className="h-4 w-4 " />
+              )}
+              
+            </Button>
             <Avatar className="h-10 w-10 border border-white/50">
               <AvatarImage src={reel.user.avatar} alt={reel.user.displayName} />
               <AvatarFallback>{reel.user.displayName.charAt(0)}</AvatarFallback>
@@ -450,10 +465,19 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
             ))}
           </div>
           
-          {/* Views counter */}
-          <div className="absolute right-0 bottom-0 p-3 text-sm text-white/90">
-            {reel.views} {isRtl ? "مشاهدة" : "views"}
-          </div>
+          {/* Play button */}
+          {!isPlaying && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-12 w-12 rounded-full bg-black/50 text-white hover:bg-black/70"
+                onClick={togglePlayback}
+              >
+                <Play className="h-6 w-6" />
+              </Button>
+            </div>
+          )}
 
           {/* Bottom video controls */}
           <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/70 to-transparent flex justify-between items-center video-controls">

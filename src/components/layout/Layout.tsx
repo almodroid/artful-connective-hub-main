@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
+import { BottomBar } from "./BottomBar";
 import { useTranslation } from "@/hooks/use-translation";
 
 interface LayoutProps {
@@ -31,11 +32,14 @@ export function Layout({ children, hideFooter = false }: LayoutProps) {
 
   return (
     <div className="flex min-h-screen flex-col" dir={isRtl ? "rtl" : "ltr"}>
-      <Header />
-      <main className="flex-1 container px-4 md:px-8 py-6 md:py-12">
+      <div className="hidden md:block">
+        <Header />
+      </div>
+      <main className="flex-1 container px-4 md:px-8 py-6 pb-24 md:py-12">
         {children}
       </main>
       {!hideFooter && <Footer />}
+      <BottomBar />
     </div>
   );
 }

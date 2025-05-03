@@ -25,6 +25,7 @@ import AdminSettings from "./pages/AdminSettings";
 import AdminNotifications from "./pages/AdminNotifications";
 import Arter from "./pages/Arter";
 import Reel from "./pages/Reel";
+import CreatePost from "./pages/CreatePost";
 
 // Create a new query client instance
 const queryClient = new QueryClient();
@@ -49,6 +50,7 @@ function App() {
                   <Route path="/arter" element={<Arter />} />
                   <Route path="/post/:postId" element={<Post />} />
                   <Route path="/reel/:id" element={<Reel />} />
+                  <Route path="/create" element={<CreatePost />} />
                   
                   {/* Admin Routes */}
                   <Route path="/admin" element={<Admin />} />

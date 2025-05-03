@@ -118,24 +118,28 @@ function CommentItem({ comment, onDelete, isOwner }: CommentItemProps) {
       </Avatar>
       
       <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between mb-3">
+          <a href={`/profile/${comment.user.id}`}>
+            <span className="font-medium text-sm">{comment.user.displayName}</span>
+          </a>
+          <span className="text-xs text-muted-foreground">{formattedDate}</span>
+        </div>
         <div className="bg-muted p-2 rounded-md">
           <div className="flex items-center justify-between">
-            <span className="font-medium text-sm">{comment.user.displayName}</span>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">{formattedDate}</span>
+            
+              <FormattedText text={comment.content} className="text-sm mt-1" />
               {isOwner && (
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="h-6 w-6 opacity-0 opacity-100 transition-opacity"
                   onClick={() => onDelete(comment.id)}
                 >
                   <Trash2 className="h-3.5 w-3.5 text-destructive" />
                 </Button>
               )}
-            </div>
+            
           </div>
-          <FormattedText text={comment.content} className="text-sm mt-1" />
         </div>
       </div>
     </div>

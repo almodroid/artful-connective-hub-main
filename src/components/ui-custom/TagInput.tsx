@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 
 interface TagInputProps {
+  id?: string;
   value: string[];
   onChange: (tags: string[]) => void;
   placeholder?: string;

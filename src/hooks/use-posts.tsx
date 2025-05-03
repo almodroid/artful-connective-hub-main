@@ -11,7 +11,7 @@ export interface Post {
   id: string;
   title?: string;
   content: string;
-  image_url?: string;
+  media_urls: string[];
   user_id: string;
   created_at: string;
   updated_at: string;
@@ -29,7 +29,7 @@ export interface PostWithUser {
   id: string;
   title?: string;
   content: string;
-  image_url?: string;
+  media_urls?: string[];
   createdAt: Date;
   user: {
     id: string;
@@ -44,7 +44,9 @@ export interface PostWithUser {
 
 interface CreatePostInput {
   content: string;
-  image?: File | null;
+  images?: File[];
+  gifUrl?: string | null;
+  link?: string;
   title?: string;
   tags?: string[];
 }
@@ -94,7 +96,9 @@ export function usePosts() {
   // Create new post
   const createPost = async ({
     content, 
-    image, 
+    images, 
+    gifUrl,
+    link,
     title = "",
     tags = []
   }: CreatePostInput): Promise<Post | null> => {
@@ -104,12 +108,13 @@ export function usePosts() {
     }
 
     try {
-      // If image is provided, upload it first
-      let imageUrl = null;
-      if (image) {
+      // Handle media uploads (images or GIF)
+      let mediaUrls: string[] = [];
+      let mediaType: 'images' | 'gif' | null = null;
+
+      if (images && images.length > 0) {
         setUploading(true);
-        const fileExt = image.name.split(".").pop();
-        const filePath = `${user.id}/${uuidv4()}.${fileExt}`;
+        mediaType = 'images';
 
         // Check if the bucket exists
         const { data: bucketExists } = await supabase.storage.getBucket("posts");
@@ -119,16 +124,25 @@ export function usePosts() {
           });
         }
 
-        const { error: uploadError } = await supabase.storage
-          .from("posts")
-          .upload(filePath, image);
+        // Upload all images
+        for (const image of images) {
+          const fileExt = image.name.split(".").pop();
+          const filePath = `${user.id}/${uuidv4()}.${fileExt}`;
 
-        if (uploadError) {
-          throw uploadError;
+          const { error: uploadError } = await supabase.storage
+            .from("posts")
+            .upload(filePath, image);
+
+          if (uploadError) {
+            throw uploadError;
+          }
+
+          const { data } = supabase.storage.from("posts").getPublicUrl(filePath);
+          mediaUrls.push(data.publicUrl);
         }
-
-        const { data } = supabase.storage.from("posts").getPublicUrl(filePath);
-        imageUrl = data.publicUrl;
+      } else if (gifUrl) {
+        mediaType = 'gif';
+        mediaUrls = [gifUrl];
       }
 
       // Get user profile data
@@ -148,7 +162,9 @@ export function usePosts() {
         .insert({
           title,
           content,
-          image_url: imageUrl,
+          media_urls: mediaUrls,
+          media_type: mediaType,
+          link,
           tags,
           user_id: user.id,
         })

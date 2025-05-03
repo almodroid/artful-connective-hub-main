@@ -273,7 +273,7 @@ export type Database = {
           content: string
           created_at: string | null
           id: string
-          image_url: string | null
+          media_urls: string[] | null
           likes_count: number | null
           tags: string[] | null
           title: string | null
@@ -285,7 +285,7 @@ export type Database = {
           content: string
           created_at?: string | null
           id?: string
-          image_url?: string | null
+          media_urls?: string[] | null
           likes_count?: number | null
           tags?: string[] | null
           title?: string | null
@@ -297,7 +297,7 @@ export type Database = {
           content?: string
           created_at?: string | null
           id?: string
-          image_url?: string | null
+          media_urls?: string[] | null
           likes_count?: number | null
           tags?: string[] | null
           title?: string | null

@@ -65,7 +65,7 @@ const Index = () => {
           id: post.id,
           content: post.content,
           title: post.title || "",
-          image: post.image_url,
+          images: post.media_urls || [], // Use all media URLs
           createdAt: new Date(post.created_at),
           user: {
             id: post.user_id,
@@ -96,7 +96,7 @@ const Index = () => {
     id: post.id,
     content: post.content,
     title: post.title || "",
-    image: post.image_url,
+    image: post.media_urls || [], // Use first media URL if available
     createdAt: new Date(post.created_at),
     user: {
       id: post.user_id,
@@ -149,12 +149,14 @@ const Index = () => {
             ) : (
               <div className="space-y-6">
                 {displayPosts.map((post) => (
-                  <Link to={`/post/${post.id}`} key={post.id}>
-                    <PostCard 
-                      post={post} 
-                      onLike={(id) => likePost(id)}
-                    />
-                  </Link>
+                  <div key={post.id} className="mb-6">
+                    <Link to={`/post/${post.id}`}>
+                      <PostCard 
+                        post={post} 
+                        onLike={(id) => likePost(id)}
+                      />
+                    </Link>
+                  </div>
                 ))}
               </div>
             )}

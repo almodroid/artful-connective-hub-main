@@ -36,8 +36,7 @@ export interface PostDetailProps {
       avatar: string;
     };
     content: string;
-    image?: string;
-    image_url?: string;
+    images?: string[];
     createdAt: Date;
     created_at?: string;
     likes: number;
@@ -167,9 +166,9 @@ export function PostDetail({
   }
 
   return (
-    <div className="max-w-3xl mx-auto animate-fade-in">
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-4">
+    <div className="max-w-3xl mx-auto animate-fade-in items-center">
+      <div className="mb-6 items-center">
+        <div className="flex items-center gap-3 mb-4 ">
           <Link to={`/profile/${post.user.username}`}>
             <Avatar className="h-10 w-10 border">
               <AvatarImage src={post.user.avatar} alt={post.user.displayName} />
@@ -177,7 +176,7 @@ export function PostDetail({
             </Avatar>
           </Link>
           
-          <div>
+          <div className="align-start flex gap-3 items-center">
             <Link 
               to={`/profile/${post.user.username}`}
               className="font-medium hover:text-primary transition-colors"
@@ -197,21 +196,25 @@ export function PostDetail({
           </div>
         </div>
         
-        <div className="text-lg mb-6">
-          <FormattedText text={post.content} className="text-lg leading-relaxed" />
+        <div className="text-lg mb-6 align-start flex">
+          <FormattedText text={post.content} />
         </div>
         
-        {(post.image_url || post.image) && (
-          <div className="rounded-lg overflow-hidden bg-muted/20 mb-6">
-            <img 
-              src={post.image_url || post.image} 
-              alt="Post attachment" 
-              className="w-full h-auto object-cover max-h-[600px]"
-            />
+        {post.images && post.images.length > 0 && (
+          <div className={`grid gap-4 mb-6 ${post.images.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+            {post.images.map((image, index) => (
+              <div key={index} className="relative aspect-square overflow-hidden rounded-lg">
+                <img
+                  src={image}
+                  alt={`Post image ${index + 1}`}
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+              </div>
+            ))}
           </div>
         )}
-        
-        <div className="flex justify-between items-center py-4">
+
+        <div className="flex items-center justify-between mb-6">
           <Button
             variant="ghost"
             size="sm"
@@ -350,4 +353,4 @@ export function PostDetail({
       </div>
     </div>
   );
-} 
+}

@@ -41,7 +41,7 @@ const profileFormSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 const EditProfile = () => {
-  const { t } = useTranslation();
+  const { t, isRtl } = useTranslation();
   const { toast } = useToast();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -259,18 +259,7 @@ const EditProfile = () => {
                           accept="image/*"
                           onChange={onSelectFile}
                         />
-                        <AvatarCropModal
-                          isOpen={isModalOpen}
-                          onClose={() => setIsModalOpen(false)}
-                          imgSrc={imgSrc}
-                          crop={crop}
-                          setCrop={setCrop}
-                          onComplete={setCompletedCrop}
-                          onSave={handleAvatarChange}
-                          imgRef={imgRef}
-                          onImageLoad={onImageLoad}
-                          isUploading={isUploading}
-                        />
+                        
                         <Button 
                           size="sm" 
                           variant="outline" 
@@ -282,13 +271,13 @@ const EditProfile = () => {
                         </Button>
                       </div>
                       
-                      <div className="flex-1 space-y-4">
+                      <div className="flex-1 space-y-4" dir={isRtl ? "rtl" : "ltr"}>
                         <FormField
                           control={form.control}
                           name="displayName"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="rtl:text-right">{t("displayName")}</FormLabel>
+                              <FormLabel className="flex justify-start">{t("displayName")}</FormLabel>
                               <FormControl>
                                 <Input placeholder={t("displayName")} {...field} className="rtl:text-right" />
                               </FormControl>
@@ -326,7 +315,7 @@ const EditProfile = () => {
                       name="bio"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="rtl:text-right">{t("bio")}</FormLabel>
+                          <FormLabel className="flex align-start">{t("bio")}</FormLabel>
                           <FormControl>
                             <Textarea
                               placeholder={t("bio")}

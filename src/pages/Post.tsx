@@ -65,8 +65,7 @@ const Post = () => {
           const foundPost = {
             id: data.id,
             content: data.content,
-            image: data.image_url,
-            image_url: data.image_url,
+            images: data.media_urls || [], // Store all media URLs
             createdAt: new Date(data.created_at),
             created_at: data.created_at,
             likes: data.likes_count || 0,

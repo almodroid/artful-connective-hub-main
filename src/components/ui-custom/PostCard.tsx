@@ -25,6 +25,8 @@ export interface Post {
   id: string;
   content: string;
   image?: string;
+  media_urls?: string[];
+  images?: string[];
   createdAt: Date;
   likes: number;
   comments: number;
@@ -201,6 +203,7 @@ export function PostCard({ post, onLike, onComment, onShare }: PostCardProps) {
 
   return (
     <div className={`bg-card rounded-lg border p-4 space-y-5 m-5 ${isRtl ? 'direction-rtl' : ''}`}>
+      
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
           <Link to={`/profile/${post.user.username}`}>
@@ -276,13 +279,16 @@ export function PostCard({ post, onLike, onComment, onShare }: PostCardProps) {
 
       <p className="text-sm whitespace-pre-wrap text-start p-3">{post.content}</p>
 
-      {post.image && (
-        <div className="rounded-lg overflow-hidden">
-          <img 
-            src={post.image} 
-            alt="" 
-            className="w-full h-auto max-h-[500px] object-cover"
-          />
+      {post.images?.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-2 gap-2 mb-4 ">
+          {post.images.map((image, index) => (
+            <img 
+              key={index} 
+              src={image} 
+              alt="" 
+              className="w-full h-64 object-cover rounded-md"
+            />
+          ))}
         </div>
       )}
 

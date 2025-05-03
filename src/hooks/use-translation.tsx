@@ -214,6 +214,7 @@ const translations = {
     uploading: "جاري الرفع...",
     accountScheduledDeletion: "تم جدولة حذف حسابك في",
     restoringAccount: "جاري استعادة الحساب...",
+    editProfile: "تعديل الملف الشخصي",
 
     // Account
     accountSettings: "إعدادات الحساب",

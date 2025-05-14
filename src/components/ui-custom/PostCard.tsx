@@ -58,15 +58,34 @@ export function PostCard({ post, onLike, onComment, onShare }: PostCardProps) {
       if (!isAuthenticated || !user) return;
 
       try {
+        // Check if the post exists first
+        const { count, error: checkError } = await supabase
+          .from("posts")
+          .select("*", { count: "exact", head: true })
+          .eq("id", post.id);
+          
+        if (checkError) {
+          console.error("Error checking post existence:", checkError);
+          return;
+        }
+
+        if (count === 0) {
+          console.error("Post not found");
+          return;
+        }
+        
         // Check if the post is liked
-        const { data: likeData } = await supabase
+        const { data: likeData, error: likeError } = await supabase
           .from('post_likes')
           .select()
           .eq('post_id', post.id)
-          .eq('user_id', user.id)
-          .single();
+          .eq('user_id', user.id);
 
-        setIsLiked(!!likeData);
+        if (likeError) {
+          console.error('Error checking like status:', likeError);
+        } else {
+          setIsLiked(likeData && likeData.length > 0);
+        }
 
         // Check if following the post author
         if (user.id !== post.user.id) {
@@ -105,22 +124,85 @@ export function PostCard({ post, onLike, onComment, onShare }: PostCardProps) {
 
   const handleLike = async () => {
     if (!isAuthenticated || !user) {
+      // Save current location before redirecting
+      const currentPath = window.location.pathname;
+      localStorage.setItem('redirectAfterLogin', currentPath);
       toast.error(isRtl ? "يجب تسجيل الدخول أولاً" : "You must be logged in");
+      window.location.href = '/login';
       return;
     }
 
     try {
+      // Optimistically update UI
+      const newLikeStatus = !isLiked;
+      setIsLiked(newLikeStatus);
+      
+      // Update local likes count
+      const likeDelta = newLikeStatus ? 1 : -1;
+      post.likes = Math.max(0, post.likes + likeDelta);
+      
       if (isLiked) {
+        // Check if the post exists first
+        const { count, error: checkError } = await supabase
+          .from("posts")
+          .select("*", { count: "exact", head: true })
+          .eq("id", post.id);
+          
+        if (checkError) {
+          console.error("Error checking post existence:", checkError);
+          // Revert optimistic update on error
+          setIsLiked(!newLikeStatus);
+          post.likes = Math.max(0, post.likes - likeDelta);
+          throw checkError;
+        }
+
+        if (count === 0) {
+          console.error("Post not found");
+          // Revert optimistic update on error
+          setIsLiked(!newLikeStatus);
+          post.likes = Math.max(0, post.likes - likeDelta);
+          toast.error(isRtl ? "المنشور غير موجود" : "Post not found");
+          return;
+        }
+        
         const { error } = await supabase
           .from('post_likes')
           .delete()
           .eq('post_id', post.id)
           .eq('user_id', user.id);
 
-        if (error) throw error;
-        setIsLiked(false);
+        if (error) {
+          // Revert optimistic update on error
+          setIsLiked(!newLikeStatus);
+          post.likes = Math.max(0, post.likes - likeDelta);
+          throw error;
+        }
+        
         if (onLike) onLike(post.id);
       } else {
+        // Check if the post exists first
+        const { count, error: checkError } = await supabase
+          .from("posts")
+          .select("*", { count: "exact", head: true })
+          .eq("id", post.id);
+          
+        if (checkError) {
+          console.error("Error checking post existence:", checkError);
+          // Revert optimistic update on error
+          setIsLiked(!newLikeStatus);
+          post.likes = Math.max(0, post.likes - likeDelta);
+          throw checkError;
+        }
+
+        if (count === 0) {
+          console.error("Post not found");
+          // Revert optimistic update on error
+          setIsLiked(!newLikeStatus);
+          post.likes = Math.max(0, post.likes - likeDelta);
+          toast.error(isRtl ? "المنشور غير موجود" : "Post not found");
+          return;
+        }
+        
         const { error } = await supabase
           .from('post_likes')
           .insert({
@@ -128,8 +210,13 @@ export function PostCard({ post, onLike, onComment, onShare }: PostCardProps) {
             user_id: user.id
           });
 
-        if (error) throw error;
-        setIsLiked(true);
+        if (error) {
+          // Revert optimistic update on error
+          setIsLiked(!newLikeStatus);
+          post.likes = Math.max(0, post.likes - likeDelta);
+          throw error;
+        }
+        
         if (onLike) onLike(post.id);
       }
     } catch (error) {
@@ -225,7 +312,11 @@ export function PostCard({ post, onLike, onComment, onShare }: PostCardProps) {
                   variant="ghost"
                   size="sm"
                   className="h-6 px-2"
-                  onClick={handleFollow}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleFollow();
+                  }}
                   disabled={isLoading}
                 >
                   {isFollowing ? (
@@ -280,13 +371,13 @@ export function PostCard({ post, onLike, onComment, onShare }: PostCardProps) {
       <p className="text-sm whitespace-pre-wrap text-start p-3">{post.content}</p>
 
       {post.images?.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-2 gap-2 mb-4 ">
+        <div className={`grid ${post.images?.length === 1 ? 'grid-cols-1' : 'grid-cols-2 md:grid-cols-2'} gap-2 mb-4`}>
           {post.images.map((image, index) => (
             <img 
               key={index} 
               src={image} 
               alt="" 
-              className="w-full h-64 object-cover rounded-md"
+              className={`w-full ${post.images?.length === 1 ? 'h-96' : 'h-64'} object-cover rounded-md`}
             />
           ))}
         </div>
@@ -297,7 +388,10 @@ export function PostCard({ post, onLike, onComment, onShare }: PostCardProps) {
           variant="ghost"
           size="sm"
           className={`gap-2 ${isLiked ? 'text-primary' : ''}`}
-          onClick={handleLike}
+          onClick={(e) => {
+            e.preventDefault();
+            handleLike();
+          }}
         >
           <Heart className={`h-4 w-4 ${isLiked ? 'fill-primary' : ''}`} />
           <span>{post.likes}</span>

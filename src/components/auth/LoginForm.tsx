@@ -28,7 +28,14 @@ export function LoginForm() {
     
     try {
       await login(identifier, password);
-      navigate("/");
+      // Check for redirect path after successful login
+      const redirectPath = localStorage.getItem('redirectAfterLogin');
+      if (redirectPath) {
+        localStorage.removeItem('redirectAfterLogin');
+        navigate(redirectPath);
+      } else {
+        navigate("/");
+      }
     } catch (err) {
       setError("فشل تسجيل الدخول، يرجى التحقق من اسم المستخدم وكلمة المرور");
     }

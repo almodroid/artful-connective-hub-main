@@ -218,7 +218,7 @@ export function usePosts() {
     },
   });
 
-  // Like a post
+  // Like or unlike a post
   const likePost = async (postId: string) => {
     if (!user) {
       toast.error("You must be logged in to like a post");
@@ -242,31 +242,68 @@ export function usePosts() {
         return;
       }
 
-      // Add like to post_likes table
-      const { error } = await supabase
+      // Check if the user has already liked this post
+      const { data: existingLike, error: likeCheckError } = await supabase
         .from("post_likes")
-        .insert({
-          post_id: postId,
-          user_id: user.id
-        });
+        .select()
+        .eq("post_id", postId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (likeCheckError) {
+        console.error("Error checking like status:", likeCheckError);
+        return;
+      }
+
+      let likeDelta = 0;
+      
+      if (existingLike) {
+        // User already liked the post, so unlike it
+        const { error } = await supabase
+          .from("post_likes")
+          .delete()
+          .eq("post_id", postId)
+          .eq("user_id", user.id);
+          
+        if (error) {
+          console.error("Error unliking post:", error);
+          throw error;
+        }
         
-      if (error) {
-        console.error("Error liking post:", error);
-        throw error;
+        likeDelta = -1;
+      } else {
+        // User hasn't liked the post yet, so like it
+        const { error } = await supabase
+          .from("post_likes")
+          .insert({
+            post_id: postId,
+            user_id: user.id
+          });
+          
+        if (error) {
+          console.error("Error liking post:", error);
+          throw error;
+        }
+        
+        likeDelta = 1;
       }
 
       // Optimistically update likes count
       queryClient.setQueryData<Post[]>(["posts"], (oldPosts) =>
-        oldPosts?.map((post) =>
-          post.id === postId ? { ...post, likes_count: (post.likes_count || 0) + 1 } : post
-        ) || []
+        oldPosts?.map((post) => {
+          if (post.id === postId) {
+            const newCount = Math.max(0, (post.likes_count || 0) + likeDelta);
+            return { ...post, likes_count: newCount };
+          }
+          return post;
+        }) || []
       );
 
       // Invalidate and refetch
       await queryClient.invalidateQueries({ queryKey: ["posts"] });
     } catch (error) {
-      console.error("Error liking post:", error);
-      toast.error("Failed to like post");
+      console.error("Error toggling post like:", error);
+      toast.error("Failed to update post like status");
     }
   };
 

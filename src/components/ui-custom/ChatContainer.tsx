@@ -1,7 +1,6 @@
 
 import { useRef, useEffect } from "react";
 import { ChatMessage } from "@/hooks/use-chat";
-import { ChatBubble } from "./ChatBubble";
 import { Palette, Brush, Wand, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/hooks/use-translation";
@@ -68,12 +67,8 @@ export function ChatContainer({ messages, isLoading, onSendMessage }: ChatContai
           </div>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.map((message) => (
-            <ChatBubble key={message.id} message={message} />
-          ))}
-          <div ref={messagesEndRef} />
-        </div>
+        <>
+        </>
       )}
     </div>
   );

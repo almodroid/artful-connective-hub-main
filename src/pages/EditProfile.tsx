@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -35,6 +36,7 @@ const profileFormSchema = z.object({
   }).optional(),
   website: z.string().url({ message: "يرجى إدخال رابط صحيح." }).optional().or(z.literal("")),
   location: z.string().optional(),
+  allowMessages: z.boolean().default(true),
 });
 
 
@@ -63,6 +65,7 @@ const EditProfile = () => {
     bio: user?.bio || "",
     website: user?.website || "",
     location: user?.location || "",
+    allowMessages: user?.allowMessages !== false, // Default to true if not set
   };
 
   const form = useForm<ProfileFormValues>({
@@ -193,7 +196,8 @@ const EditProfile = () => {
           display_name: data.displayName,
           bio: data.bio,
           website: data.website,
-          location: data.location
+          location: data.location,
+          allow_messages: data.allowMessages
         })
         .eq('id', user?.id);
 
@@ -389,6 +393,32 @@ const EditProfile = () => {
                   <h3 className="text-lg font-medium">{t("password")}</h3>
                   <p className="text-sm text-muted-foreground">••••••••••••</p>
                   <Button variant="outline" size="sm">{t("changePassword")}</Button>
+                </div>
+                
+                <Separator />
+                
+                <div className="space-y-2">
+                  <h3 className="text-lg font-medium">{t("messageSettings") || "Message Settings"}</h3>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">{t("allowMessages") || "Allow Direct Messages"}</p>
+                      <p className="text-sm text-muted-foreground">{t("allowMessagesDesc") || "Let others send you direct messages"}</p>
+                    </div>
+                    <FormField
+                      control={form.control}
+                      name="allowMessages"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center space-x-2 space-y-0">
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
                 
                 <Separator />

@@ -199,51 +199,7 @@ export const createReelNotification = async (
   }
 };
 
-/**
- * Creates a notification for new messages
- */
-export const createMessageNotification = async (
-  recipientId: string,
-  senderId: string,
-  conversationId: string,
-  senderName: string,
-  messagePreview: string
-): Promise<boolean> => {
-  // Don't send notifications to yourself
-  if (recipientId === senderId) {
-    return false;
-  }
 
-  try {
-    // Prepare notification content
-    const title = "رسالة جديدة";
-    const message = `رسالة جديدة من ${senderName}: "${messagePreview.substring(0, 50) + (messagePreview.length > 50 ? "..." : "")}"`;
-
-    // Create notification record
-    const { error } = await supabase
-      .from("notifications")
-      .insert({
-        user_id: recipientId,
-        title,
-        message,
-        action_link: `/messages/${conversationId}`,
-        action_type: "message",
-        sender_id: senderId,
-        is_global: false,
-        read: false
-      });
-
-    if (error) {
-      console.error("Error creating message notification:", error);
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    console.error("Error in createMessageNotification:", error);
-    return false;
-  }
-};
 
 /**
  * Creates a notification for comment replies

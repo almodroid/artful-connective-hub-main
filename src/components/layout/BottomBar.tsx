@@ -1,6 +1,6 @@
 import { useLocation } from "react-router-dom";
 import { Link } from "react-router-dom";
-import { Home, Search, PlusSquare, Bell, User, FolderKanban, Plus } from "lucide-react";
+import { Home, Search, PlusSquare, Bell, User, FolderKanban, Plus, MessageSquare } from "lucide-react";
 import { useTranslation } from "@/hooks/use-translation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ export function BottomBar() {
     { name: t("home"), href: "/", icon: Home },
     { name: t("explore"), href: "/explore", icon: Search },
     { name: t("projects"), href: "/projects", icon: FolderKanban },
+    { name: t("messages"), href: "/messages", icon: MessageSquare },
   ];
 
   if (!isAuthenticated) {

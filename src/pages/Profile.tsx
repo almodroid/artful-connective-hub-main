@@ -16,7 +16,6 @@ import { ReelWithUser, useReels } from "@/hooks/use-reels";
 import { useTranslation } from "@/hooks/use-translation";
 import { ReelCard } from "@/components/ui-custom/ReelCard";
 import { FollowListModal } from "@/components/ui-custom/FollowListModal";
-import { MessageButton } from "@/components/messages/MessageButton";
 import { fetchProjectsByUserId, ProjectWithUser } from "@/services/project.service";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +34,7 @@ interface UserProfile {
   joinDate?: string;
   is_admin?: boolean;
   created_at?: string;
+  allow_messages?: boolean;
 }
 
 const Profile = () => {
@@ -132,7 +132,8 @@ const Profile = () => {
               year: 'numeric',
               month: 'long'
             }),
-            created_at: profileData.created_at
+            created_at: profileData.created_at,
+            allow_messages: profileData.allow_messages
           });
 
           // Check if the current user is following this profile
@@ -678,7 +679,18 @@ const Profile = () => {
                       >
                         {isFollowing ? (isRtl ? "إلغاء المتابعة" : "Unfollow") : (isRtl ? "متابعة" : "Follow")}
                       </Button>
-                      <MessageButton userId={profileUser?.id || ""} username={profileUser?.username || ""} />
+                      {/* Only show message button if user allows messages */}
+                      {(profileUser.allow_messages !== false) && (
+                        <Button 
+                          variant="outline"
+                          asChild
+                        >
+                          <Link to={`/messages/${profileUser.id}`}>
+                            <MessageSquare className="h-4 w-4 me-2" />
+                            {isRtl ? "مراسلة" : "Message"}
+                          </Link>
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>

@@ -455,3 +455,110 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Create conversations table for direct messages
+CREATE TABLE IF NOT EXISTS conversations (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create conversation_participants junction table
+CREATE TABLE IF NOT EXISTS conversation_participants (
+  conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  PRIMARY KEY (conversation_id, user_id)
+);
+
+-- Create messages table
+CREATE TABLE IF NOT EXISTS messages (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+  sender_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  content TEXT NOT NULL,
+  read BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create indexes for better query performance
+CREATE INDEX IF NOT EXISTS idx_conversation_participants_user_id ON conversation_participants(user_id);
+CREATE INDEX IF NOT EXISTS idx_conversation_participants_conversation_id ON conversation_participants(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_messages_sender_id ON messages(sender_id);
+CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at DESC);
+
+-- Create trigger for updating conversations updated_at timestamp when new message is added
+CREATE OR REPLACE FUNCTION update_conversation_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+  UPDATE conversations
+  SET updated_at = NOW()
+  WHERE id = NEW.conversation_id;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_conversation_timestamp
+AFTER INSERT ON messages
+FOR EACH ROW
+EXECUTE FUNCTION update_conversation_timestamp();
+
+-- Enable Row Level Security for direct message tables
+ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE conversation_participants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for conversations
+CREATE POLICY "Users can view conversations they are part of"
+ON conversations FOR SELECT
+USING (EXISTS (
+  SELECT 1 FROM conversation_participants
+  WHERE conversation_id = id AND user_id = auth.uid()
+));
+
+CREATE POLICY "Any authenticated user can create conversations"
+ON conversations FOR INSERT
+TO authenticated
+WITH CHECK (true);
+
+-- Create policies for conversation_participants
+CREATE POLICY "Users can view conversation participants for their conversations"
+ON conversation_participants FOR SELECT
+USING (EXISTS (
+  SELECT 1 FROM conversation_participants
+  WHERE conversation_id = conversation_participants.conversation_id AND user_id = auth.uid()
+));
+
+CREATE POLICY "Users can add participants to conversations they created"
+ON conversation_participants FOR INSERT
+TO authenticated
+WITH CHECK (true);
+
+-- Create policies for messages
+CREATE POLICY "Users can view messages in conversations they are part of"
+ON messages FOR SELECT
+USING (EXISTS (
+  SELECT 1 FROM conversation_participants
+  WHERE conversation_id = messages.conversation_id AND user_id = auth.uid()
+));
+
+CREATE POLICY "Users can send messages to conversations they are part of"
+ON messages FOR INSERT
+TO authenticated
+WITH CHECK (
+  auth.uid() = sender_id AND
+  EXISTS (
+    SELECT 1 FROM conversation_participants
+    WHERE conversation_id = messages.conversation_id AND user_id = auth.uid()
+  )
+);
+
+CREATE POLICY "Users can update their own messages"
+ON messages FOR UPDATE
+USING (auth.uid() = sender_id);
+
+CREATE POLICY "Users can delete their own messages"
+ON messages FOR DELETE
+USING (auth.uid() = sender_id);

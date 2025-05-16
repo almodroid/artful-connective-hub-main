@@ -16,6 +16,7 @@ export interface User {
   email?: string;
   deleted_at?: string | null; // ISO8601 timestamp string or null
   deletion_deadline?: string | null; // ISO8601 timestamp string or null
+  allowMessages?: boolean;
 }
 
 interface AuthContextType {

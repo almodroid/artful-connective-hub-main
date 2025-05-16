@@ -1,6 +1,6 @@
 
 import { Link } from "react-router-dom";
-import { Home, Search, PlusSquare, Wand } from "lucide-react";
+import { Home, Search, PlusSquare, Wand, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/hooks/use-translation";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -31,6 +31,11 @@ export function HeaderNav() {
       label: t("projects"),
       href: "/projects",
       icon: <PlusSquare className="h-5 w-5 mx-2" />
+    },
+    {
+      label: t("messages"),
+      href: "/messages",
+      icon: <MessageSquare className="h-5 w-5 mx-2" />
     },
     {
       label: "Space Ai",

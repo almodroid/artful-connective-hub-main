@@ -206,6 +206,11 @@ const translations = {
     Conversations: "المحادثات",
     Send_message: "أرسل رسالة جديدة",
     No_messages: "لا توجد رسائل حتى الآن",
+    Follow: "متابعة الفنان",
+    Unfollow: "إلغاء المتابعة",
+    followBack: "تابعك مرة أخرى",
+    followBackDesc: "قم بتبعك مرة أخرى للوصول إلى المحتوى الخاص بك",
+    followBackButton: "تابعك مرة أخرى",
    
     
     // Home

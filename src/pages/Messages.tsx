@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useMessages } from '../hooks/use-messages';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../integrations/supabase/client';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
@@ -9,7 +10,7 @@ import { Separator } from '../components/ui/separator';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { Skeleton } from '../components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
-import { Send, ArrowLeft, MoreVertical, Edit, Trash2, UserX, UserPlus, Image as ImageIcon, Smile, X, Loader2, Search, ArrowRight } from 'lucide-react';
+import { Send, ArrowLeft, MoreVertical, Edit, Trash2, UserX, UserPlus, UserMinus, Image as ImageIcon, Smile, X, Loader2, Search, ArrowRight } from 'lucide-react';
 import { useTranslation } from '../hooks/use-translation';
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from '../hooks/use-toast';
@@ -49,6 +50,8 @@ const Messages = () => {
     unblockUser,
     blockedUsers,
   } = useMessages();
+  
+  
 
   const [messageContent, setMessageContent] = useState('');
   const [showConversations, setShowConversations] = useState(!conversationId || isMobile);
@@ -241,6 +244,7 @@ const Messages = () => {
   const handleRemoveFile = (index: number) => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
+  
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -299,6 +303,22 @@ const Messages = () => {
   };
 
   const otherParticipant = getOtherParticipant();
+
+  const [isFollowing, setIsFollowing] = useState(false);
+  
+  useEffect(() => {
+    if (otherParticipant && user?.id) {
+      const checkFollowingStatus = async () => {
+        const { data } = await supabase
+          .rpc('is_following', {
+            follower_id: user.id,
+            following_id: otherParticipant.user_id
+          });
+        setIsFollowing(data);
+      };
+      checkFollowingStatus();
+    }
+  }, [otherParticipant, user]);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -391,14 +411,102 @@ const Messages = () => {
               )}
               {otherParticipant && (
                 <>
-                  <Avatar>
+                  <Avatar className="cursor-pointer" onClick={() => navigate(`/profile/${otherParticipant.username}`)}>
                     <AvatarImage src={otherParticipant.avatar_url} alt={otherParticipant.display_name} />
                     <AvatarFallback>{otherParticipant.display_name.charAt(0)}</AvatarFallback>
                   </Avatar>
-                  <div>
-                    <p className="font-medium flex"><a href=''>{otherParticipant.display_name}</a></p>
+                  <div className="flex-1">
+                    <p className="font-medium flex">
+                      <a href={`/profile/${otherParticipant.username}`} className="hover:underline">
+                        {otherParticipant.display_name}
+                      </a>
+                    </p>
                     <p className="text-sm text-muted-foreground flex">@{otherParticipant.username}</p>
                   </div>
+                  {otherParticipant.user_id !== user?.id && (
+                     <Button
+                       variant={isFollowing ? "ghost" : "outline"}
+                       size="sm"
+                       className="mr-2"
+                       onClick={async () => {
+                         if (isFollowing) {
+                           const { error } = await supabase
+                              .from('followers')
+                              .delete()
+                              .eq('follower_id', user?.id)
+                              .eq('following_id', otherParticipant.user_id);
+                            if (!error) {
+                              setIsFollowing(false);
+                              toast({
+                                title: isRtl ? "تم إلغاء المتابعة بنجاح" : "Successfully unfollowed",
+                                variant: "default"
+                              });
+                            }
+                         } else {
+                           const { error } = await supabase
+                             .from('followers')
+                             .insert({
+                               follower_id: user?.id,
+                               following_id: otherParticipant.user_id
+                             });
+                           if (!error) {
+                             setIsFollowing(true);
+                             toast({
+                               title: isRtl ? "تم المتابعة بنجاح" : "Successfully followed",
+                               variant: "default"
+                             });
+                           }
+                         }
+                       }}
+                     >
+                       {isFollowing ? (
+                         <>
+                           <UserX className="h-4 w-4 mr-1" />
+                           {t('Unfollow')}
+                         </>
+                       ) : (
+                         <>
+                           <UserPlus className="h-4 w-4 mr-1" />
+                           {t('Follow')}
+                         </>
+                       )}
+                     </Button>
+                   )}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreVertical className="h-5 w-5" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-48">
+                      <div className="space-y-2">
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start"
+                          onClick={() => navigate(`/profile/${otherParticipant.user_id}`)}
+                        >
+                          <UserPlus className="h-4 w-4 mr-2" />
+                          {t('View Profile')}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start text-destructive"
+                          onClick={() => blockUser(otherParticipant.user_id)}
+                        >
+                          <UserX className="h-4 w-4 mr-2" />
+                          {t('Block User')}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start text-destructive"
+                          onClick={() => handleBackToConversations()}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          {t('Delete Chat')}
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 </>
               )}
             </div>

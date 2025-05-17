@@ -9,6 +9,11 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8081,
   },
+  preview: {
+    allowedHosts: [
+      "artful-connective-hub-main.onrender.com"
+    ]
+  },
   plugins: [
     react(),
     mode === 'development' &&

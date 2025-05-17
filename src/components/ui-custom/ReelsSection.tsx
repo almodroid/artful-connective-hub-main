@@ -28,25 +28,27 @@ export function ReelsSection({ isActive = false }: ReelsSectionProps) {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
-  // Convert Reel to ReelWithUser
-  const reelsWithUser = reels.map(reel => ({
-    id: reel.id,
-    caption: reel.caption,
-    video_url: reel.video_url,
-    thumbnail_url: reel.thumbnail_url,
-    duration: reel.duration,
-    createdAt: new Date(reel.created_at),
-    user: {
-      id: reel.user_id,
-      username: reel.user?.username || "unknown",
-      displayName: reel.user?.display_name || "Unknown User",
-      avatar: reel.user?.avatar_url || "",
-    },
-    likes: reel.likes_count || 0,
-    comments: reel.comments_count || 0,
-    views: reel.views_count || 0,
-    isLiked: false
-  }));
+  // Convert Reel to ReelWithUser and randomize order
+  const reelsWithUser = reels
+    .map(reel => ({
+      id: reel.id,
+      caption: reel.caption,
+      video_url: reel.video_url,
+      thumbnail_url: reel.thumbnail_url,
+      duration: reel.duration,
+      createdAt: new Date(reel.created_at),
+      user: {
+        id: reel.user_id,
+        username: reel.user?.username || "unknown",
+        displayName: reel.user?.display_name || "Unknown User",
+        avatar: reel.user?.avatar_url || "",
+      },
+      likes: reel.likes_count || 0,
+      comments: reel.comments_count || 0,
+      views: reel.views_count || 0,
+      isLiked: false
+    }))
+    .sort(() => Math.random() - 0.5);
 
   // Handle scroll navigation
   const handleScrollLeft = () => {

@@ -112,10 +112,7 @@ const Index = () => {
   return (
     <Layout>
       <div className={`max-w-4xl mx-auto ${isRtl ? 'rtl text-right' : 'ltr text-left'}`}>
-        {/* Reels Section */}
-        <div className="w-full overflow-hidden">
-          <ReelsSection isActive={false} />
-        </div>
+
         
         <Tabs defaultValue="for-you" className="w-full mb-8" onValueChange={setActiveTab}>
           <TabsList className={`w-full ${isRtl ? 'flex-row-reverse' : ''}`}>
@@ -148,16 +145,35 @@ const Index = () => {
               </div>
             ) : (
               <div className="space-y-6">
-                {displayPosts.map((post) => (
-                  <div key={post.id} className="mb-6">
-                    <Link to={`/post/${post.id}`}>
-                      <PostCard 
-                        post={post} 
-                        onLike={(id) => likePost(id)}
-                      />
-                    </Link>
-                  </div>
-                ))}
+                {(() => {
+                  // Randomly intersperse reels between posts
+                  const postsWithReels = [...displayPosts];
+                  const reelFrequency = Math.max(3, Math.floor(postsWithReels.length / 3));
+                  
+                  for (let i = reelFrequency; i < postsWithReels.length; i += reelFrequency + 1) {
+                    postsWithReels.splice(i, 0, { isReel: true });
+                  }
+                  
+                  return postsWithReels.map((item, index) => {
+                    if (item.isReel) {
+                      return (
+                        <div key={`reel-${index}`} className="mb-6">
+                          <ReelsSection isActive={false} key={`reels-${Math.random()}`} />
+                        </div>
+                      );
+                    }
+                    return (
+                      <div key={item.id} className="mb-6">
+                        <Link to={`/post/${item.id}`}>
+                          <PostCard 
+                            post={item} 
+                            onLike={(id) => likePost(id)}
+                          />
+                        </Link>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             )}
           </TabsContent>

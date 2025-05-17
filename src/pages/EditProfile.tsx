@@ -381,101 +381,96 @@ const EditProfile = () => {
                 <CardDescription>{t("accountSettingsDesc")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4 rtl:text-right">
-                <div className="space-y-2">
-                  <h3 className="text-lg font-medium">{t("emailAddress")}</h3>
-                  <p className="text-sm text-muted-foreground">{user?.email || "user@example.com"}</p>
-                  <Button variant="outline" size="sm">{t("changeEmail")}</Button>
-                </div>
-                
-                <Separator />
-                
-                <div className="space-y-2">
-                  <h3 className="text-lg font-medium">{t("password")}</h3>
-                  <p className="text-sm text-muted-foreground">••••••••••••</p>
-                  <Button variant="outline" size="sm">{t("changePassword")}</Button>
-                </div>
-                
-                <Separator />
-                
-                <div className="space-y-2">
-                  <h3 className="text-lg font-medium">{t("messageSettings") || "Message Settings"}</h3>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">{t("allowMessages") || "Allow Direct Messages"}</p>
-                      <p className="text-sm text-muted-foreground">{t("allowMessagesDesc") || "Let others send you direct messages"}</p>
+                <div className="space-y-6">
+                  {/* Email Change Section */}
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-medium">{t("emailSettings")}</h3>
+                    <p className="text-sm text-muted-foreground">{t("emailSettingsDesc")}</p>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">{user?.email}</p>
+                        <p className="text-sm text-muted-foreground">{t("currentEmail")}</p>
+                      </div>
+                      <Button variant="outline" onClick={() => toast({
+                        title: t("comingSoon"),
+                        description: t("featureComingSoon"),
+                      })}>
+                        {t("changeEmail")}
+                      </Button>
                     </div>
-                    <FormField
-                      control={form.control}
-                      name="allowMessages"
-                      render={({ field }) => (
-                        <FormItem className="flex items-center space-x-2 space-y-0">
-                          <FormControl>
-                            <Switch
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
                   </div>
-                </div>
-                
-                <Separator />
-                
-                <div className="space-y-2">
-                  <h3 className="text-lg font-medium text-destructive">{t("dangerZone")}</h3>
-                  {false ? null : (
-                    <>
-                      <p className="text-sm text-muted-foreground">
-                        {t("deleteAccountDesc")}
-                      </p>
+                  
+                  <Separator />
+                  
+                  {/* Password Change Section */}
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-medium">{t("passwordSettings")}</h3>
+                    <p className="text-sm text-muted-foreground">{t("passwordSettingsDesc")}</p>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">********</p>
+                        <p className="text-sm text-muted-foreground">{t("currentPassword")}</p>
+                      </div>
+                      <Button variant="outline" onClick={() => toast({
+                        title: t("comingSoon"),
+                        description: t("featureComingSoon"),
+                      })}>
+                        {t("changePassword")}
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <Separator />
+                  
+                  {/* Direct Message Settings */}
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-medium">{t("messageSettings")}</h3>
+                    <p className="text-sm text-muted-foreground">{t("messageSettingsDesc")}</p>
+                    <Form {...form}>
+                      <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                        <FormField
+                          control={form.control}
+                          name="allowMessages"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 shadow-sm">
+                              <div className="space-y-0.5">
+                                <FormLabel>{t("allowDirectMessages")}</FormLabel>
+                                <FormDescription>
+                                  {t("allowDirectMessagesDesc")}
+                                </FormDescription>
+                              </div>
+                              <FormControl>
+                                <Switch
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </Form>
+                  </div>
+                  
+                  <Separator />
+                  
+                  {/* Account Deletion */}
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-medium">{t("dangerZone")}</h3>
+                    <p className="text-sm text-muted-foreground">{t("dangerZoneDesc")}</p>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-destructive">{t("deleteAccount")}</p>
+                        <p className="text-sm text-muted-foreground">{t("deleteAccountDesc")}</p>
+                      </div>
                       <Button 
                         variant="destructive" 
-                        size="sm"
                         onClick={() => setIsDeleteModalOpen(true)}
-                        className="rtl:w-full"
                       >
                         {t("deleteAccount")}
                       </Button>
-                    </>
-                  )}
-                  
-                  <DeleteAccountModal
-                    isOpen={isDeleteModalOpen}
-                    onClose={() => setIsDeleteModalOpen(false)}
-                    isLoading={isDeleting}
-                    onConfirm={async () => {
-                      try {
-                        setIsDeleting(true);
-                        const { error } = await supabase
-                          .from('profiles')
-                          .delete()
-                          .eq('id', user?.id);
-                        
-                        if (error) throw error;
-                        
-                        await logout();
-                        navigate('/login');
-                        
-                        toast({
-                          title: t("accountDeletionScheduled"),
-                          description: t("accountDeletionScheduledDesc"),
-                          variant: "default",
-                        });
-                      } catch (error) {
-                        console.error('Error deleting account:', error);
-                        toast({
-                          title: t("deleteAccount"),
-                          description: t("deleteAccount"),
-                          variant: "destructive",
-                        });
-                      } finally {
-                        setIsDeleting(false);
-                        setIsDeleteModalOpen(false);
-                      }
-                    }}
-                  />
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>

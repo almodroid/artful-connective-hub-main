@@ -56,6 +56,7 @@ function App() {
                   <Route path="/create" element={<CreatePost />} />
                   <Route path="/messages" element={<Messages />} />
                   <Route path="/messages/:conversationId" element={<Messages />} />
+                  <Route path="/messages/user/:userId" element={<Messages />} />
                   
                   {/* Admin Routes */}
                   <Route path="/admin" element={<Admin />} />

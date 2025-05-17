@@ -358,6 +358,7 @@ export type Database = {
           website: string | null
           followers_count?: number
           following_count?: number
+          allow_messages?: boolean
         }
         Insert: {
           avatar_url?: string | null
@@ -372,6 +373,7 @@ export type Database = {
           website?: string | null
           followers_count?: number
           following_count?: number
+          allow_messages?: boolean
         }
         Update: {
           avatar_url?: string | null
@@ -386,6 +388,7 @@ export type Database = {
           website?: string | null
           followers_count?: number
           following_count?: number
+          allow_messages?: boolean
         }
         Relationships: [
           {
@@ -711,6 +714,42 @@ export type Database = {
           }
         ]
       },
+      blocked_users: {
+        Row: {
+          id: string
+          blocker_id: string
+          blocked_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          blocker_id: string
+          blocked_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          blocker_id?: string
+          blocked_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blocked_users_blocker_id_fkey"
+            columns: ["blocker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blocked_users_blocked_id_fkey"
+            columns: ["blocked_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      },
       messages: {
         Row: {
           id: string
@@ -756,11 +795,56 @@ export type Database = {
           }
         ]
       }
+      message_reactions: {
+        Row: {
+          id: string
+          message_id: string
+          user_id: string
+          reaction: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          message_id: string
+          user_id: string
+          reaction: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          message_id?: string
+          user_id?: string
+          reaction?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      delete_conversation: {
+        Args: {
+          conversation_id_param: string
+        }
+        Returns: void
+      }
       is_following: {
         Args: {
           follower_id: string

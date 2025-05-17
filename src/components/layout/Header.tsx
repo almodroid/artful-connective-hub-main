@@ -39,7 +39,7 @@ export function Header() {
         )}
         </div>
         <div className={`flex items-center ${isHome ? 'ml-[-70px]' : ''}`}>
-          <Logo /> <Link to="/" className={` sm:block ${isRtl ? 'ml-1' : 'mr-1'}`}>{t('spaceArt')}</Link>
+          <Logo /> <Link to="/" className={` sm:block ${isRtl ? 'ml-1' : 'mr-1'}`}></Link>
         </div>
         <div className="flex items-center justify-center">
         <DesktopActions />

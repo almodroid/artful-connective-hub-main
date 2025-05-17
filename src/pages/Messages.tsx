@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useMessages } from '../hooks/use-messages';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
@@ -9,15 +9,27 @@ import { Separator } from '../components/ui/separator';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { Skeleton } from '../components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
-import { Send, ArrowLeft } from 'lucide-react';
+import { Send, ArrowLeft, MoreVertical, Edit, Trash2, UserX, UserPlus, Image as ImageIcon, Smile, X, Loader2, Search, ArrowRight } from 'lucide-react';
 import { useTranslation } from '../hooks/use-translation';
-import { useIsMobile } from '../hooks/use-mobile';
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useToast } from '../hooks/use-toast';
+import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
+import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
+import { EmojiPicker } from '../components/ui-custom/EmojiPicker';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Header } from "@/components/layout/Header";
+import { Footer } from "@/components/layout/Footer";
+import { BottomBar } from "@/components/layout/BottomBar";
 
 const Messages = () => {
   const { t } = useTranslation();
-  const { isMobile } = useIsMobile();
-  const { conversationId } = useParams<{ conversationId: string }>();
+  const { toast } = useToast();
+  const isMobile = useIsMobile();
+  const { conversationId, userId } = useParams<{ conversationId: string; userId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const {
     loading,
@@ -28,16 +40,58 @@ const Messages = () => {
     getMessages,
     sendMessage,
     subscribeToMessages,
+    createConversation,
+    editMessage,
+    deleteMessage,
+    addReaction,
+    removeReaction,
+    blockUser,
+    unblockUser,
+    blockedUsers,
   } = useMessages();
 
   const [messageContent, setMessageContent] = useState('');
   const [showConversations, setShowConversations] = useState(!conversationId || isMobile);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [giphySearch, setGiphySearch] = useState('');
+  const [giphyResults, setGiphyResults] = useState<any[]>([]);
+  const [showGiphyPicker, setShowGiphyPicker] = useState(false);
+  const [loadingGiphy, setLoadingGiphy] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { isRtl } = useTranslation();
 
   // Load conversations on mount
   useEffect(() => {
     getConversations();
-  }, [getConversations]);
+    
+    // If userId is provided (from profile page), create a conversation with that user
+    const handleUserIdParam = async () => {
+      if (userId && user && userId !== user.id) {
+        try {
+          const newConversationId = await createConversation(userId);
+          if (newConversationId) {
+            navigate(`/messages/${newConversationId}`, { replace: true });
+          }
+        } catch (error) {
+          console.error('Failed to create conversation:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to start conversation with this user',
+            variant: 'destructive',
+          });
+        }
+      }
+    };
+    
+    if (userId) {
+      handleUserIdParam();
+    }
+  }, [getConversations, userId, user, createConversation, navigate, toast]);
 
   // Load messages when conversation ID changes
   useEffect(() => {
@@ -62,17 +116,168 @@ const Messages = () => {
     };
   }, [conversationId, subscribeToMessages, getMessages]);
 
-  // Scroll to bottom when messages change
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+ 
+
+  const handleEditMessage = async (messageId: string, content: string) => {
+    if (!messageId || !content.trim()) return;
+    try {
+      await editMessage(messageId, content);
+      setEditingMessageId(null);
+      setEditContent('');
+    } catch (error) {
+      console.error('Error editing message:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to edit message',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!messageId) return;
+    try {
+      await deleteMessage(messageId);
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete message',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleAddReaction = async (messageId: string, reaction: string) => {
+    if (!messageId || !reaction) return;
+    try {
+      await addReaction(messageId, reaction);
+      setShowEmojiPicker(false);
+      // Add animation feedback
+      toast({
+        title: 'Success',
+        description: 'Reaction added!',
+        variant: 'default',
+      });
+    } catch (error) {
+      console.error('Error adding reaction:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to add reaction',
+        variant: 'destructive',
+      });
+    }
+  };
+  
+  const searchGiphy = async (query: string) => {
+    if (!query.trim()) return;
+    
+    setLoadingGiphy(true);
+    try {
+      const response = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=GlVGYHkr3WSBnllca54iNt0yFbjz7L65&q=${encodeURIComponent(query)}&limit=20`);
+      const data = await response.json();
+      setGiphyResults(data.data || []);
+    } catch (error) {
+      console.error('Error searching Giphy:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to search GIFs',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingGiphy(false);
+    }
+  };
+  
+  const handleGiphySelect = async (gifUrl: string) => {
+    if (!conversationId) return;
+    
+    try {
+      await sendMessage(conversationId, '', [gifUrl], 'gif');
+      setShowGiphyPicker(false);
+      setGiphySearch('');
+      setGiphyResults([]);
+    } catch (error) {
+      console.error('Error sending GIF:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to send GIF',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleRemoveReaction = async (messageId: string, reaction: string) => {
+    if (!messageId || !reaction) return;
+    try {
+      await removeReaction(messageId, reaction);
+    } catch (error) {
+      console.error('Error removing reaction:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to remove reaction',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      const validFiles = files.filter(file => 
+        file.type.startsWith('image/') || file.type.startsWith('video/')
+      );
+      if (validFiles.length !== files.length) {
+        toast({
+          title: 'Warning',
+          description: 'Some files were skipped. Only images and videos are supported.',
+          variant: 'default',
+        });
+      }
+      setSelectedFiles(validFiles);
+    }
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!conversationId || !messageContent.trim()) return;
-
-    await sendMessage(conversationId, messageContent);
-    setMessageContent('');
+    if (!conversationId || (!messageContent.trim() && selectedFiles.length === 0)) return;
+    
+    setUploading(true);
+    try {
+      if (selectedFiles.length > 0) {
+        // Handle file uploads
+        const mediaUrls: string[] = [];
+        
+        // In a real app, you would upload files to storage and get URLs
+        // For this example, we'll use object URLs (these won't persist in a real app)
+        for (const file of selectedFiles) {
+          const objectUrl = URL.createObjectURL(file);
+          mediaUrls.push(objectUrl);
+        }
+        
+        const mediaType = selectedFiles[0].type.startsWith('image/') ? 'image' : 'video';
+        await sendMessage(conversationId, messageContent, mediaUrls, mediaType);
+      } else {
+        // Text-only message
+        await sendMessage(conversationId, messageContent);
+      }
+      
+      setMessageContent('');
+      setSelectedFiles([]);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to send message',
+        variant: 'destructive',
+      });
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleConversationClick = (id: string) => {
@@ -96,14 +301,20 @@ const Messages = () => {
   const otherParticipant = getOtherParticipant();
 
   return (
-    <div className="container mx-auto py-6 max-w-6xl">
-      <h1 className="text-2xl font-bold mb-6">{t('Messages')}</h1>
-      
+    <div className="flex flex-col min-h-screen">
+      <Header />
+      <div className="container mx-auto pt-24 pb-16 max-w-6xl flex-1">
+        <div className='flex gap-3'>
+          <a href='/'>
+            {isRtl? <ArrowRight className="h-5 w-5 mt-2" /> : <ArrowLeft className="h-5 w-5 mt-2" />}
+          </a>
+          <h1 className="text-2xl font-bold mb-6 flex">{t('Messages')}</h1>
+        </div>
       <div className="flex rounded-lg border overflow-hidden h-[calc(100vh-200px)]">
         {/* Conversations List */}
         {(showConversations || !isMobile) && (
-          <div className={`${isMobile ? 'w-full' : 'w-1/3'} border-r`}>
-            <div className="p-4 border-b">
+          <div className={`${isMobile ? 'w-full' : 'w-1/3'} border-r border-l`}>
+            <div className="p-[26px] border-b border-l">
               <h2 className="font-semibold">{t('Conversations')}</h2>
             </div>
             <ScrollArea className="h-[calc(100vh-260px)]">
@@ -132,6 +343,7 @@ const Messages = () => {
                       key={conversation.id}
                       className={`flex items-center gap-3 p-4 border-b hover:bg-muted/50 cursor-pointer ${conversation.id === conversationId ? 'bg-muted' : ''}`}
                       onClick={() => handleConversationClick(conversation.id)}
+                      dir={isRtl ? 'rtl' : 'ltr'}
                     >
                       <Avatar>
                         <AvatarImage src={otherUser.avatar_url} alt={otherUser.display_name} />
@@ -167,7 +379,13 @@ const Messages = () => {
             {/* Conversation Header */}
             <div className="p-4 border-b flex items-center gap-3">
               {isMobile && (
-                <Button variant="ghost" size="icon" onClick={handleBackToConversations}>
+                <Button variant="ghost" size="icon" onClick={() => {
+                  if (location.state?.from) {
+                    navigate(location.state.from);
+                  } else {
+                    handleBackToConversations();
+                  }
+                }}>
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
               )}
@@ -178,17 +396,16 @@ const Messages = () => {
                     <AvatarFallback>{otherParticipant.display_name.charAt(0)}</AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="font-medium">{otherParticipant.display_name}</p>
-                    <p className="text-sm text-muted-foreground">@{otherParticipant.username}</p>
+                    <p className="font-medium flex"><a href=''>{otherParticipant.display_name}</a></p>
+                    <p className="text-sm text-muted-foreground flex">@{otherParticipant.username}</p>
                   </div>
                 </>
               )}
             </div>
 
             {/* Messages */}
-            <ScrollArea className="flex-1 p-4">
+            <ScrollArea className="flex-1 p-4" style={{ height: 'calc(100vh - 200px)' }}>
               {loading && !messages.length ? (
-                // Loading skeletons for messages
                 Array(5).fill(0).map((_, i) => (
                   <div key={i} className={`flex ${i % 2 === 0 ? 'justify-start' : 'justify-end'} mb-4`}>
                     <div className={`max-w-[70%] ${i % 2 === 0 ? 'bg-muted' : 'bg-primary text-primary-foreground'} rounded-lg p-3`}>
@@ -199,56 +416,365 @@ const Messages = () => {
               ) : messages.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-center text-muted-foreground">
                   <div>
-                    <p>{t('No messages yet')}</p>
-                    <p className="text-sm">{t('Send a message to start the conversation')}</p>
+                    <p>{t('No_messages')}</p>
+                    <p className="text-sm">{t('Send_message')}</p>
                   </div>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {messages.map(message => {
-                    const isCurrentUser = message.sender_id === user?.id;
-                    return (
-                      <div key={message.id} className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
-                        {!isCurrentUser && (
-                          <Avatar className="h-8 w-8 mr-2">
-                            <AvatarImage src={message.sender?.avatar_url} alt={message.sender?.display_name} />
-                            <AvatarFallback>{message.sender?.display_name.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                        )}
-                        <div 
-                          className={`max-w-[70%] rounded-lg p-3 ${isCurrentUser ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
-                        >
-                          <p>{message.content}</p>
-                          <p className="text-xs mt-1 opacity-70">
-                            {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
-                          </p>
-                        </div>
+                <div className="space-y-4 pb-2">
+                  {messages.map((message) => (
+                    <div
+                      key={message.id}
+                      ref={message.id === messages[messages.length - 1].id ? messagesEndRef : undefined}
+                      className={`flex flex-col ${message.sender_id === user?.id ? 'items-end' : 'items-start'} mb-4`}
+                    >
+                  <div
+                    className={`max-w-[70%] ${message.sender_id === user?.id ? 'bg-primary text-primary-foreground' : 'bg-muted'} rounded-lg p-3 relative group`}
+                  >
+                    {message.sender_id === user?.id && (
+                      <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-6 w-6">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-40 p-2">
+                            <Button
+                              variant="ghost"
+                              className="w-full justify-start"
+                              onClick={() => {
+                                setEditingMessageId(message.id);
+                                setEditContent(message.content);
+                              }}
+                            >
+                              <Edit className="h-4 w-4 mr-2" />
+                              {t('Edit')}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              className="w-full justify-start text-destructive"
+                              onClick={() => handleDeleteMessage(message.id)}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              {t('Delete')}
+                            </Button>
+                            <Separator className="my-2" />
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="ghost" className="w-full justify-start">
+                                  <Smile className="h-4 w-4 mr-2" />
+                                  {t('React')}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-64 p-0" align="end">
+                                <ScrollArea className="h-[200px] p-4">
+                                  <EmojiPicker onEmojiSelect={(emoji) => handleAddReaction(message.id, emoji)} />
+                                </ScrollArea>
+                              </PopoverContent>
+                            </Popover>
+                          </PopoverContent>
+                        </Popover>
                       </div>
-                    );
-                  })}
+                    )}
+                    {message.reactions && message.reactions.length > 0 && (
+                      <AnimatePresence>
+                        <motion.div 
+                          initial={{ y: 10, opacity: 0 }}
+                          animate={{ y: -10, opacity: 1 }}
+                          exit={{ y: 10, opacity: 0 }}
+                          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                          className={cn(
+                            "absolute -top-2 flex gap-1 px-2 py-1 rounded-full shadow-lg",
+                            message.sender_id === user?.id ? 
+                              "right-0 bg-primary/10 dark:bg-primary/20" : 
+                              "left-0 bg-background border"
+                          )}
+                        >
+                          {message.reactions.map((reaction, index) => (
+                            <motion.button
+                              key={`${reaction.id}-${index}`}
+                              whileHover={{ scale: 1.2 }}
+                              whileTap={{ scale: 0.9 }}
+                              transition={{ type: "spring", stiffness: 400 }}
+                              className={cn(
+                                "text-sm hover:bg-muted/50 rounded-full w-6 h-6 flex items-center justify-center",
+                                message.sender_id === user?.id ? 
+                                  "text-primary hover:text-primary-foreground" : 
+                                  "text-foreground hover:text-foreground"
+                              )}
+                              onClick={() => handleRemoveReaction(message.id, reaction.reaction)}
+                              title="Click to remove reaction"
+                            >
+                              {reaction.reaction}
+                            </motion.button>
+                          ))}
+                        </motion.div>
+                      </AnimatePresence>
+                    )}
+                    {editingMessageId === message.id ? (
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          handleEditMessage(message.id, editContent);
+                        }}
+                        className="flex gap-2"
+                      >
+                        <Input
+                          value={editContent}
+                          onChange={(e) => setEditContent(e.target.value)}
+                          className="flex-1"
+                        />
+                        <Button type="submit" size="sm">{t('Save')}</Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setEditingMessageId(null);
+                            setEditContent('');
+                          }}
+                        >
+                          {t('Cancel')}
+                        </Button>
+                      </form>
+                    ) : (
+                      <>
+                        <p>{message.content}</p>
+                        {message.media_urls && message.media_urls.length > 0 && (
+                          <div className="mt-2 space-y-2">
+                            {message.media_urls.map((url, index) => (
+                              <div key={index}>
+                                {message.media_type === 'image' || message.media_type === 'gif' ? (
+                                  <img src={url} alt="" className="rounded-md max-w-full" />
+                                ) : message.media_type === 'video' ? (
+                                  <video src={url} controls className="rounded-md max-w-full" />
+                                ) : null}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between text-xs mt-1 opacity-70">
+                          <span>
+                            {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
+                            {message.edited && ` · ${t('edited')}`}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            {message.reactions?.map((reaction, index) => (
+                              <button
+                                key={index}
+                                className="hover:bg-muted/50 rounded px-1"
+                                onClick={() => handleRemoveReaction(message.id, reaction.reaction)}
+                              >
+                                {reaction.reaction}
+                              </button>
+                            ))}
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-6 w-6">
+                                  <Smile className="h-4 w-4" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-80 p-0">
+                                <Tabs defaultValue="emoji">
+                                  <TabsList className="w-full">
+                                    <TabsTrigger value="emoji">{t('Emoji')}</TabsTrigger>
+                                    <TabsTrigger value="gif">{t('GIF')}</TabsTrigger>
+                                  </TabsList>
+                                  <TabsContent value="emoji" className="p-2">
+                                    <ScrollArea className="h-[200px]">
+                                      <EmojiPicker
+                                        onEmojiSelect={(emoji) => {
+                                          handleAddReaction(message.id, emoji);
+                                        }}
+                                      />
+                                    </ScrollArea>
+                                  </TabsContent>
+                                  <TabsContent value="gif" className="p-2">
+                                    <div className="flex flex-col gap-2">
+                                      <div className="flex gap-2">
+                                        <Input
+                                          placeholder={t('Search GIFs...')}
+                                          value={giphySearch}
+                                          onChange={(e) => setGiphySearch(e.target.value)}
+                                          onKeyDown={(e) => e.key === 'Enter' && searchGiphy(giphySearch)}
+                                        />
+                                        <Button size="sm" onClick={() => searchGiphy(giphySearch)}>
+                                          <Search className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                      <ScrollArea className="h-[200px]">
+                                        {loadingGiphy ? (
+                                          <div className="flex justify-center p-4">
+                                            <Loader2 className="h-6 w-6 animate-spin" />
+                                          </div>
+                                        ) : giphyResults.length > 0 ? (
+                                          <div className="grid grid-cols-2 gap-2">
+                                            {giphyResults.map((gif) => (
+                                              <img
+                                                key={gif.id}
+                                                src={gif.images.fixed_height_small.url}
+                                                alt="GIF"
+                                                className="rounded cursor-pointer hover:opacity-80 transition-opacity"
+                                                onClick={() => handleGiphySelect(gif.images.original.url)}
+                                              />
+                                            ))}
+                                          </div>
+                                        ) : (
+                                          <div className="text-center p-4 text-muted-foreground">
+                                            {giphySearch ? t('No results found') : t('Search for GIFs')}
+                                          </div>
+                                        )}
+                                      </ScrollArea>
+                                    </div>
+                                  </TabsContent>
+                                </Tabs>
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
                   <div ref={messagesEndRef} />
                 </div>
               )}
             </ScrollArea>
 
             {/* Message Input */}
-            <div className="p-4 border-t mt-auto">
-              <form onSubmit={handleSendMessage} className="flex gap-2">
-                <Input
-                  value={messageContent}
-                  onChange={(e) => setMessageContent(e.target.value)}
-                  placeholder={t('Type a message...')}
-                  className="flex-1"
-                />
-                <Button type="submit" disabled={!messageContent.trim()}>
-                  <Send className="h-4 w-4 mr-2" />
-                  {t('Send')}
-                </Button>
-              </form>
-            </div>
+            <form onSubmit={handleSendMessage} className="p-4 border-t">
+              <div className="flex flex-col gap-2">
+                {selectedFiles.length > 0 && (
+                  <div className="flex flex-wrap gap-2 p-2 border rounded-md">
+                    {selectedFiles.map((file, index) => (
+                      <div key={index} className="relative">
+                        {file.type.startsWith('image/') ? (
+                          <img
+                            src={URL.createObjectURL(file)}
+                            alt=""
+                            className="h-20 w-20 object-cover rounded-md"
+                          />
+                        ) : (
+                          <video
+                            src={URL.createObjectURL(file)}
+                            className="h-20 w-20 object-cover rounded-md"
+                          />
+                        )}
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="absolute -top-2 -right-2 h-6 w-6"
+                          onClick={() => handleRemoveFile(index)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <div className="flex gap-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <ImageIcon className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setShowGiphyPicker(true)}
+                    >
+                      <Smile className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,video/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleFileSelect}
+                  />
+                  <Input
+                    value={messageContent}
+                    onChange={(e) => setMessageContent(e.target.value)}
+                    placeholder={t('Type a message...')}
+                  />
+                  <Button type="submit" disabled={uploading}>
+                    {uploading ? (
+                      <div className="animate-spin">
+                        <Loader2 className="h-4 w-4" />
+                      </div>
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </form>
           </div>
         )}
       </div>
+      
+      {/* Giphy Picker Dialog */}
+      <Dialog open={showGiphyPicker} onOpenChange={setShowGiphyPicker}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('Select a GIF')}</DialogTitle>
+            <DialogDescription>
+              {t('Search and select a GIF to send in your message.')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            <div className="flex gap-2">
+              <Input
+                placeholder={t('Search GIFs...')}
+                value={giphySearch}
+                onChange={(e) => setGiphySearch(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && searchGiphy(giphySearch)}
+              />
+              <Button onClick={() => searchGiphy(giphySearch)}>
+                <Search className="h-4 w-4 mr-2" />
+                {t('Search')}
+              </Button>
+            </div>
+            <ScrollArea className="h-[300px]">
+              {loadingGiphy ? (
+                <div className="flex justify-center p-4">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                </div>
+              ) : giphyResults.length > 0 ? (
+                <div className="grid grid-cols-2 gap-2">
+                  {giphyResults.map((gif) => (
+                    <motion.img
+                      key={gif.id}
+                      src={gif.images.fixed_height_small.url}
+                      alt="GIF"
+                      className="rounded cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={() => handleGiphySelect(gif.images.original.url)}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center p-4 text-muted-foreground">
+                  {giphySearch ? t('No results found') : t('Search for GIFs')}
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+        </DialogContent>
+      </Dialog>
+      </div>
+      <Footer />
+      <BottomBar />
     </div>
   );
 };

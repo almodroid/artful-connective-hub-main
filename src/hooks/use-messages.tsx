@@ -4,6 +4,14 @@ import { supabase } from '../integrations/supabase/client';
 import { useAuth } from '../contexts/AuthContext';
 
 
+type MessageReaction = {
+  id: string;
+  message_id: string;
+  user_id: string;
+  reaction: string;
+  created_at: string;
+};
+
 type Message = {
   id: string;
   conversation_id: string;
@@ -12,6 +20,11 @@ type Message = {
   read: boolean;
   created_at: string;
   updated_at: string;
+  media_urls?: string[];
+  media_type?: 'image' | 'video' | 'gif';
+  edited?: boolean;
+  edited_at?: string;
+  reactions?: MessageReaction[];
   sender?: {
     username: string;
     display_name: string;
@@ -39,6 +52,7 @@ export const useMessages = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [blockedUsers, setBlockedUsers] = useState<string[]>([]);
 
   // Get all conversations for the current user
   const getConversations = useCallback(async () => {
@@ -279,8 +293,175 @@ export const useMessages = () => {
     }
   }, [user, toast, getConversations, getMessages]);
 
+  // Get blocked users
+  const getBlockedUsers = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('blocked_users')
+        .select('blocked_id')
+        .eq('blocker_id', user.id);
+
+      if (error) throw error;
+      setBlockedUsers(data.map(item => item.blocked_id));
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to get blocked users',
+        variant: 'destructive',
+      });
+    }
+  }, [user, toast]);
+
+  // Block a user
+  const blockUser = useCallback(async (userId: string) => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase
+        .from('blocked_users')
+        .insert({
+          blocker_id: user.id,
+          blocked_id: userId
+        });
+
+      if (error) throw error;
+      await getBlockedUsers();
+      toast({
+        title: 'Success',
+        description: 'User blocked successfully',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to block user',
+        variant: 'destructive',
+      });
+    }
+  }, [user, toast, getBlockedUsers]);
+
+  // Unblock a user
+  const unblockUser = useCallback(async (userId: string) => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase
+        .from('blocked_users')
+        .delete()
+        .eq('blocker_id', user.id)
+        .eq('blocked_id', userId);
+
+      if (error) throw error;
+      await getBlockedUsers();
+      toast({
+        title: 'Success',
+        description: 'User unblocked successfully',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to unblock user',
+        variant: 'destructive',
+      });
+    }
+  }, [user, toast, getBlockedUsers]);
+
+  // Toggle reaction on a message
+  const addReaction = useCallback(async (messageId: string, reaction: string) => {
+    if (!user) return;
+    
+    try {
+      // Check if reaction already exists
+      const { data: existingReaction } = await supabase
+        .from('message_reactions')
+        .select()
+        .eq('message_id', messageId)
+        .eq('user_id', user.id)
+        .eq('reaction', reaction)
+        .maybeSingle();
+
+      if (existingReaction) {
+        // Remove existing reaction
+        const { error: removeError } = await supabase
+          .from('message_reactions')
+          .delete()
+          .eq('message_id', messageId)
+          .eq('user_id', user.id)
+          .eq('reaction', reaction);
+
+        if (removeError) throw removeError;
+      } else {
+        // Add new reaction
+        const { error: addError } = await supabase
+          .from('message_reactions')
+          .insert({
+            message_id: messageId,
+            user_id: user.id,
+            reaction
+          });
+
+        if (addError) throw addError;
+      }
+
+      await getMessages(currentConversation?.id || '');
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to toggle reaction',
+        variant: 'destructive',
+      });
+    }
+  }, [user, toast, getMessages, currentConversation]);
+
+  // Remove reaction from a message
+  const removeReaction = useCallback(async (messageId: string, reaction: string) => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase
+        .from('message_reactions')
+        .delete()
+        .eq('message_id', messageId)
+        .eq('user_id', user.id)
+        .eq('reaction', reaction);
+
+      if (error) throw error;
+      await getMessages(currentConversation?.id || '');
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to remove reaction',
+        variant: 'destructive',
+      });
+    }
+  }, [user, toast, getMessages, currentConversation]);
+
+  // Delete conversation
+  const deleteConversation = useCallback(async (conversationId: string) => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase
+        .rpc('delete_conversation', { conversation_id_param: conversationId });
+
+      if (error) throw error;
+      await getConversations();
+      toast({
+        title: 'Success',
+        description: 'Conversation deleted successfully',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete conversation',
+        variant: 'destructive',
+      });
+    }
+  }, [user, toast, getConversations]);
+
   // Send a message in the current conversation
-  const sendMessage = useCallback(async (conversationId: string, content: string) => {
+  const sendMessage = useCallback(async (conversationId: string, content: string, mediaUrls?: string[], mediaType?: 'image' | 'video' | 'gif') => {
     if (!user || !content.trim()) return null;
     
     try {
@@ -289,7 +470,9 @@ export const useMessages = () => {
         .insert({
           conversation_id: conversationId,
           sender_id: user.id,
-          content: content.trim()
+          content: content.trim(),
+          media_urls: mediaUrls,
+          media_type: mediaType
         })
         .select()
         .single();
@@ -308,6 +491,62 @@ export const useMessages = () => {
       return null;
     }
   }, [user, toast, getMessages]);
+
+  // Edit a message
+  const editMessage = useCallback(async (messageId: string, newContent: string) => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .update({ content: newContent.trim() })
+        .eq('id', messageId)
+        .eq('sender_id', user.id);
+
+      if (error) {
+        if (error.message.includes('Cannot edit message after 60 seconds')) {
+          toast({
+            title: 'Error',
+            description: 'Messages can only be edited within 60 seconds of sending',
+            variant: 'destructive',
+          });
+        } else {
+          throw error;
+        }
+        return;
+      }
+
+      await getMessages(currentConversation?.id || '');
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to edit message',
+        variant: 'destructive',
+      });
+    }
+  }, [user, toast, getMessages, currentConversation]);
+
+  // Delete a message
+  const deleteMessage = useCallback(async (messageId: string) => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .delete()
+        .eq('id', messageId)
+        .eq('sender_id', user.id);
+
+      if (error) throw error;
+      await getMessages(currentConversation?.id || '');
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete message',
+        variant: 'destructive',
+      });
+    }
+  }, [user, toast, getMessages, currentConversation]);
 
   // Set up real-time subscription for new messages
   const subscribeToMessages = useCallback((conversationId: string, callback: () => void) => {
@@ -336,5 +575,13 @@ export const useMessages = () => {
     createConversation,
     sendMessage,
     subscribeToMessages,
+    blockUser,
+    unblockUser,
+    blockedUsers,
+    addReaction,
+    removeReaction,
+    editMessage,
+    deleteMessage,
+    deleteConversation,
   };
 };

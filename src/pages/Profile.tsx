@@ -20,6 +20,7 @@ import { fetchProjectsByUserId, ProjectWithUser } from "@/services/project.servi
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
+
 interface UserProfile {
   id: string;
   username: string;
@@ -59,7 +60,7 @@ const Profile = () => {
   
   useEffect(() => {
     const loadProfile = async () => {
-      setLoading(true);
+      setLoading(true);``
       try {
         // Fetch profile from Supabase
         const { data: profileData, error: profileError } = await supabase
@@ -172,7 +173,7 @@ const Profile = () => {
             return {
               id: post.id,
               content: post.content,
-              image: post.image_url,
+              image: Array.isArray(post.media_urls) ? post.media_urls[0] : post.media_urls,
               createdAt: new Date(post.created_at),
               likes: post.likes_count || 0,
               comments: post.comments_count || 0,
@@ -341,12 +342,12 @@ const Profile = () => {
           const transformedLikedPosts = likedPostsData
             .filter(item => item.posts) // Filter out any null posts
             .map(item => {
-              const post = item.posts;
+              const post = item.posts as any;
               const profile = post.profiles || {};
               return {
                 id: post.id,
                 content: post.content,
-                image: post.image_url,
+                image: Array.isArray(post.media_urls) ? post.media_urls[0] : post.media_urls,
                 createdAt: new Date(post.created_at),
                 likes: post.likes_count || 0,
                 comments: post.comments_count || 0,
@@ -685,7 +686,7 @@ const Profile = () => {
                           variant="outline"
                           asChild
                         >
-                          <Link to={`/messages/${profileUser.id}`}>
+                          <Link to={`/messages/user/${profileUser.id}`}>
                             <MessageSquare className="h-4 w-4 me-2" />
                             {isRtl ? "مراسلة" : "Message"}
                           </Link>

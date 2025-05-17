@@ -40,6 +40,18 @@ const translations = {
     seeAll: "See all",
     spaceArt: "Art Space",
     markAllAsRead: "Mark all as read",
+
+    //messages
+    Messages: "Messages",
+    messages: "messages",
+    message: "message",
+    messagesPlaceholder: "Type your message here...",
+    send: "Send",
+    newMessage: "New Message",
+    noMessages: "No messages",
+    Conversations: "Conversations",
+    Send_message: "Send a message to start the conversation",
+    No_messages: "No messages yet",
     
     // Home
     forYou: "For You",
@@ -181,7 +193,19 @@ const translations = {
     new: "جديد",
     popular: "شائع",
     comments: "التعليقات",
+    You: "أنت",
     
+    //messages
+    Messages: "الرسائل",
+    messages: "الرسائل",
+    message: "الرسالة",
+    messagesPlaceholder: "اكتب رسالتك هنا...",
+    send: "ارسال",
+    newMessage: "رسالة جديدة",
+    noMessages: "لا توجد رسائل",
+    Conversations: "المحادثات",
+    Send_message: "أرسل رسالة جديدة",
+    No_messages: "لا توجد رسائل حتى الآن",
    
     
     // Home

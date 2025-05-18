@@ -272,14 +272,43 @@ const Messages = () => {
     setUploading(true);
     try {
       if (selectedFiles.length > 0) {
-        // Handle file uploads
         const mediaUrls: string[] = [];
         
-        // In a real app, you would upload files to storage and get URLs
-        // For this example, we'll use object URLs (these won't persist in a real app)
         for (const file of selectedFiles) {
-          const objectUrl = URL.createObjectURL(file);
-          mediaUrls.push(objectUrl);
+          console.log('Uploading file:', file.name, 'size:', file.size);
+          
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+          const filePath = `messages/${conversationId}/${fileName}`;
+          
+          // Check if bucket exists
+          const { data: buckets } = await supabase.storage.listBuckets();
+          const mediaBucket = buckets?.find(b => b.name === 'media');
+          
+          if (!mediaBucket) {
+            throw new Error('Media storage bucket not found. Please create a bucket named "media" in Supabase.');
+          }
+          
+          console.log('Uploading to path:', filePath);
+          const { error: uploadError, data } = await supabase.storage
+            .from('media')
+            .upload(filePath, file, {
+              cacheControl: '3600',
+              upsert: false
+            });
+
+          if (uploadError) {
+            console.error('Upload error:', uploadError);
+            throw uploadError;
+          }
+
+          console.log('Upload successful:', data);
+          const { data: { publicUrl } } = supabase.storage
+            .from('media')
+            .getPublicUrl(filePath);
+
+          console.log('Public URL:', publicUrl);
+          mediaUrls.push(publicUrl);
         }
         
         const mediaType = selectedFiles[0].type.startsWith('image/') ? 'image' : 'video';
@@ -291,11 +320,11 @@ const Messages = () => {
       
       setMessageContent('');
       setSelectedFiles([]);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending message:', error);
       toast({
         title: 'Error',
-        description: 'Failed to send message',
+        description: error.message || 'Failed to send message',
         variant: 'destructive',
       });
     } finally {

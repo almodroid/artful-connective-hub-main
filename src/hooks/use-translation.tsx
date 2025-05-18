@@ -140,6 +140,14 @@ const translations = {
     // Misc
     error: "An error occurred",
     success: "Success!",
+
+    //custom
+    smileys_emotion: "Smileys & Emotion",
+    people_body: "People & Body",
+    objects: "Objects",
+    symbols: "Symbols",
+    Search_emojis: "Search emojis...",
+
     
     // Arter AI translations
     meetArter: "Meet Arter, your art and design AI assistant",
@@ -326,6 +334,13 @@ const translations = {
     importChat: "استيراد المحادثة",
     chatHistory: "سجل المحادثات",
     clearHistory: "مسح السجل",
+
+    //custom
+    smileys_emotion: "الابتسامات والمشاعر",
+    people_body: "الاشخاص",
+    objects: "العناصر",
+    symbols: "الرموز",
+    Search_emojis: "ابحث عن ايموجي",
 
     // Footer translations
     footerTitle: "سبيس Ai",

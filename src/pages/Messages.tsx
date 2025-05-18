@@ -23,6 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { BottomBar } from "@/components/layout/BottomBar";
+import { ar } from "date-fns/locale";
 
 const Messages = () => {
   const { t } = useTranslation();
@@ -214,7 +215,7 @@ const Messages = () => {
     if (!conversationId) return;
     
     try {
-      await sendMessage(conversationId, '', [gifUrl], 'gif');
+      await sendMessage(conversationId, 'GIF', [gifUrl], 'gif');
       setShowGiphyPicker(false);
       setGiphySearch('');
       setGiphyResults([]);
@@ -416,14 +417,17 @@ const Messages = () => {
                           <p className="font-medium truncate">{otherUser.display_name}</p>
                           {conversation.last_message && (
                             <span className="text-xs text-muted-foreground">
-                              {formatDistanceToNow(new Date(conversation.last_message.created_at), { addSuffix: true })}
+                              {formatDistanceToNow(new Date(conversation.last_message.created_at), { 
+                              addSuffix: true,
+                              locale: isRtl ? ar : undefined
+                            })}
                             </span>
                           )}
                         </div>
                         {conversation.last_message && (
-                          <p className="text-sm text-muted-foreground truncate">
+                          <p className="text-sm text-muted-foreground truncate text-start">
                             {conversation.last_message.sender_id === user?.id ? `${t('You')}: ` : ''}
-                            {conversation.last_message.content}
+                            {conversation.last_message.content?.slice(0, 20)}{conversation.last_message.content?.length > 20 ? '...' : ''}
                           </p>
                         )}
                       </div>
@@ -607,7 +611,7 @@ const Messages = () => {
                     className={`max-w-[70%] ${message.sender_id === user?.id ? 'bg-primary text-primary-foreground' : 'bg-muted'} ${isRtl? 'pl-5':'pr-5'} rounded-lg p-3 relative group`}
                   >
                     {message.sender_id === user?.id && (
-                      <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="absolute left-1 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Popover>
                           <PopoverTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-6 w-6">
@@ -618,6 +622,7 @@ const Messages = () => {
                             <Button
                               variant="ghost"
                               className="w-full justify-start"
+                              disabled={new Date().getTime() - new Date(message.created_at).getTime() > 60000}
                               onClick={() => {
                                 setEditingMessageId(message.id);
                                 setEditContent(message.content);
@@ -701,7 +706,10 @@ const Messages = () => {
                         )}
                         <div className={`flex items-center justify-between text-xs mt-1 ${message.sender_id === user?.id ? 'flex-row' : 'flex-row-reverse'}`}>
                           <span className=' opacity-70'>
-                            {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
+                            {formatDistanceToNow(new Date(message.created_at), { 
+                              addSuffix: true,
+                              locale: isRtl ? ar : undefined
+                            })}
                             {message.edited && ` · ${t('edited')}`}
                           </span>
                           <div className={`flex gap-2  ${message.sender_id === user?.id ? 'flex-row' : 'flex-row-reverse'}`}>
@@ -715,59 +723,13 @@ const Messages = () => {
                                     </Button>
                                   </PopoverTrigger>
                                   <PopoverContent className="w-80 p-0">
-                                    <Tabs defaultValue="emoji">
-                                      <TabsList className="w-full">
-                                        <TabsTrigger value="emoji">{t('Emoji')}</TabsTrigger>
-                                        <TabsTrigger value="gif">{t('GIF')}</TabsTrigger>
-                                      </TabsList>
-                                      <TabsContent value="emoji" className="p-2">
-                                        <ScrollArea className="h-[200px]">
-                                          <EmojiPicker
-                                            onEmojiSelect={(emoji) => {
-                                              handleAddReaction(message.id, emoji);
-                                            }}
-                                          />
-                                        </ScrollArea>
-                                      </TabsContent>
-                                      <TabsContent value="gif" className="p-2">
-                                        <div className="flex flex-col gap-2">
-                                          <div className="flex gap-2">
-                                            <Input
-                                              placeholder={t('Search GIFs...')}
-                                              value={giphySearch}
-                                              onChange={(e) => setGiphySearch(e.target.value)}
-                                              onKeyDown={(e) => e.key === 'Enter' && searchGiphy(giphySearch)}
-                                            />
-                                            <Button size="sm" onClick={() => searchGiphy(giphySearch)}>
-                                              <Search className="h-4 w-4" />
-                                            </Button>
-                                          </div>
-                                          <ScrollArea className="h-[200px]">
-                                            {loadingGiphy ? (
-                                              <div className="flex justify-center p-4">
-                                                <Loader2 className="h-6 w-6 animate-spin" />
-                                              </div>
-                                            ) : giphyResults.length > 0 ? (
-                                              <div className="grid grid-cols-2 gap-2">
-                                                {giphyResults.map((gif) => (
-                                                  <img
-                                                    key={gif.id}
-                                                    src={gif.images.fixed_height_small.url}
-                                                    alt="GIF"
-                                                    className="rounded cursor-pointer hover:opacity-80 transition-opacity"
-                                                    onClick={() => handleGiphySelect(gif.images.original.url)}
-                                                  />
-                                                ))}
-                                              </div>
-                                            ) : (
-                                              <div className="text-center p-4 text-muted-foreground">
-                                                {giphySearch ? t('No results found') : t('Search for GIFs')}
-                                              </div>
-                                            )}
-                                          </ScrollArea>
-                                        </div>
-                                      </TabsContent>
-                                    </Tabs>
+                                    <ScrollArea className="h-[225px] p-2">
+                                      <EmojiPicker
+                                        onEmojiSelect={(emoji) => {
+                                          handleAddReaction(message.id, emoji);
+                                        }}
+                                      />
+                                    </ScrollArea>
                                   </PopoverContent>
                                 </Popover>
                               )}

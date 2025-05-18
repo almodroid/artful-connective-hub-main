@@ -12,14 +12,14 @@ export function Footer() {
       <div className="container px-4 md:px-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>
-            <Link to="/" className="flex items-center align-center gap-1 mb-4">
+            <div className="flex items-center align-center gap-1 mb-4">
               <div className="relative h-14">
               <Logo  />
               </div>
               <span className="font-display font-bold text-xl">
               {t('spaceArt')}
               </span>
-            </Link>
+            </div>
             <p className="text-muted-foreground">
               {t('footerDescription')}
             </p>

@@ -174,9 +174,9 @@ export function ReelsSection({ isActive = false }: ReelsSectionProps) {
   }
 
   return (
-    <div className="mb-8">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold">{t('reels')}</h2>
+    <div className="mb-8 px-5">
+      <div className="flex justify-between items-center mb-4" dir={isRtl? 'rtl' :'ltr'}>
+        <h2 className="text-lg font-semibold m-2">{t('reels')}</h2>
         {isAuthenticated && (
           <Button 
             variant="outline" 

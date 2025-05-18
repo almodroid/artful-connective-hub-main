@@ -22,8 +22,8 @@ const Index = () => {
   
   const handlePostCreated = () => {
     // Refresh posts after creating a new post
-    // setPostsWithComments([]);
-    // setLoadingComments(true);
+    setPostsWithComments([]);
+    setLoadingComments(true);
   };
 
   // Fetch actual comment counts for each post

@@ -834,6 +834,60 @@ export type Database = {
           }
         ]
       }
+      reports: {
+        Row: {
+          id: string
+          reporter_id: string
+          reported_id: string
+          content_type: string
+          content_id: string
+          reason: string
+          description: string | null
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          reporter_id: string
+          reported_id: string
+          content_type: string
+          content_id: string
+          reason: string
+          description?: string | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          reporter_id?: string
+          reported_id?: string
+          content_type?: string
+          content_id?: string
+          reason?: string
+          description?: string | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_reported_id_fkey"
+            columns: ["reported_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      },
     }
     Views: {
       [_ in never]: never

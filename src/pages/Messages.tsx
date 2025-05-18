@@ -49,12 +49,15 @@ const Messages = () => {
     blockUser,
     unblockUser,
     blockedUsers,
+    getBlockedUsers,
+    deleteConversation,
   } = useMessages();
   
   
 
   const [messageContent, setMessageContent] = useState('');
   const [showConversations, setShowConversations] = useState(!conversationId || isMobile);
+
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -68,9 +71,10 @@ const Messages = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { isRtl } = useTranslation();
 
-  // Load conversations on mount
+  // Load conversations and blocked users on mount
   useEffect(() => {
     getConversations();
+    getBlockedUsers();
     
     // If userId is provided (from profile page), create a conversation with that user
     const handleUserIdParam = async () => {
@@ -154,9 +158,23 @@ const Messages = () => {
   const handleAddReaction = async (messageId: string, reaction: string) => {
     if (!messageId || !reaction) return;
     try {
+      const { data: existingReactions } = await supabase
+        .from('message_reactions')
+        .select('*')
+        .eq('message_id', messageId)
+        .eq('user_id', user?.id);
+
+      if (existingReactions && existingReactions.length >= 2) {
+        // Replace the oldest reaction
+        const oldestReaction = existingReactions[0];
+        await supabase
+          .from('message_reactions')
+          .delete()
+          .eq('id', oldestReaction.id);
+      }
+
       await addReaction(messageId, reaction);
       setShowEmojiPicker(false);
-      // Add animation feedback
       toast({
         title: 'Success',
         description: 'Reaction added!',
@@ -303,7 +321,31 @@ const Messages = () => {
   };
 
   const otherParticipant = getOtherParticipant();
+  const isBlocked = blockedUsers.includes(otherParticipant?.user_id || '');
+  const [amIBlocked, setAmIBlocked] = useState(false);
 
+  // Check if current user is blocked
+  useEffect(() => {
+    const checkIfBlocked = async () => {
+      if (!user || !otherParticipant) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('blocked_users')
+          .select('blocker_id')
+          .eq('blocker_id', otherParticipant.user_id)
+          .eq('blocked_id', user.id)
+          .maybeSingle();
+
+        if (error) throw error;
+        setAmIBlocked(!!data);
+      } catch (error: any) {
+        console.error('Error checking blocked status:', error);
+      }
+    };
+
+    checkIfBlocked();
+  }, [user, otherParticipant]);
   const [isFollowing, setIsFollowing] = useState(false);
   
   useEffect(() => {
@@ -488,18 +530,36 @@ const Messages = () => {
                           <UserPlus className="h-4 w-4 mr-2" />
                           {t('View Profile')}
                         </Button>
+                        
+                        {blockedUsers.includes(otherParticipant.user_id) ? (
+                          <Button
+                            variant="ghost"
+                            className="w-full justify-start"
+                            onClick={() => unblockUser(otherParticipant.user_id)}
+                          >
+                            <UserX className="h-4 w-4 mr-2" />
+                            {t('Unblock User')}
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            className="w-full justify-start text-destructive"
+                            onClick={() => blockUser(otherParticipant.user_id)}
+                          >
+                            <UserX className="h-4 w-4 mr-2" />
+                            {t('Block User')}
+                          </Button>
+                        )}
+                        
                         <Button
                           variant="ghost"
                           className="w-full justify-start text-destructive"
-                          onClick={() => blockUser(otherParticipant.user_id)}
-                        >
-                          <UserX className="h-4 w-4 mr-2" />
-                          {t('Block User')}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          className="w-full justify-start text-destructive"
-                          onClick={() => handleBackToConversations()}
+                          onClick={() => {
+                            if (currentConversation?.id) {
+                              deleteConversation(currentConversation.id);
+                              handleBackToConversations();
+                            }
+                          }}
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
                           {t('Delete Chat')}
@@ -512,7 +572,14 @@ const Messages = () => {
             </div>
 
             {/* Messages */}
-            <ScrollArea className="flex-1 p-4" style={{ height: 'calc(100vh - 200px)' }}>
+            <ScrollArea className="flex-1 p-4" dir={isRtl? 'ltr' : 'rtl'} style={{ height: 'calc(100vh - 200px)' }}>
+              {(isBlocked || amIBlocked) && (
+                <div className="mb-4 p-3 bg-destructive/10 text-destructive rounded-md text-sm">
+                  {isBlocked 
+                     ? t('You cannot send messages to this user as they have been blocked.')
+                     : t('You cannot send messages as this user has blocked you.')}
+                </div>
+              )}
               {loading && !messages.length ? (
                 Array(5).fill(0).map((_, i) => (
                   <div key={i} className={`flex ${i % 2 === 0 ? 'justify-start' : 'justify-end'} mb-4`}>
@@ -537,7 +604,7 @@ const Messages = () => {
                       className={`flex flex-col ${message.sender_id === user?.id ? 'items-end' : 'items-start'} mb-4`}
                     >
                   <div
-                    className={`max-w-[70%] ${message.sender_id === user?.id ? 'bg-primary text-primary-foreground' : 'bg-muted'} rounded-lg p-3 relative group`}
+                    className={`max-w-[70%] ${message.sender_id === user?.id ? 'bg-primary text-primary-foreground' : 'bg-muted'} ${isRtl? 'pl-5':'pr-5'} rounded-lg p-3 relative group`}
                   >
                     {message.sender_id === user?.id && (
                       <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -567,50 +634,48 @@ const Messages = () => {
                               <Trash2 className="h-4 w-4 mr-2" />
                               {t('Delete')}
                             </Button>
-                            <Separator className="my-2" />
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button variant="ghost" className="w-full justify-start">
-                                  <Smile className="h-4 w-4 mr-2" />
-                                  {t('React')}
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-64 p-0" align="end">
-                                <ScrollArea className="h-[200px] p-4">
-                                  <EmojiPicker onEmojiSelect={(emoji) => handleAddReaction(message.id, emoji)} />
-                                </ScrollArea>
-                              </PopoverContent>
-                            </Popover>
+                            {!isBlocked && !amIBlocked && (
+                              <>
+                                <Separator className="my-2" />
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button variant="ghost" className="w-full justify-start">
+                                      <Smile className="h-4 w-4 mr-2" />
+                                      {t('React')}
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-64 p-0" align="end">
+                                    <ScrollArea className="h-[200px] p-4">
+                                      <EmojiPicker onEmojiSelect={(emoji) => handleAddReaction(message.id, emoji)} />
+                                    </ScrollArea>
+                                  </PopoverContent>
+                                </Popover>
+                              </>
+                            )}
                           </PopoverContent>
                         </Popover>
                       </div>
                     )}
-                    {message.reactions && message.reactions.length > 0 && (
+                    {message.reactions && message.reactions.length > 0 && !isBlocked && !amIBlocked && (
                       <AnimatePresence>
                         <motion.div 
                           initial={{ y: 10, opacity: 0 }}
-                          animate={{ y: -10, opacity: 1 }}
+                          animate={{ y: 0, opacity: 1 }}
                           exit={{ y: 10, opacity: 0 }}
                           transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                          dir={isRtl? 'rtl' : 'ltr'}
                           className={cn(
-                            "absolute -top-2 flex gap-1 px-2 py-1 rounded-full shadow-lg",
-                            message.sender_id === user?.id ? 
-                              "right-0 bg-primary/10 dark:bg-primary/20" : 
-                              "left-0 bg-background border"
+                            "absolute top-8 flex gap-1 px-2 py-1 rounded-full shadow-lg bg-background border",
+                            isRtl? "left-auto right-20" : "left-24 right-auto",
                           )}
                         >
-                          {message.reactions.map((reaction, index) => (
+                          {message.reactions.slice(0, 2).map((reaction, index) => (
                             <motion.button
                               key={`${reaction.id}-${index}`}
                               whileHover={{ scale: 1.2 }}
                               whileTap={{ scale: 0.9 }}
                               transition={{ type: "spring", stiffness: 400 }}
-                              className={cn(
-                                "text-sm hover:bg-muted/50 rounded-full w-6 h-6 flex items-center justify-center",
-                                message.sender_id === user?.id ? 
-                                  "text-primary hover:text-primary-foreground" : 
-                                  "text-foreground hover:text-foreground"
-                              )}
+                              className="text-sm hover:bg-muted/50 rounded-full w-6 h-6 flex items-center justify-center text-foreground hover:text-foreground"
                               onClick={() => handleRemoveReaction(message.id, reaction.reaction)}
                               title="Click to remove reaction"
                             >
@@ -631,9 +696,9 @@ const Messages = () => {
                         <Input
                           value={editContent}
                           onChange={(e) => setEditContent(e.target.value)}
-                          className="flex-1"
+                          className="flex-1 text-primary"
                         />
-                        <Button type="submit" size="sm">{t('Save')}</Button>
+                        <Button type="submit" size="sm" variant="ghost">{t('Save')}</Button>
                         <Button
                           type="button"
                           variant="ghost"
@@ -668,77 +733,71 @@ const Messages = () => {
                             {message.edited && ` · ${t('edited')}`}
                           </span>
                           <div className="flex items-center gap-1">
-                            {message.reactions?.map((reaction, index) => (
-                              <button
-                                key={index}
-                                className="hover:bg-muted/50 rounded px-1"
-                                onClick={() => handleRemoveReaction(message.id, reaction.reaction)}
-                              >
-                                {reaction.reaction}
-                              </button>
-                            ))}
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-6 w-6">
-                                  <Smile className="h-4 w-4" />
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-80 p-0">
-                                <Tabs defaultValue="emoji">
-                                  <TabsList className="w-full">
-                                    <TabsTrigger value="emoji">{t('Emoji')}</TabsTrigger>
-                                    <TabsTrigger value="gif">{t('GIF')}</TabsTrigger>
-                                  </TabsList>
-                                  <TabsContent value="emoji" className="p-2">
-                                    <ScrollArea className="h-[200px]">
-                                      <EmojiPicker
-                                        onEmojiSelect={(emoji) => {
-                                          handleAddReaction(message.id, emoji);
-                                        }}
-                                      />
-                                    </ScrollArea>
-                                  </TabsContent>
-                                  <TabsContent value="gif" className="p-2">
-                                    <div className="flex flex-col gap-2">
-                                      <div className="flex gap-2">
-                                        <Input
-                                          placeholder={t('Search GIFs...')}
-                                          value={giphySearch}
-                                          onChange={(e) => setGiphySearch(e.target.value)}
-                                          onKeyDown={(e) => e.key === 'Enter' && searchGiphy(giphySearch)}
-                                        />
-                                        <Button size="sm" onClick={() => searchGiphy(giphySearch)}>
-                                          <Search className="h-4 w-4" />
-                                        </Button>
-                                      </div>
+                            
+                            {!isBlocked && !amIBlocked && (
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                                    <Smile className="h-4 w-4" />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-80 p-0">
+                                  <Tabs defaultValue="emoji">
+                                    <TabsList className="w-full">
+                                      <TabsTrigger value="emoji">{t('Emoji')}</TabsTrigger>
+                                      <TabsTrigger value="gif">{t('GIF')}</TabsTrigger>
+                                    </TabsList>
+                                    <TabsContent value="emoji" className="p-2">
                                       <ScrollArea className="h-[200px]">
-                                        {loadingGiphy ? (
-                                          <div className="flex justify-center p-4">
-                                            <Loader2 className="h-6 w-6 animate-spin" />
-                                          </div>
-                                        ) : giphyResults.length > 0 ? (
-                                          <div className="grid grid-cols-2 gap-2">
-                                            {giphyResults.map((gif) => (
-                                              <img
-                                                key={gif.id}
-                                                src={gif.images.fixed_height_small.url}
-                                                alt="GIF"
-                                                className="rounded cursor-pointer hover:opacity-80 transition-opacity"
-                                                onClick={() => handleGiphySelect(gif.images.original.url)}
-                                              />
-                                            ))}
-                                          </div>
-                                        ) : (
-                                          <div className="text-center p-4 text-muted-foreground">
-                                            {giphySearch ? t('No results found') : t('Search for GIFs')}
-                                          </div>
-                                        )}
+                                        <EmojiPicker
+                                          onEmojiSelect={(emoji) => {
+                                            handleAddReaction(message.id, emoji);
+                                          }}
+                                        />
                                       </ScrollArea>
-                                    </div>
-                                  </TabsContent>
-                                </Tabs>
-                              </PopoverContent>
-                            </Popover>
+                                    </TabsContent>
+                                    <TabsContent value="gif" className="p-2">
+                                      <div className="flex flex-col gap-2">
+                                        <div className="flex gap-2">
+                                          <Input
+                                            placeholder={t('Search GIFs...')}
+                                            value={giphySearch}
+                                            onChange={(e) => setGiphySearch(e.target.value)}
+                                            onKeyDown={(e) => e.key === 'Enter' && searchGiphy(giphySearch)}
+                                          />
+                                          <Button size="sm" onClick={() => searchGiphy(giphySearch)}>
+                                            <Search className="h-4 w-4" />
+                                          </Button>
+                                        </div>
+                                        <ScrollArea className="h-[200px]">
+                                          {loadingGiphy ? (
+                                            <div className="flex justify-center p-4">
+                                              <Loader2 className="h-6 w-6 animate-spin" />
+                                            </div>
+                                          ) : giphyResults.length > 0 ? (
+                                            <div className="grid grid-cols-2 gap-2">
+                                              {giphyResults.map((gif) => (
+                                                <img
+                                                  key={gif.id}
+                                                  src={gif.images.fixed_height_small.url}
+                                                  alt="GIF"
+                                                  className="rounded cursor-pointer hover:opacity-80 transition-opacity"
+                                                  onClick={() => handleGiphySelect(gif.images.original.url)}
+                                                />
+                                              ))}
+                                            </div>
+                                          ) : (
+                                            <div className="text-center p-4 text-muted-foreground">
+                                              {giphySearch ? t('No results found') : t('Search for GIFs')}
+                                            </div>
+                                          )}
+                                        </ScrollArea>
+                                      </div>
+                                    </TabsContent>
+                                  </Tabs>
+                                </PopoverContent>
+                              </Popover>
+                            )}
                           </div>
                         </div>
                       </>
@@ -750,6 +809,100 @@ const Messages = () => {
                 </div>
               )}
             </ScrollArea>
+
+            {/* Action Buttons */}
+            {!isFollowing && otherParticipant && otherParticipant.user_id !== user?.id && (
+              <div className="flex justify-center gap-2 p-4 border-t">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    const { error } = await supabase
+                      .from('followers')
+                      .insert({
+                        follower_id: user?.id,
+                        following_id: otherParticipant.user_id
+                      });
+                    if (!error) {
+                      setIsFollowing(true);
+                      toast({
+                        title: t('Successfully followed'),
+                        variant: "default"
+                      });
+                    } else {
+                      toast({
+                        title: t('Failed to follow user'),
+                        description: error.message,
+                        variant: "destructive"
+                      });
+                    }
+                  }}
+                >
+                  <UserPlus className="h-4 w-4 mr-1" />
+                  {t('Follow')}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    try {
+                      if (isBlocked) {
+                        await unblockUser(otherParticipant.user_id);
+                        toast({
+                          title: t('User unblocked successfully'),
+                          variant: "default"
+                        });
+                      } else {
+                        await blockUser(otherParticipant.user_id);
+                        toast({
+                          title: t('User blocked successfully'),
+                          variant: "default"
+                        });
+                      }
+                    } catch (error: any) {
+                      toast({
+                        title: t('Failed to update block status'),
+                        description: error.message,
+                        variant: "destructive"
+                      });
+                    }
+                  }}
+                >
+                  <UserX className="h-4 w-4 mr-1" />
+                  {isBlocked ? t('Unblock') : t('Block')}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    const { error } = await supabase
+                      .from('reports')
+                      .insert({
+                        reporter_id: user?.id,
+                        reported_id: otherParticipant.user_id,
+                        content_type: 'user',
+                        content_id: otherParticipant.user_id,
+                        reason: 'inappropriate_behavior'
+                      });
+                    if (!error) {
+                      toast({
+                        title: t('User reported successfully'),
+                        variant: "default"
+                      });
+                    } else {
+                      toast({
+                        title: t('Failed to report user'),
+                        description: error.message,
+                        variant: "destructive"
+                      });
+                    }
+                  }}
+                >
+                  <ArrowRight className="h-4 w-4 mr-1" />
+                  {t('Report')}
+                </Button>
+              </div>
+            )}
 
             {/* Message Input */}
             <form onSubmit={handleSendMessage} className="p-4 border-t">
@@ -783,6 +936,7 @@ const Messages = () => {
                   </div>
                 )}
                 <div className="flex gap-2">
+                  {!isBlocked && !amIBlocked && (
                   <div className="flex gap-1">
                     <Button
                       type="button"
@@ -801,6 +955,7 @@ const Messages = () => {
                       <Smile className="h-4 w-4" />
                     </Button>
                   </div>
+                )}
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -812,7 +967,8 @@ const Messages = () => {
                   <Input
                     value={messageContent}
                     onChange={(e) => setMessageContent(e.target.value)}
-                    placeholder={t('Type a message...')}
+                    placeholder={isBlocked || amIBlocked ? t('You cannot send messages to this user') : t('Type a message...')}
+                    disabled={isBlocked || amIBlocked}
                   />
                   <Button type="submit" disabled={uploading}>
                     {uploading ? (

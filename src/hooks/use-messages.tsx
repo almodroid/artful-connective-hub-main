@@ -183,7 +183,8 @@ export const useMessages = () => {
         .from('messages')
         .select(`
           *,
-          sender:sender_id(username, display_name, avatar_url)
+          sender:sender_id(username, display_name, avatar_url),
+          reactions:message_reactions(*)
         `)
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: true });
@@ -331,6 +332,7 @@ export const useMessages = () => {
       toast({
         title: 'Success',
         description: 'User blocked successfully',
+        variant: 'default'
       });
     } catch (error: any) {
       toast({
@@ -357,6 +359,7 @@ export const useMessages = () => {
       toast({
         title: 'Success',
         description: 'User unblocked successfully',
+        variant: 'default'
       });
     } catch (error: any) {
       toast({
@@ -372,7 +375,6 @@ export const useMessages = () => {
     if (!user) return;
     
     try {
-      // Check if reaction already exists
       const { data: existingReaction } = await supabase
         .from('message_reactions')
         .select()
@@ -386,9 +388,7 @@ export const useMessages = () => {
         const { error: removeError } = await supabase
           .from('message_reactions')
           .delete()
-          .eq('message_id', messageId)
-          .eq('user_id', user.id)
-          .eq('reaction', reaction);
+          .eq('id', existingReaction.id);
 
         if (removeError) throw removeError;
       } else {
@@ -578,6 +578,7 @@ export const useMessages = () => {
     blockUser,
     unblockUser,
     blockedUsers,
+    getBlockedUsers,
     addReaction,
     removeReaction,
     editMessage,

@@ -10,7 +10,7 @@ import { Separator } from '../components/ui/separator';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { Skeleton } from '../components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
-import { Send, ArrowLeft, MoreVertical, Edit, Trash2, UserX, UserPlus, UserMinus, Image as ImageIcon, Smile, X, Loader2, Search, ArrowRight } from 'lucide-react';
+import { Send, ArrowLeft, MoreVertical, Edit, Trash2, UserX, UserPlus, UserMinus, Image as ImageIcon, Smile, X, Loader2, Search, ArrowRight, User, GrapeIcon, SmileIcon, SmilePlus } from 'lucide-react';
 import { useTranslation } from '../hooks/use-translation';
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from '../hooks/use-toast';
@@ -24,6 +24,7 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { BottomBar } from "@/components/layout/BottomBar";
 import { ar } from "date-fns/locale";
+import { compressFile } from '../utils/imageCompression';
 
 const Messages = () => {
   const { t } = useTranslation();
@@ -265,7 +266,9 @@ const Messages = () => {
   };
   
 
-  const handleSendMessage = async (e: React.FormEvent) => {
+
+
+const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!conversationId || (!messageContent.trim() && selectedFiles.length === 0)) return;
     
@@ -275,53 +278,43 @@ const Messages = () => {
         const mediaUrls: string[] = [];
         
         for (const file of selectedFiles) {
-          console.log('Uploading file:', file.name, 'size:', file.size);
+          // Compress image files before upload
+          const processedFile = await compressFile(file);
           
-          const fileExt = file.name.split('.').pop();
+          const fileExt = processedFile.name.split('.').pop();
           const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
-          const filePath = `messages/${conversationId}/${fileName}`;
+          const filePath = `${conversationId}/${fileName}`;
           
-          // Check if bucket exists
-          const { data: buckets } = await supabase.storage.listBuckets();
-          const mediaBucket = buckets?.find(b => b.name === 'media');
+          // Convert processed file to ArrayBuffer for direct upload
+          const arrayBuffer = await processedFile.arrayBuffer();
           
-          if (!mediaBucket) {
-            throw new Error('Media storage bucket not found. Please create a bucket named "media" in Supabase.');
-          }
-          
-          console.log('Uploading to path:', filePath);
           const { error: uploadError, data } = await supabase.storage
-            .from('media')
-            .upload(filePath, file, {
+            .from('messages_media')
+            .upload(filePath, arrayBuffer, {
+              contentType: processedFile.type,  // Set the correct content type
               cacheControl: '3600',
               upsert: false
             });
 
-          if (uploadError) {
-            console.error('Upload error:', uploadError);
-            throw uploadError;
-          }
-
-          console.log('Upload successful:', data);
+          if (uploadError) throw uploadError;
+          
           const { data: { publicUrl } } = supabase.storage
-            .from('media')
+            .from('messages_media')
             .getPublicUrl(filePath);
-
-          console.log('Public URL:', publicUrl);
+          
           mediaUrls.push(publicUrl);
         }
         
         const mediaType = selectedFiles[0].type.startsWith('image/') ? 'image' : 'video';
         await sendMessage(conversationId, messageContent, mediaUrls, mediaType);
       } else {
-        // Text-only message
         await sendMessage(conversationId, messageContent);
       }
       
       setMessageContent('');
       setSelectedFiles([]);
     } catch (error: any) {
-      console.error('Error sending message:', error);
+      console.error('Upload error:', error);
       toast({
         title: 'Error',
         description: error.message || 'Failed to send message',
@@ -558,10 +551,10 @@ const Messages = () => {
                         <Button
                           variant="ghost"
                           className="w-full justify-start"
-                          onClick={() => navigate(`/profile/${otherParticipant.user_id}`)}
+                          onClick={() => navigate(`/profile/${otherParticipant.username}`)}
                         >
-                          <UserPlus className="h-4 w-4 mr-2" />
-                          {t('View Profile')}
+                          <User className="h-4 w-4 mr-2" />
+                          {t('view_profile')}
                         </Button>
                         
                         {blockedUsers.includes(otherParticipant.user_id) ? (
@@ -571,7 +564,7 @@ const Messages = () => {
                             onClick={() => unblockUser(otherParticipant.user_id)}
                           >
                             <UserX className="h-4 w-4 mr-2" />
-                            {t('Unblock User')}
+                            {t('Unblock')}
                           </Button>
                         ) : (
                           <Button
@@ -580,7 +573,7 @@ const Messages = () => {
                             onClick={() => blockUser(otherParticipant.user_id)}
                           >
                             <UserX className="h-4 w-4 mr-2" />
-                            {t('Block User')}
+                            {t('Block')}
                           </Button>
                         )}
                         
@@ -595,7 +588,7 @@ const Messages = () => {
                           }}
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
-                          {t('Delete Chat')}
+                          {t('Delete_Chat')}
                         </Button>
                       </div>
                     </PopoverContent>
@@ -609,8 +602,8 @@ const Messages = () => {
               {(isBlocked || amIBlocked) && (
                 <div className="mb-4 p-3 bg-destructive/10 text-destructive rounded-md text-sm">
                   {isBlocked 
-                     ? t('You cannot send messages to this user as they have been blocked.')
-                     : t('You cannot send messages as this user has blocked you.')}
+                     ? t('You_cannot_send_blocked')
+                     : t('You_cannot_send_has_blocked_you')}
                 </div>
               )}
               {loading && !messages.length ? (
@@ -640,7 +633,12 @@ const Messages = () => {
                     className={`max-w-[70%] ${message.sender_id === user?.id ? 'bg-primary text-primary-foreground' : 'bg-muted'} ${isRtl? 'pl-5':'pr-5'} rounded-lg p-3 relative group`}
                   >
                     {message.sender_id === user?.id && (
-                      <div className="absolute left-1 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className={`absolute opacity-0 group-hover:opacity-100 transition-opacity`}
+                        style={{
+                          right: isRtl? 'auto' : '10px',
+                          left: isRtl? '10px' : 'auto',
+                        }}
+                      >
                         <Popover>
                           <PopoverTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-6 w-6">
@@ -733,7 +731,7 @@ const Messages = () => {
                             ))}
                           </div>
                         )}
-                        <div className={`flex items-center justify-between text-xs mt-1 ${message.sender_id === user?.id ? 'flex-row' : 'flex-row-reverse'}`}>
+                        <div className={`flex items-center justify-between gap-2 text-xs mt-1 ${message.sender_id === user?.id ? 'flex-row' : 'flex-row-reverse'}`}>
                           <span className=' opacity-70'>
                             {formatDistanceToNow(new Date(message.created_at), { 
                               addSuffix: true,
@@ -741,14 +739,14 @@ const Messages = () => {
                             })}
                             {message.edited && ` · ${t('edited')}`}
                           </span>
-                          <div className={`flex gap-2  ${message.sender_id === user?.id ? 'flex-row' : 'flex-row-reverse'}`}>
+                          <div className={`flex gap-2 ${message.sender_id === user?.id ? 'flex-row' : 'flex-row-reverse'} `} >
                             <div className="flex items-center gap-1  opacity-70">
                               
                               {!isBlocked && !amIBlocked && (
                                 <Popover>
                                   <PopoverTrigger asChild>
                                     <Button variant="ghost" size="icon" className="h-6 w-6">
-                                      <Smile className="h-4 w-4" />
+                                      <SmilePlus className="h-4 w-4" />
                                     </Button>
                                   </PopoverTrigger>
                                   <PopoverContent className="w-80 p-0">
@@ -772,8 +770,8 @@ const Messages = () => {
                                   transition={{ type: "spring", stiffness: 300, damping: 20 }}
                                   dir={isRtl? 'rtl' : 'ltr'}
                                   className={`
-                                    " -ml-16 flex gap-1 px-2 py-1 rounded-full shadow-lg bg-background border" ${message.sender_id === user?.id ? '-ml-16 mr-0' : 'ml-6 -mr-12'}
-                                  
+                                    flex gap-1 px-2 py-1 rounded-full shadow-lg bg-background border
+                                    ${message.sender_id === user?.id ? (isRtl ? '-ml-16 mr-0' : '-mr-16 mr-0') : (isRtl ? '-mr-12 ml-0' : '-ml-12 mr-0')}
                                   `}
                                 >
                                   {message.reactions.slice(0, 2).map((reaction, index) => (
@@ -946,7 +944,7 @@ const Messages = () => {
                       size="icon"
                       onClick={() => setShowGiphyPicker(true)}
                     >
-                      <Smile className="h-4 w-4" />
+                      <SmileIcon className="h-4 w-4" />
                     </Button>
                   </div>
                 )}
@@ -961,7 +959,7 @@ const Messages = () => {
                   <Input
                     value={messageContent}
                     onChange={(e) => setMessageContent(e.target.value)}
-                    placeholder={isBlocked || amIBlocked ? t('You cannot send messages to this user') : t('Type a message...')}
+                    placeholder={isBlocked || amIBlocked ? t('You_cannot_send') : t('Type_a_message')}
                     disabled={isBlocked || amIBlocked}
                   />
                   <Button type="submit" disabled={uploading}>

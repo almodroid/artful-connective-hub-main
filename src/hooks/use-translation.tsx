@@ -40,6 +40,14 @@ const translations = {
     seeAll: "See all",
     spaceArt: "Art Space",
     markAllAsRead: "Mark all as read",
+    Report: "Report",
+    Block: "Block",
+    Unblock: "Unblock",
+    Delete_Chat: "Delete Chat",
+    view_profile: "View Profile",
+    Edit: "Edit",
+    Delete: "Delete",
+    React: "React",
 
     //messages
     Messages: "Messages",
@@ -52,6 +60,10 @@ const translations = {
     Conversations: "Conversations",
     Send_message: "Send a message to start the conversation",
     No_messages: "No messages yet",
+    You_cannot_send: "You cannot send messages to this user",
+    Type_a_message: "Type a message...",
+    You_cannot_send_blocked: "You cannot send messages to this user as they have been blocked",
+    You_cannot_send_has_blocked_you:"You cannot send messages as this user has blocked you",
     
     // Home
     forYou: "For You",
@@ -148,7 +160,8 @@ const translations = {
     symbols: "Symbols",
     Search_emojis: "Search emojis...",
 
-    
+
+
     // Arter AI translations
     meetArter: "Meet Arter, your art and design AI assistant",
     arterDescription: "Get creative help with color palettes, design feedback, artistic techniques, and more.",
@@ -202,6 +215,14 @@ const translations = {
     popular: "شائع",
     comments: "التعليقات",
     You: "أنت",
+    Report: "ابلاغ",
+    Block: "حظر",
+    Unblock: "إلغاء الحظر",
+    Delete_Chat: "حذف المحادثة",
+    view_profile: "الملف الشخصي",
+    Edit: "تعديل",
+    Delete: "حذف",
+    React: "تفاعل",
     
     //messages
     Messages: "الرسائل",
@@ -219,7 +240,10 @@ const translations = {
     followBack: "تابعك مرة أخرى",
     followBackDesc: "قم بتبعك مرة أخرى للوصول إلى المحتوى الخاص بك",
     followBackButton: "تابعك مرة أخرى",
-   
+    You_cannot_send: "لا يمكنك إرسال رسائل إلى هذا المستخدم",
+    Type_a_message: "اكتب رسالة...",
+    You_cannot_send_blocked: "لا يمكنك إرسال رسائل إلى هذا المستخدم لأنك قمت بحظره",
+    You_cannot_send_has_blocked_you: "لا يمكنك إرسال رسائل إلى هذا المستخدم لأن قام بحظرك",
     
     // Home
     forYou: "مخصص لك",

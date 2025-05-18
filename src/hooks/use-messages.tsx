@@ -462,7 +462,7 @@ export const useMessages = () => {
 
   // Send a message in the current conversation
   const sendMessage = useCallback(async (conversationId: string, content: string, mediaUrls?: string[], mediaType?: 'image' | 'video' | 'gif') => {
-    if (!user || !content.trim()) return null;
+    if (!user || (!content.trim() && (!mediaUrls || mediaUrls.length === 0))) return null;
     
     try {
       const { data, error } = await supabase

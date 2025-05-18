@@ -572,7 +572,7 @@ const Messages = () => {
             </div>
 
             {/* Messages */}
-            <ScrollArea className="flex-1 p-4" dir={isRtl? 'ltr' : 'rtl'} style={{ height: 'calc(100vh - 200px)' }}>
+            <ScrollArea className="flex-1 p-4" dir={isRtl? 'rtl' : 'ltr'} style={{ height: 'calc(100vh - 200px)' }}>
               {(isBlocked || amIBlocked) && (
                 <div className="mb-4 p-3 bg-destructive/10 text-destructive rounded-md text-sm">
                   {isBlocked 
@@ -601,7 +601,7 @@ const Messages = () => {
                     <div
                       key={message.id}
                       ref={message.id === messages[messages.length - 1].id ? messagesEndRef : undefined}
-                      className={`flex flex-col ${message.sender_id === user?.id ? 'items-end' : 'items-start'} mb-4`}
+                      className={`flex flex-col ${message.sender_id === user?.id ? 'items-start' : 'items-end'} mb-4`}
                     >
                   <div
                     className={`max-w-[70%] ${message.sender_id === user?.id ? 'bg-primary text-primary-foreground' : 'bg-muted'} ${isRtl? 'pl-5':'pr-5'} rounded-lg p-3 relative group`}
@@ -656,35 +656,7 @@ const Messages = () => {
                         </Popover>
                       </div>
                     )}
-                    {message.reactions && message.reactions.length > 0 && !isBlocked && !amIBlocked && (
-                      <AnimatePresence>
-                        <motion.div 
-                          initial={{ y: 10, opacity: 0 }}
-                          animate={{ y: 0, opacity: 1 }}
-                          exit={{ y: 10, opacity: 0 }}
-                          transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                          dir={isRtl? 'rtl' : 'ltr'}
-                          className={cn(
-                            "absolute top-8 flex gap-1 px-2 py-1 rounded-full shadow-lg bg-background border",
-                            isRtl? "left-auto right-20" : "left-24 right-auto",
-                          )}
-                        >
-                          {message.reactions.slice(0, 2).map((reaction, index) => (
-                            <motion.button
-                              key={`${reaction.id}-${index}`}
-                              whileHover={{ scale: 1.2 }}
-                              whileTap={{ scale: 0.9 }}
-                              transition={{ type: "spring", stiffness: 400 }}
-                              className="text-sm hover:bg-muted/50 rounded-full w-6 h-6 flex items-center justify-center text-foreground hover:text-foreground"
-                              onClick={() => handleRemoveReaction(message.id, reaction.reaction)}
-                              title="Click to remove reaction"
-                            >
-                              {reaction.reaction}
-                            </motion.button>
-                          ))}
-                        </motion.div>
-                      </AnimatePresence>
-                    )}
+                    
                     {editingMessageId === message.id ? (
                       <form
                         onSubmit={(e) => {
@@ -713,7 +685,7 @@ const Messages = () => {
                       </form>
                     ) : (
                       <>
-                        <p>{message.content}</p>
+                        <p className={`text-start`}>{message.content}</p>
                         {message.media_urls && message.media_urls.length > 0 && (
                           <div className="mt-2 space-y-2">
                             {message.media_urls.map((url, index) => (
@@ -727,76 +699,107 @@ const Messages = () => {
                             ))}
                           </div>
                         )}
-                        <div className="flex items-center justify-between text-xs mt-1 opacity-70">
-                          <span>
+                        <div className={`flex items-center justify-between text-xs mt-1 ${message.sender_id === user?.id ? 'flex-row' : 'flex-row-reverse'}`}>
+                          <span className=' opacity-70'>
                             {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
                             {message.edited && ` · ${t('edited')}`}
                           </span>
-                          <div className="flex items-center gap-1">
-                            
-                            {!isBlocked && !amIBlocked && (
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-6 w-6">
-                                    <Smile className="h-4 w-4" />
-                                  </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-80 p-0">
-                                  <Tabs defaultValue="emoji">
-                                    <TabsList className="w-full">
-                                      <TabsTrigger value="emoji">{t('Emoji')}</TabsTrigger>
-                                      <TabsTrigger value="gif">{t('GIF')}</TabsTrigger>
-                                    </TabsList>
-                                    <TabsContent value="emoji" className="p-2">
-                                      <ScrollArea className="h-[200px]">
-                                        <EmojiPicker
-                                          onEmojiSelect={(emoji) => {
-                                            handleAddReaction(message.id, emoji);
-                                          }}
-                                        />
-                                      </ScrollArea>
-                                    </TabsContent>
-                                    <TabsContent value="gif" className="p-2">
-                                      <div className="flex flex-col gap-2">
-                                        <div className="flex gap-2">
-                                          <Input
-                                            placeholder={t('Search GIFs...')}
-                                            value={giphySearch}
-                                            onChange={(e) => setGiphySearch(e.target.value)}
-                                            onKeyDown={(e) => e.key === 'Enter' && searchGiphy(giphySearch)}
-                                          />
-                                          <Button size="sm" onClick={() => searchGiphy(giphySearch)}>
-                                            <Search className="h-4 w-4" />
-                                          </Button>
-                                        </div>
+                          <div className={`flex gap-2  ${message.sender_id === user?.id ? 'flex-row' : 'flex-row-reverse'}`}>
+                            <div className="flex items-center gap-1  opacity-70">
+                              
+                              {!isBlocked && !amIBlocked && (
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6">
+                                      <Smile className="h-4 w-4" />
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-80 p-0">
+                                    <Tabs defaultValue="emoji">
+                                      <TabsList className="w-full">
+                                        <TabsTrigger value="emoji">{t('Emoji')}</TabsTrigger>
+                                        <TabsTrigger value="gif">{t('GIF')}</TabsTrigger>
+                                      </TabsList>
+                                      <TabsContent value="emoji" className="p-2">
                                         <ScrollArea className="h-[200px]">
-                                          {loadingGiphy ? (
-                                            <div className="flex justify-center p-4">
-                                              <Loader2 className="h-6 w-6 animate-spin" />
-                                            </div>
-                                          ) : giphyResults.length > 0 ? (
-                                            <div className="grid grid-cols-2 gap-2">
-                                              {giphyResults.map((gif) => (
-                                                <img
-                                                  key={gif.id}
-                                                  src={gif.images.fixed_height_small.url}
-                                                  alt="GIF"
-                                                  className="rounded cursor-pointer hover:opacity-80 transition-opacity"
-                                                  onClick={() => handleGiphySelect(gif.images.original.url)}
-                                                />
-                                              ))}
-                                            </div>
-                                          ) : (
-                                            <div className="text-center p-4 text-muted-foreground">
-                                              {giphySearch ? t('No results found') : t('Search for GIFs')}
-                                            </div>
-                                          )}
+                                          <EmojiPicker
+                                            onEmojiSelect={(emoji) => {
+                                              handleAddReaction(message.id, emoji);
+                                            }}
+                                          />
                                         </ScrollArea>
-                                      </div>
-                                    </TabsContent>
-                                  </Tabs>
-                                </PopoverContent>
-                              </Popover>
+                                      </TabsContent>
+                                      <TabsContent value="gif" className="p-2">
+                                        <div className="flex flex-col gap-2">
+                                          <div className="flex gap-2">
+                                            <Input
+                                              placeholder={t('Search GIFs...')}
+                                              value={giphySearch}
+                                              onChange={(e) => setGiphySearch(e.target.value)}
+                                              onKeyDown={(e) => e.key === 'Enter' && searchGiphy(giphySearch)}
+                                            />
+                                            <Button size="sm" onClick={() => searchGiphy(giphySearch)}>
+                                              <Search className="h-4 w-4" />
+                                            </Button>
+                                          </div>
+                                          <ScrollArea className="h-[200px]">
+                                            {loadingGiphy ? (
+                                              <div className="flex justify-center p-4">
+                                                <Loader2 className="h-6 w-6 animate-spin" />
+                                              </div>
+                                            ) : giphyResults.length > 0 ? (
+                                              <div className="grid grid-cols-2 gap-2">
+                                                {giphyResults.map((gif) => (
+                                                  <img
+                                                    key={gif.id}
+                                                    src={gif.images.fixed_height_small.url}
+                                                    alt="GIF"
+                                                    className="rounded cursor-pointer hover:opacity-80 transition-opacity"
+                                                    onClick={() => handleGiphySelect(gif.images.original.url)}
+                                                  />
+                                                ))}
+                                              </div>
+                                            ) : (
+                                              <div className="text-center p-4 text-muted-foreground">
+                                                {giphySearch ? t('No results found') : t('Search for GIFs')}
+                                              </div>
+                                            )}
+                                          </ScrollArea>
+                                        </div>
+                                      </TabsContent>
+                                    </Tabs>
+                                  </PopoverContent>
+                                </Popover>
+                              )}
+                            </div>
+                            {message.reactions && message.reactions.length > 0 && !isBlocked && !amIBlocked && (
+                              <AnimatePresence>
+                                <motion.div 
+                                  initial={{ y: 10, opacity: 0 }}
+                                  animate={{ y: 0, opacity: 1 }}
+                                  exit={{ y: 10, opacity: 0 }}
+                                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                                  dir={isRtl? 'rtl' : 'ltr'}
+                                  className={`
+                                    " -ml-16 flex gap-1 px-2 py-1 rounded-full shadow-lg bg-background border" ${message.sender_id === user?.id ? '-ml-16 mr-0' : 'ml-6 -mr-12'}
+                                  
+                                  `}
+                                >
+                                  {message.reactions.slice(0, 2).map((reaction, index) => (
+                                    <motion.button
+                                      key={`${reaction.id}-${index}`}
+                                      whileHover={{ scale: 1.2 }}
+                                      whileTap={{ scale: 0.9 }}
+                                      transition={{ type: "spring", stiffness: 400 }}
+                                      className="text-sm hover:bg-muted/50 rounded-full w-6 h-6 flex items-center justify-center text-foreground hover:text-foreground"
+                                      onClick={() => handleRemoveReaction(message.id, reaction.reaction)}
+                                      title="Click to remove reaction"
+                                    >
+                                      {reaction.reaction}
+                                    </motion.button>
+                                  ))}
+                                </motion.div>
+                              </AnimatePresence>
                             )}
                           </div>
                         </div>

@@ -213,6 +213,7 @@ export type Database = {
           id: string
           post_id: string | null
           user_id: string
+          likes_count?: number | null
         }
         Insert: {
           content: string
@@ -220,6 +221,7 @@ export type Database = {
           id?: string
           post_id?: string | null
           user_id: string
+          likes_count?: number | null
         }
         Update: {
           content?: string
@@ -227,6 +229,7 @@ export type Database = {
           id?: string
           post_id?: string | null
           user_id?: string
+          likes_count?: number | null
         }
         Relationships: [
           {
@@ -252,6 +255,12 @@ export type Database = {
           user_id: string
         }
         Update: {
+          created_at?: string | null
+          id?: string
+          post_id?: string | null
+          user_id?: string
+        }
+        Upsert: {
           created_at?: string | null
           id?: string
           post_id?: string | null

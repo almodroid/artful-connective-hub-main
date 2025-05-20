@@ -9,16 +9,67 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePosts, Post } from "@/hooks/use-posts";
 import { useTranslation } from "@/hooks/use-translation";
-import { useReels } from "@/hooks/use-reels";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+
 
 const Index = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { t, isRtl } = useTranslation();
-  const { posts, isLoading, likePost } = usePosts();
+  const { posts, isLoading } = usePosts();
   const [postsWithComments, setPostsWithComments] = useState<any[]>([]);
   const [loadingComments, setLoadingComments] = useState(true);
   const [activeTab, setActiveTab] = useState("for-you");
+  
+  const likePost = async (postId: string) => {
+    if (!isAuthenticated || !user) return;
+    
+    try {
+      const post = displayPosts.find(p => p.id === postId);
+      if (!post) return;
+      
+      const wasLiked = post.isLiked;
+      post.isLiked = !wasLiked;
+      post.likes = wasLiked ? Math.max(0, post.likes - 1) : post.likes + 1;
+      
+      if (wasLiked) {
+        const { error } = await supabase
+          .from('post_likes')
+          .delete()
+          .eq('post_id', postId)
+          .eq('user_id', user.id);
+          
+        if (error) throw error;
+        toast.success(isRtl ? 'تم إزالة الإعجاب بنجاح' : 'Successfully unliked');
+      } else {
+        const { error } = await supabase
+          .from('post_likes')
+          .upsert(
+            { 
+              post_id: postId, 
+              user_id: user.id,
+              created_at: new Date().toISOString()
+            },
+            { onConflict: 'post_id,user_id' }
+          );
+          
+        if (error) throw error;
+        toast.success(isRtl ? 'تم تسجيل الإعجاب بنجاح' : 'Successfully liked');
+      }
+      
+      // Refresh like count after update
+      const { data: likeData } = await supabase
+        .from('post_likes')
+        .select('*', { count: 'exact', head: true })
+        .eq('post_id', postId);
+      
+      post.likes = likeData?.length || 0;
+    } catch (error) {
+      console.error('Error toggling like:', error);
+      toast.error(isRtl ? 'حدث خطأ أثناء تحديث الإعجاب' : 'Error updating like status');
+    }
+  };
   
   const handlePostCreated = () => {
     // Refresh posts after creating a new post
@@ -61,21 +112,32 @@ const Index = () => {
         }
         
         // Convert Post to PostWithUser with accurate comment counts
+        // Fetch like counts for all posts
+        const { data: likeCounts } = await supabase
+          .from('post_likes')
+          .select('post_id', { count: 'exact', head: false })
+          .in('post_id', posts.map(p => p.id));
+          
+        const likeCountMap = new Map<string, number>();
+        likeCounts?.forEach(item => {
+          likeCountMap.set(item.post_id, (likeCountMap.get(item.post_id) || 0) + 1);
+        });
+        
         const updatedPosts = posts.map(post => ({
           id: post.id,
           content: post.content,
           title: post.title || "",
           images: post.media_urls || [], // Use all media URLs
           createdAt: new Date(post.created_at),
+          isLiked: likeCountMap.has(post.id),
+          likes: likeCountMap.get(post.id) || 0,
           user: {
             id: post.user_id,
             username: post.user?.username || "unknown",
             displayName: post.user?.display_name || "Unknown User",
             avatar: post.user?.avatar_url || "",
           },
-          likes: post.likes_count || 0,
-          comments: commentCounts[post.id] || 0,
-          isLiked: false
+          comments: commentCounts[post.id] || 0
         }));
         
         setPostsWithComments(updatedPosts);
@@ -104,9 +166,7 @@ const Index = () => {
       displayName: post.user?.display_name || "Unknown User",
       avatar: post.user?.avatar_url || "",
     },
-    likes: post.likes_count || 0,
-    comments: post.comments_count || 0,
-    isLiked: false
+    comments: post.comments_count || 0
   }));
 
   return (
@@ -164,12 +224,10 @@ const Index = () => {
                     }
                     return (
                       <div key={item.id} className="mb-6">
-                        <Link to={`/post/${item.id}`}>
-                          <PostCard 
-                            post={item} 
-                            onLike={(id) => likePost(id)}
-                          />
-                        </Link>
+                        <PostCard 
+                          post={item}
+                          onLike={likePost}
+                        />
                       </div>
                     );
                   });
@@ -189,12 +247,11 @@ const Index = () => {
                 .sort((a, b) => b.likes - a.likes)
                 .slice(0, 5)
                 .map((post) => (
-                  <Link to={`/post/${post.id}`} key={post.id}>
-                    <PostCard 
-                      post={post} 
-                      onLike={(id) => likePost(id)}
-                    />
-                  </Link>
+                  <PostCard 
+                    key={post.id}
+                    post={post}
+                    onLike={likePost}
+                  />
                 ))}
             </div>
           </TabsContent>

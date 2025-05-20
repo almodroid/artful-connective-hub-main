@@ -5,19 +5,9 @@ import { ar } from "date-fns/locale";
 import { Heart, MessageCircle, Share2, UserPlus, UserMinus } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { FormattedText } from "./FormattedText";
-import { useNotificationsApi } from "@/hooks/use-notifications-api";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import { useTranslation } from "@/hooks/use-translation";
 import { FollowListModal } from "@/components/ui-custom/FollowListModal";
 
@@ -26,9 +16,12 @@ export interface Post {
   content: string;
   image?: string;
   media_urls?: string[];
+  media_type?: 'images' | 'video' | 'gif' | null;
   images?: string[];
+  videos?: string[];
   createdAt: Date;
   likes: number;
+  isLiked: boolean;
   comments: number;
   user: {
     id: string;
@@ -41,7 +34,7 @@ export interface Post {
 
 interface PostCardProps {
   post: Post;
-  onLike?: (postId: string) => void;
+  onLike?: (postId: string) => Promise<void>;
   onComment?: (postId: string) => void;
   onShare?: (postId: string) => void;
 }
@@ -49,7 +42,6 @@ interface PostCardProps {
 export function PostCard({ post, onLike, onComment, onShare }: PostCardProps) {
   const { user, isAuthenticated } = useAuth();
   const { t, isRtl } = useTranslation();
-  const [isLiked, setIsLiked] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -74,19 +66,6 @@ export function PostCard({ post, onLike, onComment, onShare }: PostCardProps) {
           return;
         }
         
-        // Check if the post is liked
-        const { data: likeData, error: likeError } = await supabase
-          .from('post_likes')
-          .select()
-          .eq('post_id', post.id)
-          .eq('user_id', user.id);
-
-        if (likeError) {
-          console.error('Error checking like status:', likeError);
-        } else {
-          setIsLiked(likeData && likeData.length > 0);
-        }
-
         // Check if following the post author
         if (user.id !== post.user.id) {
           const { data: isFollowingData } = await supabase
@@ -122,108 +101,7 @@ export function PostCard({ post, onLike, onComment, onShare }: PostCardProps) {
     checkLikeAndFollowStatus();
   }, [isAuthenticated, user, post.id, post.user.id]);
 
-  const handleLike = async () => {
-    if (!isAuthenticated || !user) {
-      // Save current location before redirecting
-      const currentPath = window.location.pathname;
-      localStorage.setItem('redirectAfterLogin', currentPath);
-      toast.error(isRtl ? "يجب تسجيل الدخول أولاً" : "You must be logged in");
-      window.location.href = '/login';
-      return;
-    }
 
-    try {
-      // Optimistically update UI
-      const newLikeStatus = !isLiked;
-      setIsLiked(newLikeStatus);
-      
-      // Update local likes count
-      const likeDelta = newLikeStatus ? 1 : -1;
-      post.likes = Math.max(0, post.likes + likeDelta);
-      
-      if (isLiked) {
-        // Check if the post exists first
-        const { count, error: checkError } = await supabase
-          .from("posts")
-          .select("*", { count: "exact", head: true })
-          .eq("id", post.id);
-          
-        if (checkError) {
-          console.error("Error checking post existence:", checkError);
-          // Revert optimistic update on error
-          setIsLiked(!newLikeStatus);
-          post.likes = Math.max(0, post.likes - likeDelta);
-          throw checkError;
-        }
-
-        if (count === 0) {
-          console.error("Post not found");
-          // Revert optimistic update on error
-          setIsLiked(!newLikeStatus);
-          post.likes = Math.max(0, post.likes - likeDelta);
-          toast.error(isRtl ? "المنشور غير موجود" : "Post not found");
-          return;
-        }
-        
-        const { error } = await supabase
-          .from('post_likes')
-          .delete()
-          .eq('post_id', post.id)
-          .eq('user_id', user.id);
-
-        if (error) {
-          // Revert optimistic update on error
-          setIsLiked(!newLikeStatus);
-          post.likes = Math.max(0, post.likes - likeDelta);
-          throw error;
-        }
-        
-        if (onLike) onLike(post.id);
-      } else {
-        // Check if the post exists first
-        const { count, error: checkError } = await supabase
-          .from("posts")
-          .select("*", { count: "exact", head: true })
-          .eq("id", post.id);
-          
-        if (checkError) {
-          console.error("Error checking post existence:", checkError);
-          // Revert optimistic update on error
-          setIsLiked(!newLikeStatus);
-          post.likes = Math.max(0, post.likes - likeDelta);
-          throw checkError;
-        }
-
-        if (count === 0) {
-          console.error("Post not found");
-          // Revert optimistic update on error
-          setIsLiked(!newLikeStatus);
-          post.likes = Math.max(0, post.likes - likeDelta);
-          toast.error(isRtl ? "المنشور غير موجود" : "Post not found");
-          return;
-        }
-        
-        const { error } = await supabase
-          .from('post_likes')
-          .insert({
-            post_id: post.id,
-            user_id: user.id
-          });
-
-        if (error) {
-          // Revert optimistic update on error
-          setIsLiked(!newLikeStatus);
-          post.likes = Math.max(0, post.likes - likeDelta);
-          throw error;
-        }
-        
-        if (onLike) onLike(post.id);
-      }
-    } catch (error) {
-      console.error('Error toggling like:', error);
-      toast.error(isRtl ? "حدث خطأ أثناء تحديث الإعجاب" : "Error updating like");
-    }
-  };
 
   const handleFollow = async () => {
     if (!isAuthenticated || !user || user.id === post.user.id) return;
@@ -312,10 +190,44 @@ export function PostCard({ post, onLike, onComment, onShare }: PostCardProps) {
                   variant="ghost"
                   size="sm"
                   className="h-6 px-2"
-                  onClick={(e) => {
+                  onClick={async (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    handleFollow();
+                    
+                    if (!isAuthenticated || !user || user.id === post.user.id) return;
+                    
+                    setIsLoading(true);
+                    try {
+                      if (isFollowing) {
+                        const { error } = await supabase
+                          .from('followers')
+                          .delete()
+                          .match({
+                            follower_id: user.id,
+                            following_id: post.user.id
+                          });
+                        
+                        if (error) throw error;
+                        setIsFollowing(false);
+                        toast.success(isRtl ? "تم إلغاء المتابعة بنجاح" : "Successfully unfollowed");
+                      } else {
+                        const { error } = await supabase
+                          .from('followers')
+                          .insert({
+                            follower_id: user.id,
+                            following_id: post.user.id
+                          });
+                        
+                        if (error) throw error;
+                        setIsFollowing(true);
+                        toast.success(isRtl ? "تم المتابعة بنجاح" : "Successfully followed");
+                      }
+                    } catch (error) {
+                      console.error('Error toggling follow:', error);
+                      toast.error(isRtl ? "حدث خطأ أثناء تحديث المتابعة" : "Error updating follow status");
+                    } finally {
+                      setIsLoading(false);
+                    }
                   }}
                   disabled={isLoading}
                 >
@@ -368,32 +280,94 @@ export function PostCard({ post, onLike, onComment, onShare }: PostCardProps) {
         </div>
       </div>
 
-      <p className="text-sm whitespace-pre-wrap text-start p-3">{post.content}</p>
+      <Link to={`/post/${post.id}`} className="block">
+        <p className="text-sm whitespace-pre-wrap text-start p-3">{post.content}</p>
+      </Link>
 
-      {post.images?.length > 0 && (
-        <div className={`grid ${post.images?.length === 1 ? 'grid-cols-1' : 'grid-cols-2 md:grid-cols-2'} gap-2 mb-4`}>
-          {post.images.map((image, index) => (
-            <img 
-              key={index} 
-              src={image} 
-              alt="" 
-              className={`w-full ${post.images?.length === 1 ? 'h-96' : 'h-64'} object-cover rounded-md`}
-            />
-          ))}
-        </div>
+      {(post.images?.length > 0 && !post.media_urls) && (
+        <Link to={`/post/${post.id}`} className="block">
+          <div className={`grid ${post.images?.length === 1 ? 'grid-cols-1' : 'grid-cols-2 md:grid-cols-2'} gap-2 mb-4`}>
+            {post.images.map((image, index) => {
+              const isVideo = ['.mp4', '.webm', '.ogg'].some(ext => image.toLowerCase().endsWith(ext));
+              return isVideo ? (
+                <video
+                  key={index}
+                  src={image}
+                  controls
+                  autoPlay
+                  loop
+                  className={`w-full ${post.images?.length === 1 ? 'h-96' : 'h-64'} object-cover rounded-md`}
+                  onContextMenu={(e) => e.preventDefault()}
+                  controlsList="nodownload"
+                />
+              ) : (
+                <img
+                  key={index}
+                  src={image}
+                  alt=""
+                  className={`w-full ${post.images?.length === 1 ? 'h-96' : 'h-64'} object-cover rounded-md`}
+                  onContextMenu={(e) => e.preventDefault()}
+                  draggable={false}
+                />
+              );
+            })}
+          </div>
+        </Link>
       )}
 
       <div className="flex items-center gap-4 pt-2">
         <Button
           variant="ghost"
           size="sm"
-          className={`gap-2 ${isLiked ? 'text-primary' : ''}`}
-          onClick={(e) => {
-            e.preventDefault();
-            handleLike();
+          className="gap-2"
+          onClick={async () => {
+            if (!isAuthenticated) {
+              toast.error(isRtl ? "يرجى تسجيل الدخول للإعجاب بالمنشورات" : "Please login to like posts");
+              return;
+            }
+            
+            // Optimistic update first
+            const wasLiked = post.isLiked;
+            post.isLiked = !wasLiked;
+            post.likes = wasLiked ? Math.max(0, post.likes - 1) : post.likes + 1;
+            
+            try {
+              if (wasLiked) {
+                // Unlike the post
+                const { error } = await supabase
+                  .from('post_likes')
+                  .delete()
+                  .eq('post_id', post.id)
+                  .eq('user_id', user?.id);
+                  
+                if (error) throw error;
+                toast.success(isRtl ? 'تم إزالة الإعجاب بنجاح' : 'Successfully unliked');
+              } else {
+                // Like the post
+                const { error } = await supabase
+                  .from('post_likes')
+                  .upsert(
+                    { 
+                      post_id: post.id, 
+                      user_id: user?.id,
+                      created_at: new Date().toISOString()
+                    },
+                    { onConflict: 'post_id,user_id' }
+                  );
+                  
+                if (error) throw error;
+                toast.success(isRtl ? 'تم تسجيل الإعجاب بنجاح' : 'Successfully liked');
+              }
+            } catch (error) {
+              // Revert optimistic update on error
+              post.isLiked = wasLiked;
+              post.likes = wasLiked ? post.likes + 1 : Math.max(0, post.likes - 1);
+              toast.error(isRtl ? 'حدث خطأ أثناء تحديث الإعجاب' : 'Error updating like status');
+              console.error('Like error:', error);
+            }
           }}
         >
-          <Heart className={`h-4 w-4 ${isLiked ? 'fill-primary' : ''}`} />
+          <Heart className="h-4 w-4" fill={post.isLiked ? "currentColor" : "none"} />
           <span>{post.likes}</span>
         </Button>
 

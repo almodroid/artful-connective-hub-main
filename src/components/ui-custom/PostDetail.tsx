@@ -11,6 +11,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { FormattedText } from "./FormattedText";
 import { useNotificationsApi } from "@/hooks/use-notifications-api";
+import { supabase } from "@/integrations/supabase/client";
+import { motion } from 'framer-motion';
 
 export interface Comment {
   id: string;
@@ -37,16 +39,20 @@ export interface PostDetailProps {
     };
     content: string;
     images?: string[];
+    videos?: string[];
+    gifs?: string[];
+    media_urls?: string[];
+    media_type?: 'images' | 'video' | 'gif' | null;
     createdAt: Date;
     created_at?: string;
     likes: number;
+    isLiked: boolean;
     comments: number;
-    isLiked?: boolean;
   };
   comments: Comment[];
   onCommentSubmit: (commentText: string) => Promise<void>;
-  onCommentLike: (commentId: string) => void;
-  onPostLike: () => void;
+  onCommentLike: (commentId: string) => Promise<void>;
+  onPostLike: () => Promise<void>;
   onShare: () => void;
   isLoading?: boolean;
 }
@@ -55,8 +61,6 @@ export function PostDetail({
   post,
   comments,
   onCommentSubmit,
-  onCommentLike,
-  onPostLike,
   onShare,
   isLoading = false
 }: PostDetailProps) {
@@ -88,23 +92,7 @@ export function PostDetail({
     }
   };
   
-  const handleCommentLike = (commentId: string) => {
-    if (!isAuthenticated) {
-      toast.error("يرجى تسجيل الدخول للإعجاب بالتعليقات");
-      return;
-    }
-    
-    onCommentLike(commentId);
-  };
-  
-  const handlePostLike = () => {
-    if (!isAuthenticated) {
-      toast.error("يرجى تسجيل الدخول للإعجاب بالمنشورات");
-      return;
-    }
-    
-    onPostLike();
-  };
+
   
   const handleShare = () => {
     onShare();
@@ -200,30 +188,111 @@ export function PostDetail({
           <FormattedText text={post.content} />
         </div>
         
-        {post.images && post.images.length > 0 && (
-          <div className={`grid gap-4 mb-6 ${post.images.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
-            {post.images.map((image, index) => (
-              <div key={index} className="relative aspect-square overflow-hidden rounded-lg">
-                <img
-                  src={image}
-                  alt={`Post image ${index + 1}`}
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-              </div>
-            ))}
-          </div>
-        )}
-
+        {(post.images?.length > 0 && !post.media_urls) && (
+        <div className={`grid ${post.images?.length === 1 ? 'grid-cols-1' : 'grid-cols-2 md:grid-cols-2'} gap-2 mb-4`}>
+          {post.images.map((image, index) => {
+            const isVideo = ['.mp4', '.webm', '.ogg'].some(ext => image.toLowerCase().endsWith(ext));
+            return isVideo ? (
+              <video
+                key={index}
+                src={image}
+                controls
+                autoPlay
+                loop
+                className={`w-full ${post.images?.length === 1 ? 'h-96' : 'h-64'} object-cover rounded-md`}
+                onContextMenu={(e) => e.preventDefault()}
+                controlsList="nodownload"
+              />
+            ) : (
+              <img
+                key={index}
+                src={image}
+                alt=""
+                className={`w-full ${post.images?.length === 1 ? 'h-96' : 'h-64'} object-cover rounded-md`}
+                onContextMenu={(e) => e.preventDefault()}
+                draggable={false}
+              />
+            );
+          })}
+        </div>
+      )}
+        
         <div className="flex items-center justify-between mb-6">
           <Button
-            variant="ghost"
-            size="sm"
-            className={`gap-2 ${post.isLiked ? 'text-primary' : ''}`}
-            onClick={handlePostLike}
-          >
-            <Heart className={`h-5 w-5 ${post.isLiked ? 'fill-primary' : ''}`} />
-            <span>{post.likes} إعجاب</span>
-          </Button>
+              variant="ghost"
+              size="sm"
+              className="gap-2"
+              onClick={async () => {
+                 if (!isAuthenticated) {
+                   toast.error("يرجى تسجيل الدخول للإعجاب بالمنشورات");
+                   return;
+                 }
+                 
+                 // Optimistic update first
+                  const wasLiked = post.isLiked;
+                  if (wasLiked) {
+                    post.isLiked = false;
+                    post.likes = Math.max(0, (post.likes || 0) - 1);
+                  } else {
+                    post.isLiked = true;
+                    post.likes = (post.likes || 0) + 1;
+                  }
+                  
+                  try {
+                    if (wasLiked) {
+                      // Unlike the post
+                      const { error } = await supabase
+                        .from('post_likes')
+                        .delete()
+                        .eq('post_id', post.id)
+                        .eq('user_id', user?.id);
+                        
+                      if (error) throw error;
+                      toast.success('تم إزالة الإعجاب بنجاح');
+                    } else {
+                      // Like the post
+                      const { error } = await supabase
+                        .from('post_likes')
+                        .upsert(
+                          { 
+                            post_id: post.id, 
+                            user_id: user?.id,
+                            created_at: new Date().toISOString()
+                          },
+                          { onConflict: 'post_id,user_id' }
+                        );
+                        
+                      if (error) throw error;
+                      toast.success('تم تسجيل الإعجاب بنجاح');
+                      
+                      // Refresh like count after successful update
+                      const { data: likeData, error: likeError } = await supabase
+                        .from('post_likes')
+                        .select('*')
+                        .eq('post_id', post.id);
+                        
+                      if (!likeError) {
+                        post.likes = likeData.length;
+                      }
+                    }
+                  } catch (error) {
+                    // Revert optimistic update on error
+                    post.isLiked = wasLiked;
+                    post.likes = wasLiked ? (post.likes || 0) + 1 : Math.max(0, (post.likes || 0) - 1);
+                    toast.error(wasLiked ? 'حدث خطأ أثناء إزالة الإعجاب' : 'حدث خطأ أثناء تسجيل الإعجاب');
+                    console.error('Like error:', error);
+                  }
+                 }
+              }
+            >
+                <motion.div 
+                  whileTap={{ scale: 1.2 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                >
+                <Heart className="h-5 w-5" fill={post.isLiked ? "#3b82f6" : "none"} />
+              </motion.div>
+              <span>{post.likes} إعجاب</span>
+            </Button>
           
           <Button
             variant="ghost"
@@ -329,10 +398,52 @@ export function PostDetail({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className={`h-8 px-2 gap-1 text-sm ${comment.isLiked ? 'text-primary' : ''}`}
-                    onClick={() => handleCommentLike(comment.id)}
+                    className="h-8 px-2 gap-1 text-sm"
+                    onClick={async () => {
+                      if (!isAuthenticated) {
+                        toast.error("يرجى تسجيل الدخول للإعجاب بالتعليقات");
+                        return;
+                      }
+                      
+                      if (comment.isLiked) {
+                        // Unlike the comment
+                        const { error } = await supabase
+                          .from('comment_likes')
+                          .delete()
+                          .eq('comment_id', comment.id)
+                          .eq('user_id', user?.id);
+                          
+                        if (error) {
+                          toast.error('حدث خطأ أثناء إزالة الإعجاب');
+                        } else {
+                          toast.success('تم إزالة الإعجاب بنجاح');
+                          comment.isLiked = false;
+                          comment.likes = Math.max(0, (comment.likes || 0) - 1);
+                        }
+                      } else {
+                        // Like the comment
+                        const { error } = await supabase
+                          .from('comment_likes')
+                          .upsert(
+                            { 
+                              comment_id: comment.id, 
+                              user_id: user?.id,
+                              created_at: new Date().toISOString()
+                            },
+                            { onConflict: 'comment_id,user_id' }
+                          );
+                          
+                        if (error) {
+                          toast.error('حدث خطأ أثناء تسجيل الإعجاب');
+                        } else {
+                          toast.success('تم تسجيل الإعجاب بنجاح');
+                          comment.isLiked = true;
+                          comment.likes = (comment.likes || 0) + 1;
+                        }
+                      }
+                    }}
                   >
-                    <Heart className={`h-4 w-4 ${comment.isLiked ? 'fill-primary' : ''}`} />
+                    <Heart className="h-4 w-4" fill={comment.isLiked ? "currentColor" : "none"} />
                     <span>{comment.likes > 0 ? comment.likes : 'إعجاب'}</span>
                   </Button>
                   

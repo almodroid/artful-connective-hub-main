@@ -197,7 +197,7 @@ const Messages = () => {
     
     setLoadingGiphy(true);
     try {
-      const response = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=GlVGYHkr3WSBnllca54iNt0yFbjz7L65&q=${encodeURIComponent(query)}&limit=20`);
+      const response = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=${import.meta.env.VITE_GIPHY_KEY}&q=${encodeURIComponent(query)}&limit=20`);
       const data = await response.json();
       setGiphyResults(data.data || []);
     } catch (error) {

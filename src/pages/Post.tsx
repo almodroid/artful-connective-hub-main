@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { PostDetail, Comment } from "@/components/ui-custom/PostDetail";
 import { supabase } from "@/integrations/supabase/client";
-import { Database } from "@/types/supabase";
+import { Database } from "@/integrations/supabase/types";
 import { createPostNotification } from "@/services/notification.service";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
@@ -60,6 +60,20 @@ const Post = () => {
         }
 
         if (data) {
+          // Get likes count from post_likes table
+          const { count: likesCount } = await supabase
+            .from('post_likes')
+            .select('*', { count: 'exact' })
+            .eq('post_id', postId);
+            
+          // Check if current user has liked this post
+          const { data: userLike } = await supabase
+            .from('post_likes')
+            .select()
+            .eq('post_id', postId)
+            .eq('user_id', user?.id || '')
+            .maybeSingle();
+
           // Transform the data to match our Post interface
           const profile = data.profiles || {};
           const foundPost = {
@@ -68,7 +82,8 @@ const Post = () => {
             images: data.media_urls || [], // Store all media URLs
             createdAt: new Date(data.created_at),
             created_at: data.created_at,
-            likes: data.likes_count || 0,
+            likes: likesCount || 0,
+            isLiked: !!userLike,
             comments: data.comments_count || 0,
             user: {
               id: data.user_id,

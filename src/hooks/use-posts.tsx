@@ -12,6 +12,7 @@ export interface Post {
   title?: string;
   content: string;
   media_urls: string[];
+  media_type?: 'images' | 'video' | 'gif' | null;
   user_id: string;
   created_at: string;
   updated_at: string;
@@ -30,6 +31,7 @@ export interface PostWithUser {
   title?: string;
   content: string;
   media_urls?: string[];
+  media_type?: 'images' | 'video' | 'gif' | null;
   createdAt: Date;
   user: {
     id: string;
@@ -45,6 +47,7 @@ export interface PostWithUser {
 interface CreatePostInput {
   content: string;
   images?: File[];
+  videos?: File[];
   gifUrl?: string | null;
   link?: string;
   title?: string;
@@ -97,6 +100,7 @@ export function usePosts() {
   const createPost = async ({
     content, 
     images, 
+    videos,
     gifUrl,
     link,
     title = "",
@@ -108,9 +112,9 @@ export function usePosts() {
     }
 
     try {
-      // Handle media uploads (images or GIF)
+      // Handle media uploads (images, videos or GIF)
       let mediaUrls: string[] = [];
-      let mediaType: 'images' | 'gif' | null = null;
+      let mediaType: 'images' | 'video' | 'gif' | null = null;
 
       if (images && images.length > 0) {
         setUploading(true);
@@ -129,9 +133,51 @@ export function usePosts() {
           const fileExt = image.name.split(".").pop();
           const filePath = `${user.id}/${uuidv4()}.${fileExt}`;
 
+          // Convert image file to ArrayBuffer for direct upload
+          const arrayBuffer = await image.arrayBuffer();
+
           const { error: uploadError } = await supabase.storage
             .from("posts")
-            .upload(filePath, image);
+            .upload(filePath, arrayBuffer, {
+              contentType: image.type,  // Set the correct content type
+              cacheControl: "3600",
+              upsert: false
+            });
+
+          if (uploadError) {
+            throw uploadError;
+          }
+
+          const { data } = supabase.storage.from("posts").getPublicUrl(filePath);
+          mediaUrls.push(data.publicUrl);
+        }
+      } else if (videos && videos.length > 0) {
+        setUploading(true);
+        mediaType = 'video';
+
+        // Check if the bucket exists
+        const { data: bucketExists } = await supabase.storage.getBucket("posts");
+        if (!bucketExists) {
+          await supabase.storage.createBucket("posts", {
+            public: true,
+          });
+        }
+
+        // Upload all videos
+        for (const video of videos) {
+          const fileExt = video.name.split(".").pop();
+          const filePath = `${user.id}/videos/${uuidv4()}.${fileExt}`;
+
+          // Convert video file to ArrayBuffer for direct upload
+          const arrayBuffer = await video.arrayBuffer();
+
+          const { error: uploadError } = await supabase.storage
+            .from("posts")
+            .upload(filePath, arrayBuffer, {
+              contentType: video.type,  // Set the correct content type
+              cacheControl: "3600",
+              upsert: false
+            });
 
           if (uploadError) {
             throw uploadError;

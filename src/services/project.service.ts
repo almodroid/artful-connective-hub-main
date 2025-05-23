@@ -95,7 +95,7 @@ export const fetchProjectById = async (id: string): Promise<ProjectDetails | nul
       title: data.title,
       description: data.description || "",
       tags: data.tags || [],
-      image_url: data.image_url || "",
+      image_urls: data.image_urls || [],
       cover_image_url: data.cover_image_url || "",
       content_blocks: (Array.isArray(data.content_blocks) ? data.content_blocks : []) as any[],
       external_link: data.external_link || null,
@@ -118,94 +118,76 @@ export const fetchProjectById = async (id: string): Promise<ProjectDetails | nul
 // Create a new project
 export const createProject = async (
   userId: string,
-  { title, description, tags, external_link, cover_image }: CreateProjectInput
+  { title, description, tags, external_link, cover_image, gallery_images }: CreateProjectInput
 ): Promise<ProjectWithUser> => {
   try {
-    // Handle image upload if provided
     let coverImageUrl = null;
-    if (cover_image) {
-      console.log("Starting image upload process");
-      
-      // Better file extension handling
-      const fileNameParts = cover_image.name.split('.');
-      const fileExt = fileNameParts.length > 1 ? fileNameParts.pop()?.toLowerCase() : 'jpg';
-      
-      // Create a more unique filename with timestamp
-      const timestamp = new Date().getTime();
-      const fileName = `${userId}_${timestamp}_${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `${userId}/${fileName}`; // Simplified path without 'projects/' prefix
+    let galleryUrls: string[] = [];
 
-      console.log(`Preparing to upload file: ${filePath} to project_images bucket`);
+    // Helper function to upload image
+    const uploadImage = async (file: File, folder: string): Promise<string> => {
+      // Convert file to ArrayBuffer
+      const arrayBuffer = await file.arrayBuffer();
       
-      try {
-        // Try direct upload first with simplified path
-        const { error: uploadError, data: uploadData } = await supabase.storage
+      // Create a unique filename
+      const timestamp = new Date().getTime();
+      const randomString = Math.random().toString(36).substring(2);
+      const fileName = `${userId}_${timestamp}_${randomString}.${file.name.split('.').pop()}`;
+      const filePath = `${userId}/${folder}/${fileName}`;
+
+      // Upload the file
+      const { error: uploadError } = await supabase.storage
         .from('project_images')
-          .upload(filePath, cover_image, {
-            cacheControl: '3600',
-            upsert: true // Set to true to overwrite if file exists
-          });
+        .upload(filePath, arrayBuffer, {
+          contentType: file.type,
+          cacheControl: '3600',
+          upsert: true
+        });
 
       if (uploadError) {
-          console.error("Error uploading with simplified path:", uploadError);
-          console.log("Attempting upload with different path structure...");
-          
-          // Try again with a different path structure
-          const altFilePath = fileName; // Just the filename without any folder structure
-          const { error: altUploadError, data: altUploadData } = await supabase.storage
-            .from('project_images')
-            .upload(altFilePath, cover_image, {
-              cacheControl: '3600',
-              upsert: true
-            });
-            
-          if (altUploadError) {
-            console.error("Error with alternate upload path:", altUploadError);
-            throw new Error(`Upload error: ${altUploadError.message}`);
-          }
-          
-          // Get URL for the alternate path
-          const { data: publicUrlData } = supabase.storage
-            .from('project_images')
-            .getPublicUrl(altFilePath);
-            
-          coverImageUrl = publicUrlData?.publicUrl;
-          console.log("Successfully uploaded with alternate path. URL:", coverImageUrl);
-        } else {
-          // Get public URL for original upload
-      const { data: publicUrlData } = supabase.storage
+        console.error("Upload error:", uploadError);
+        throw new Error(`Upload failed: ${uploadError.message}`);
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
         .from('project_images')
         .getPublicUrl(filePath);
 
-          coverImageUrl = publicUrlData?.publicUrl;
-          console.log("Image upload successful, URL:", coverImageUrl);
-        }
-      } catch (uploadError) {
-        console.error("Image upload failed:", uploadError);
-        throw new Error(`Image upload failed: ${uploadError.message}`);
+      return publicUrl;
+    };
+
+    // Handle cover image upload
+    if (cover_image) {
+      try {
+        coverImageUrl = await uploadImage(cover_image, 'cover');
+      } catch (error) {
+        console.error("Cover image upload failed:", error);
+        throw new Error(`Cover image upload failed: ${error.message}`);
       }
     }
 
-    // Sanitize tags to ensure it's an array
-    const sanitizedTags = Array.isArray(tags) ? tags : [];
+    // Handle gallery images upload
+    if (gallery_images && gallery_images.length > 0) {
+      try {
+        const uploadPromises = gallery_images.map(file => uploadImage(file, 'gallery'));
+        galleryUrls = await Promise.all(uploadPromises);
+      } catch (error) {
+        console.error("Gallery images upload failed:", error);
+        throw new Error(`Gallery images upload failed: ${error.message}`);
+      }
+    }
 
-    console.log("Creating project with data:", {
-      title,
-      descriptionLength: description?.length,
-      tagsCount: sanitizedTags.length,
-      hasImage: !!coverImageUrl
-    });
-
-    // Create project
+    // Create project with gallery images
     const { data, error } = await supabase
       .from("projects")
       .insert({
         title,
         description: description || "",
-        tags: sanitizedTags,
+        tags: Array.isArray(tags) ? tags : [],
         external_link: external_link || null,
         cover_image_url: coverImageUrl,
-        image_url: coverImageUrl,
+        image_urls: galleryUrls,
         user_id: userId
       })
       .select(`
@@ -245,7 +227,7 @@ export const createProject = async (
       title: data.title,
       description: data.description || "",
       tags: data.tags || [],
-      image_url: data.image_url || "",
+      image_urls: data.image_urls || [],
       cover_image_url: data.cover_image_url || "",
       content_blocks: (Array.isArray(data.content_blocks) ? data.content_blocks : []) as any[],
       external_link: data.external_link || null,
@@ -269,10 +251,9 @@ export const createProject = async (
 export const updateProject = async (
   projectId: string,
   userId: string,
-  { title, description, tags, external_link, cover_image }: Partial<CreateProjectInput>
+  { title, description, tags, external_link, cover_image, gallery_images }: Partial<CreateProjectInput>
 ): Promise<ProjectDetails | null> => {
   try {
-    // Create update object with existing fields
     const updateData: any = {
       title,
       description,
@@ -281,64 +262,52 @@ export const updateProject = async (
       updated_at: new Date().toISOString()
     };
 
-    // Handle image upload if provided
-    if (cover_image) {
-      // Better file extension handling
-      const fileNameParts = cover_image.name.split('.');
-      const fileExt = fileNameParts.length > 1 ? fileNameParts.pop()?.toLowerCase() : 'jpg';
-      
-      // Create a more unique filename with timestamp
+    // Helper function to upload image
+    const uploadImage = async (file: File, folder: string): Promise<string> => {
+      const arrayBuffer = await file.arrayBuffer();
       const timestamp = new Date().getTime();
-      const fileName = `${userId}_${timestamp}_${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `${userId}/${fileName}`;
+      const randomString = Math.random().toString(36).substring(2);
+      const fileName = `${userId}_${timestamp}_${randomString}.${file.name.split('.').pop()}`;
+      const filePath = `${userId}/${folder}/${fileName}`;
 
-      console.log(`Preparing to upload file for update: ${filePath}`);
-      
-      try {
-      // Upload file to storage
       const { error: uploadError } = await supabase.storage
         .from('project_images')
-          .upload(filePath, cover_image, {
-            cacheControl: '3600',
-            upsert: true
-          });
+        .upload(filePath, arrayBuffer, {
+          contentType: file.type,
+          cacheControl: '3600',
+          upsert: true
+        });
 
       if (uploadError) {
-          console.error("Error uploading image for update:", uploadError);
-          
-          // Try alternate path
-          const altFilePath = fileName;
-          const { error: altUploadError } = await supabase.storage
-            .from('project_images')
-            .upload(altFilePath, cover_image, {
-              cacheControl: '3600',
-              upsert: true
-            });
-            
-          if (altUploadError) {
-            console.error("Error with alternate update path:", altUploadError);
-            throw new Error(`Update upload error: ${altUploadError.message}`);
-          }
-          
-          // Get URL for the alternate path
-          const { data: publicUrlData } = supabase.storage
-            .from('project_images')
-            .getPublicUrl(altFilePath);
-            
-          updateData.cover_image_url = publicUrlData?.publicUrl;
-          updateData.image_url = publicUrlData?.publicUrl; // Also update image_url
-        } else {
-      // Get public URL for the uploaded file
-      const { data: publicUrlData } = supabase.storage
+        console.error("Upload error:", uploadError);
+        throw new Error(`Upload failed: ${uploadError.message}`);
+      }
+
+      const { data: { publicUrl } } = supabase.storage
         .from('project_images')
         .getPublicUrl(filePath);
 
-          updateData.cover_image_url = publicUrlData?.publicUrl;
-          updateData.image_url = publicUrlData?.publicUrl; // Also update image_url
-        }
+      return publicUrl;
+    };
+
+    // Handle cover image upload
+    if (cover_image) {
+      try {
+        updateData.cover_image_url = await uploadImage(cover_image, 'cover');
       } catch (error) {
-        console.error("Error uploading update image:", error);
-        throw error;
+        console.error("Cover image upload failed:", error);
+        throw new Error(`Cover image upload failed: ${error.message}`);
+      }
+    }
+
+    // Handle gallery images upload
+    if (gallery_images && gallery_images.length > 0) {
+      try {
+        const uploadPromises = gallery_images.map(file => uploadImage(file, 'gallery'));
+        updateData.image_urls = await Promise.all(uploadPromises);
+      } catch (error) {
+        console.error("Gallery images upload failed:", error);
+        throw new Error(`Gallery images upload failed: ${error.message}`);
       }
     }
 
@@ -347,7 +316,7 @@ export const updateProject = async (
       .from("projects")
       .update(updateData)
       .eq("id", projectId)
-      .eq("user_id", userId) // Ensure the user owns the project
+      .eq("user_id", userId)
       .select(`
         *,
         profiles:user_id (
@@ -372,7 +341,7 @@ export const updateProject = async (
       title: data.title,
       description: data.description || "",
       tags: data.tags || [],
-      image_url: data.image_url || "",
+      image_urls: data.image_urls || [],
       cover_image_url: data.cover_image_url || "",
       content_blocks: (Array.isArray(data.content_blocks) ? data.content_blocks : []) as any[],
       external_link: data.external_link || null,

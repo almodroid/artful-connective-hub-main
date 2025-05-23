@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,8 +31,21 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    // Try to get user from localStorage first
+    const savedUser = localStorage.getItem('artspace_user');
+    if (savedUser) {
+      try {
+        return JSON.parse(savedUser);
+      } catch (e) {
+        console.error('Failed to parse saved user', e);
+        localStorage.removeItem('artspace_user');
+      }
+    }
+    return null;
+  });
   const [loading, setLoading] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const updateAvatar = async (file: File) => {
     if (!user) return;
@@ -119,33 +131,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Initialize auth state
   useEffect(() => {
     const initAuth = async () => {
-      setLoading(true);
-      
-      // Check for existing session
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-        try {
+      try {
+        // Check for existing session
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
           const mappedUser = await mapSupabaseUser(session.user);
           setUser(mappedUser);
-        } catch (error) {
-          console.error('Error mapping user:', error);
+          localStorage.setItem('artspace_user', JSON.stringify(mappedUser));
+        } else {
+          // Clear user if no session
           setUser(null);
+          localStorage.removeItem('artspace_user');
         }
-      } else {
-        // Check for saved local user (for backward compatibility)
-        const savedUser = localStorage.getItem('artspace_user');
-        if (savedUser) {
-          try {
-            setUser(JSON.parse(savedUser));
-          } catch (e) {
-            console.error('Failed to parse saved user', e);
-            localStorage.removeItem('artspace_user');
-          }
-        }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+        // On error, keep the current user state
+      } finally {
+        setLoading(false);
+        setIsInitialized(true);
       }
-      
-      setLoading(false);
     };
     
     initAuth();
@@ -153,12 +158,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log("Auth state changed:", event, session);
-        
         if (event === 'SIGNED_IN' && session) {
           try {
             const mappedUser = await mapSupabaseUser(session.user);
             setUser(mappedUser);
+            localStorage.setItem('artspace_user', JSON.stringify(mappedUser));
           } catch (error) {
             console.error('Error mapping user on sign in:', error);
           }
@@ -169,6 +173,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           try {
             const mappedUser = await mapSupabaseUser(session.user);
             setUser(mappedUser);
+            localStorage.setItem('artspace_user', JSON.stringify(mappedUser));
           } catch (error) {
             console.error('Error mapping user on update:', error);
           }
@@ -316,12 +321,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   return (
     <AuthContext.Provider value={{ 
       user, 
-      loading, 
+      loading: loading || !isInitialized, 
       login, 
       register, 
       logout,
       updateAvatar, 
-      isAuthenticated: !!user 
+      isAuthenticated: !!user && isInitialized 
     }}>
       {children}
     </AuthContext.Provider>

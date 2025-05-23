@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS projects (
   title TEXT NOT NULL,
   description TEXT,
   tags TEXT[] DEFAULT '{}',
-  image_url TEXT,
+  image_urls TEXT[] DEFAULT '{}',
   cover_image_url TEXT,
   content_blocks JSONB,
   external_link TEXT,
@@ -160,6 +160,7 @@ CREATE INDEX IF NOT EXISTS idx_post_comments_post_id ON post_comments(post_id);
 CREATE INDEX IF NOT EXISTS idx_post_likes_post_id ON post_likes(post_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_projects_image_urls ON projects USING GIN (image_urls);
 
 -- Create function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at()

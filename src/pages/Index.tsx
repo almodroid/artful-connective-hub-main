@@ -17,10 +17,13 @@ import { toast } from "sonner";
 const Index = () => {
   const { isAuthenticated, user } = useAuth();
   const { t, isRtl } = useTranslation();
-  const { posts, isLoading } = usePosts();
+  const { posts, isLoading, getTopTags, getPostsByTag } = usePosts();
   const [postsWithComments, setPostsWithComments] = useState<any[]>([]);
   const [loadingComments, setLoadingComments] = useState(true);
   const [activeTab, setActiveTab] = useState("for-you");
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [topTags, setTopTags] = useState<string[]>([]);
+  const [filteredPosts, setFilteredPosts] = useState<Post[]>([]);
   
   const likePost = async (postId: string) => {
     if (!isAuthenticated || !user) return;
@@ -111,7 +114,6 @@ const Index = () => {
           });
         }
         
-        // Convert Post to PostWithUser with accurate comment counts
         // Fetch like counts for all posts
         const { data: likeCounts } = await supabase
           .from('post_likes')
@@ -123,24 +125,38 @@ const Index = () => {
           likeCountMap.set(item.post_id, (likeCountMap.get(item.post_id) || 0) + 1);
         });
         
-        const updatedPosts = posts.map(post => ({
-          id: post.id,
-          content: post.content,
-          title: post.title || "",
-          images: post.media_urls || [], // Use all media URLs
-          createdAt: new Date(post.created_at),
-          isLiked: likeCountMap.has(post.id),
-          likes: likeCountMap.get(post.id) || 0,
-          user: {
-            id: post.user_id,
-            username: post.user?.username || "unknown",
-            displayName: post.user?.display_name || "Unknown User",
-            avatar: post.user?.avatar_url || "",
-          },
-          comments: commentCounts[post.id] || 0
-        }));
+        const updatedPosts = posts.map(async post => {
+          // Fetch tags for this post
+          const { data: postTags } = await supabase
+            .from('posts_tags')
+            .select(`
+              tags (
+                name
+              )
+            `)
+            .eq('post_id', post.id);
+
+          return {
+            id: post.id,
+            content: post.content,
+            title: post.title || "",
+            images: post.media_urls || [],
+            createdAt: new Date(post.created_at),
+            tags: postTags?.map(pt => pt.tags.name) || [],
+            isLiked: likeCountMap.has(post.id),
+            likes: likeCountMap.get(post.id) || 0,
+            user: {
+              id: post.user_id,
+              username: post.user?.username || "unknown",
+              displayName: post.user?.display_name || "Unknown User",
+              avatar: post.user?.avatar_url || "",
+            },
+            comments: commentCounts[post.id] || 0
+          };
+        });
         
-        setPostsWithComments(updatedPosts);
+        const transformedPosts = await Promise.all(updatedPosts);
+        setPostsWithComments(transformedPosts);
       } catch (error) {
         console.error("Error in fetchCommentCounts:", error);
       } finally {
@@ -168,6 +184,22 @@ const Index = () => {
     },
     comments: post.comments_count || 0
   }));
+
+  useEffect(() => {
+    // Load top tags
+    getTopTags().then(tags => {
+      setTopTags(tags.map(t => t.name));
+    });
+  }, []);
+
+  // Filter posts by tag
+  useEffect(() => {
+    if (selectedTag) {
+      getPostsByTag(selectedTag).then(filteredPosts => {
+        setFilteredPosts(filteredPosts);
+      });
+    }
+  }, [selectedTag]);
 
   return (
     <Layout>

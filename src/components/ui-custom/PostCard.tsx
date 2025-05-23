@@ -23,6 +23,7 @@ export interface Post {
   likes: number;
   isLiked: boolean;
   comments: number;
+  tags?: string[];
   user: {
     id: string;
     username: string;
@@ -252,13 +253,6 @@ export function PostCard({ post, onLike, onComment, onShare }: PostCardProps) {
               >
                 @{post.user.username}
               </Link>
-              <span className="mx-1">•</span>
-              <span>
-                {formatDistanceToNow(post.createdAt, { 
-                  addSuffix: true,
-                  locale: isRtl ? ar : undefined
-                })}
-              </span>
               {post.user.followers_count !== undefined && (
                 <>
                   <span className="mx-1">•</span>
@@ -275,6 +269,14 @@ export function PostCard({ post, onLike, onComment, onShare }: PostCardProps) {
                   />
                 </>
               )}
+              <span className="mx-1">•</span>
+              <span>
+                {formatDistanceToNow(post.createdAt, { 
+                  addSuffix: true,
+                  locale: isRtl ? ar : undefined
+                })}
+              </span>
+              
             </div>
           </div>
         </div>
@@ -314,6 +316,8 @@ export function PostCard({ post, onLike, onComment, onShare }: PostCardProps) {
           </div>
         </Link>
       )}
+
+      
 
       <div className="flex items-center gap-4 pt-2">
         <Button
@@ -389,6 +393,19 @@ export function PostCard({ post, onLike, onComment, onShare }: PostCardProps) {
         >
           <Share2 className="h-4 w-4" />
         </Button>
+        {post.tags && post.tags.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {post.tags.map((tag) => (
+            <Link 
+              key={tag} 
+              to={`/explore/tag/${tag}`}
+              className="text-sm text-primary hover:underline"
+            >
+              #{tag}
+            </Link>
+          ))}
+        </div>
+      )}
       </div>
     </div>
   );

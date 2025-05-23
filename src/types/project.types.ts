@@ -1,10 +1,9 @@
-
 export interface Project {
   id: string;
   title: string;
   description: string;
   tags: string[];
-  image_url?: string;
+  image_urls: string[];
   cover_image_url?: string;
   content_blocks?: any[];
   external_link?: string | null;
@@ -20,6 +19,7 @@ export interface CreateProjectInput {
   tags: string[];
   external_link?: string;
   cover_image?: File | null;
+  gallery_images?: File[];
   content_blocks?: any[];
 }
 

@@ -119,6 +119,9 @@ const translations = {
     createProject: "Create Project",
     editProject: "Edit Project",
     deleteProject: "Delete Project",
+    createNewPost: "Create New Post",
+    enterTitle: "Enter Post Title",
+    enterDescription: "Enter Post Description",
     
     // Project details
     views: "Views",
@@ -257,6 +260,9 @@ const translations = {
     hashtags: "الوسوم",
     hashtagsPlaceholder: "أضف وسوماً (اضغط على Enter بعد كل وسم)", 
     mentions: "الإشارات",
+    createNewPost: "إنشاء منشور جديد",
+    enterTitle: "أدخل عنوان المنشور",
+    enterDescription: "أدخل وصف المنشور",
     
     // Reels
     reels: "الريلز",

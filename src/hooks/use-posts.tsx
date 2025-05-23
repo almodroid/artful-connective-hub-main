@@ -1,10 +1,10 @@
-
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from "uuid";
 import { useAuth } from "@/contexts/AuthContext";
+import { formatTag } from '@/utils/tag-utils';
 
 // Define post type
 export interface Post {
@@ -202,8 +202,8 @@ export function usePosts() {
         console.error("Error fetching profile data:", profileError);
       }
 
-      // Create post record
-      const { data, error } = await supabase
+      // Create post record (without tags array)
+      const { data: post, error } = await supabase
         .from("posts")
         .insert({
           title,
@@ -211,33 +211,51 @@ export function usePosts() {
           media_urls: mediaUrls,
           media_type: mediaType,
           link,
-          tags,
           user_id: user.id,
         })
         .select()
         .single();
 
-      if (error) {
-        throw error;
+      if (error) throw error;
+
+      // Handle tags using normalized system
+      if (tags.length > 0) {
+        const tagPromises = tags.map(async (tagName) => {
+          // Normalize tag name
+          const normalizedTag = tagName.toLowerCase().trim();
+          
+          // Insert or get tag
+          const { data: tag, error: tagError } = await supabase
+            .from("tags")
+            .upsert({
+              name: normalizedTag,
+              type: "post"
+            }, {
+              onConflict: 'name,type'
+            })
+            .select()
+            .single();
+
+          if (tagError) throw tagError;
+
+          // Create post-tag relationship
+          const { error: relationError } = await supabase
+            .from("posts_tags")
+            .insert({
+              post_id: post.id,
+              tag_id: tag.id
+            });
+
+          if (relationError) throw relationError;
+        });
+
+        await Promise.all(tagPromises);
       }
 
-      const newPost: Post = {
-        ...data,
-        likes_count: 0,
-        comments_count: 0,
-        user: {
-          username: profileData?.username || "unknown",
-          display_name: profileData?.display_name || "Unknown User",
-          avatar_url: profileData?.avatar_url || undefined,
-        },
-      };
-
-      return newPost;
+      return post;
     } catch (error) {
       console.error("Error creating post:", error);
       throw error;
-    } finally {
-      setUploading(false);
     }
   };
 
@@ -361,6 +379,53 @@ export function usePosts() {
     },
   });
 
+  // Add these functions to usePosts hook
+  const getTopTags = async (limit = 10) => {
+    const { data, error } = await supabase
+      .from("tags")
+      .select(`
+        name,
+        posts_tags (count)
+      `)
+      .eq("type", "post")
+      .order("posts_tags.count", { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error("Error fetching top tags:", error);
+      return [];
+    }
+
+    return data;
+  };
+
+  const getPostsByTag = async (tagName: string) => {
+    const { data, error } = await supabase
+      .from("posts")
+      .select(`
+        *,
+        profiles:user_id (
+          username,
+          display_name,
+          avatar_url
+        ),
+        posts_tags!inner (
+          tags!inner (
+            name
+          )
+        )
+      `)
+      .eq("posts_tags.tags.name", tagName)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching posts by tag:", error);
+      return [];
+    }
+
+    return data;
+  };
+
   return {
     posts,
     isLoading,
@@ -368,5 +433,7 @@ export function usePosts() {
     uploading,
     createPost: createPostMutation.mutateAsync,
     likePost: likePostMutation.mutateAsync,
+    getTopTags,
+    getPostsByTag,
   };
 }

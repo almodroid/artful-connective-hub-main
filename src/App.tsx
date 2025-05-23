@@ -6,6 +6,7 @@ import { TranslationProvider } from "./hooks/use-translation";
 import { NotificationsProvider } from "./hooks/use-notifications";
 import { Toaster } from "./components/ui/sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import TagPage from "@/pages/TagPage";
 
 // Pages
 import Index from "./pages/Index";
@@ -43,6 +44,7 @@ function App() {
                 <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/explore" element={<Explore />} />
+                  <Route path="/explore/tag/:tag" element={<TagPage />} />
                   <Route path="/login" element={<Login />} />
                   <Route path="/register" element={<Register />} />
                   <Route path="/profile/:username" element={<Profile />} />

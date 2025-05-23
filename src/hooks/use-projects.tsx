@@ -40,7 +40,7 @@ export function useProjects() {
   
   // Create a new project
   const createProjectMutation = useMutation({
-    mutationFn: async ({ title, description, tags, external_link, cover_image }: CreateProjectInput) => {
+    mutationFn: async ({ title, description, tags, external_link, cover_image, gallery_images }: CreateProjectInput) => {
       if (!user) {
         throw new Error("User must be logged in to create a project");
       }
@@ -48,20 +48,36 @@ export function useProjects() {
       console.log("Starting project creation for user:", user.id);
       
       // Set uploading state if there's an image
-      if (cover_image) {
+      if (cover_image || (gallery_images && gallery_images.length > 0)) {
         setIsUploadingImage(true);
         
-        // Check file size - limit to 5MB
-        if (cover_image.size > 5 * 1024 * 1024) {
-          setIsUploadingImage(false);
-          throw new Error(isRtl ? "حجم الصورة يجب أن يكون أقل من 5 ميغابايت" : "Image size should be less than 5MB");
+        // Validate cover image if present
+        if (cover_image) {
+          if (cover_image.size > 5 * 1024 * 1024) {
+            setIsUploadingImage(false);
+            throw new Error(isRtl ? "حجم الصورة يجب أن يكون أقل من 5 ميغابايت" : "Image size should be less than 5MB");
+          }
+          
+          const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+          if (!validTypes.includes(cover_image.type)) {
+            setIsUploadingImage(false);
+            throw new Error(isRtl ? "نوع الملف غير مدعوم. يرجى استخدام JPG، PNG، GIF أو WEBP" : "File type not supported. Please use JPG, PNG, GIF or WEBP");
+          }
         }
-        
-        // Check file type
-        const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-        if (!validTypes.includes(cover_image.type)) {
-          setIsUploadingImage(false);
-          throw new Error(isRtl ? "نوع الملف غير مدعوم. يرجى استخدام JPG، PNG، GIF أو WEBP" : "File type not supported. Please use JPG, PNG, GIF or WEBP");
+
+        // Validate gallery images if present
+        if (gallery_images && gallery_images.length > 0) {
+          const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+          for (const file of gallery_images) {
+            if (file.size > 5 * 1024 * 1024) {
+              setIsUploadingImage(false);
+              throw new Error(isRtl ? "حجم الصورة يجب أن يكون أقل من 5 ميغابايت" : "Image size should be less than 5MB");
+            }
+            if (!validTypes.includes(file.type)) {
+              setIsUploadingImage(false);
+              throw new Error(isRtl ? "نوع الملف غير مدعوم. يرجى استخدام JPG، PNG، GIF أو WEBP" : "File type not supported. Please use JPG, PNG, GIF or WEBP");
+            }
+          }
         }
       }
       
@@ -71,7 +87,7 @@ export function useProjects() {
           title, 
           descriptionLength: description?.length || 0,
           tagsCount: tags?.length || 0,
-          hasImage: !!cover_image,
+          hasImage: !!cover_image || (gallery_images && gallery_images.length > 0),
           imageSize: cover_image?.size || 0
         });
         
@@ -80,7 +96,8 @@ export function useProjects() {
           description: description || "", // Ensure empty string if description is null/undefined
           tags: tags || [],
           external_link: external_link || "",
-          cover_image
+          cover_image,
+          gallery_images
         });
         
         console.log("Project created successfully:", result);
@@ -89,7 +106,7 @@ export function useProjects() {
         console.error('Error creating project:', error);
         throw error;
       } finally {
-        if (cover_image) {
+        if (cover_image || (gallery_images && gallery_images.length > 0)) {
           setIsUploadingImage(false);
         }
       }

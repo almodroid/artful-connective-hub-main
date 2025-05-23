@@ -5,7 +5,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Eye, Link as LinkIcon, Plus } from "lucide-react";
+import { Eye, Link as LinkIcon, Plus, GalleryHorizontalEnd, X, Grid2X2, Grid3X3, Grid, Rows } from "lucide-react";
 import { useProjects } from "@/hooks/use-projects";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -15,6 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { TagInput } from "@/components/ui-custom/TagInput";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 
 const Projects = () => {
   const { t, isRtl } = useTranslation();
@@ -31,9 +32,12 @@ const Projects = () => {
     description: "",
     tags: [] as string[],
     external_link: "",
-    image: null as File | null
+    image: null as File | null,
+    gallery_images: [] as File[]
   });
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
+  const [galleryLayout, setGalleryLayout] = useState<'grid-2' | 'grid-3' | 'grid-4' | 'rows'>('grid-3');
   
   // Function to get top tags from projects
   const getTopTags = () => {
@@ -102,15 +106,59 @@ const Projects = () => {
     }
   };
   
+  const handleGalleryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      // Validate each file
+      const validFiles = files.filter(file => {
+        if (file.size > 5 * 1024 * 1024) {
+          toast.error(isRtl ? "حجم الصورة يجب أن يكون أقل من 5 ميغابايت" : "Image file must be less than 5MB");
+          return false;
+        }
+        
+        const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!validTypes.includes(file.type)) {
+          toast.error(isRtl ? "نوع الملف غير مدعوم. يرجى استخدام JPG، PNG، GIF أو WEBP" : "Unsupported file type. Please use JPG, PNG, GIF or WEBP");
+          return false;
+        }
+        return true;
+      });
+
+      setNewProject(prev => ({
+        ...prev,
+        gallery_images: [...prev.gallery_images, ...validFiles]
+      }));
+
+      // Create previews for new images
+      validFiles.forEach(file => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setGalleryPreviews(prev => [...prev, reader.result as string]);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  };
+  
+  const removeGalleryImage = (index: number) => {
+    setNewProject(prev => ({
+      ...prev,
+      gallery_images: prev.gallery_images.filter((_, i) => i !== index)
+    }));
+    setGalleryPreviews(prev => prev.filter((_, i) => i !== index));
+  };
+  
   const resetForm = () => {
     setNewProject({
       title: "",
       description: "",
       tags: [],
       external_link: "",
-      image: null
+      image: null,
+      gallery_images: []
     });
     setImagePreview(null);
+    setGalleryPreviews([]);
   };
   
   const handleSubmit = async (e: React.FormEvent) => {
@@ -136,7 +184,8 @@ const Projects = () => {
         description: newProject.description,
         tags: newProject.tags,
         external_link: newProject.external_link,
-        cover_image: newProject.image
+        cover_image: newProject.image,
+        gallery_images: newProject.gallery_images
       });
       
       toast.dismiss(toastId);
@@ -170,7 +219,8 @@ const Projects = () => {
         description: newProject.description,
         tags: newProject.tags,
         external_link: newProject.external_link,
-        cover_image: null // Explicitly set to null
+        cover_image: null, // Explicitly set to null
+        gallery_images: []
       });
       
       toast.dismiss(toastId);
@@ -183,9 +233,62 @@ const Projects = () => {
     }
   };
 
+  const GalleryLayoutSelector = ({ value, onChange, disabled }: { 
+    value: 'grid-2' | 'grid-3' | 'grid-4' | 'rows', 
+    onChange: (value: 'grid-2' | 'grid-3' | 'grid-4' | 'rows') => void,
+    disabled?: boolean 
+  }) => {
+    const { t } = useTranslation();
+    
+    return (
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          variant={value === 'grid-2' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => onChange('grid-2')}
+          disabled={disabled}
+          className="h-8 w-8 p-0"
+        >
+          <Grid2X2 className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          variant={value === 'grid-3' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => onChange('grid-3')}
+          disabled={disabled}
+          className="h-8 w-8 p-0"
+        >
+          <Grid3X3 className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          variant={value === 'grid-4' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => onChange('grid-4')}
+          disabled={disabled}
+          className="h-8 w-8 p-0"
+        >
+          <Grid className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          variant={value === 'rows' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => onChange('rows')}
+          disabled={disabled}
+          className="h-8 w-8 p-0"
+        >
+          <Rows className="h-4 w-4" />
+        </Button>
+      </div>
+    );
+  };
+
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8" dir={isRtl ? "rtl" : "ltr"}>
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">{t("projectsPage")}</h1>
           
@@ -328,6 +431,76 @@ const Projects = () => {
                         )}
                       </div>
                     </div>
+                    
+                    <div className="grid gap-2">
+                      <div className="flex justify-between items-center">
+                        <label className="text-sm font-medium">
+                          {t("projectGallery")}
+                        </label>
+                        <GalleryLayoutSelector 
+                          value={galleryLayout} 
+                          onChange={setGalleryLayout}
+                          disabled={isCreatingProject}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/gif,image/webp"
+                          id="project-gallery"
+                          className="hidden"
+                          onChange={handleGalleryChange}
+                          multiple
+                          disabled={isCreatingProject}
+                        />
+                        
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => document.getElementById("project-gallery")?.click()}
+                            disabled={isCreatingProject}
+                            className="gap-2"
+                          >
+                            <GalleryHorizontalEnd className="h-4 w-4" />
+                            {t("addToGallery")}
+                          </Button>
+                        </div>
+
+                        {galleryPreviews.length > 0 && (
+                          <div className={cn(
+                            "mt-2 gap-2",
+                            galleryLayout === 'grid-2' && "grid grid-cols-2",
+                            galleryLayout === 'grid-3' && "grid grid-cols-3",
+                            galleryLayout === 'grid-4' && "grid grid-cols-4",
+                            galleryLayout === 'rows' && "flex flex-col"
+                          )}>
+                            {galleryPreviews.map((preview, index) => (
+                              <div 
+                                key={index} 
+                                className={cn(
+                                  "relative group",
+                                  galleryLayout === 'rows' ? "aspect-[16/9]" : "aspect-square"
+                                )}
+                              >
+                                <img
+                                  src={preview}
+                                  alt={`Gallery image ${index + 1}`}
+                                  className="object-cover w-full h-full rounded-md"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => removeGalleryImage(index)}
+                                  className="absolute top-1 right-1 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                   
                   <DialogFooter>
@@ -375,7 +548,7 @@ const Projects = () => {
         </div>
         
         {/* Dynamic tabs based on popular tags */}
-        <Tabs value={activeFilter} onValueChange={setActiveFilter} className="mb-8">
+        <Tabs value={activeFilter} onValueChange={setActiveFilter} className="mb-8" dir={isRtl ? "rtl" : "ltr"}>
           <TabsList className="mb-4 flex flex-wrap">
             <TabsTrigger value="all">{t("allProjects")}</TabsTrigger>
             
@@ -386,7 +559,7 @@ const Projects = () => {
             ))}
           </TabsList>
           
-          <TabsContent value="all" className="mt-0">
+          <TabsContent value="all" className="mt-0" dir={isRtl ? "rtl" : "ltr"}>
             {isLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {[1, 2, 3].map((i) => (
@@ -412,7 +585,7 @@ const Projects = () => {
                   <Card key={project.id} className="overflow-hidden">
                     <div className="aspect-video relative overflow-hidden">
                       <img 
-                        src={project.cover_image_url || project.image_url || "https://images.unsplash.com/photo-1629429407759-01cd3d7cfb38?q=80&w=1000"} 
+                        src={project.cover_image_url || "https://images.unsplash.com/photo-1629429407759-01cd3d7cfb38?q=80&w=1000"} 
                         alt={project.title} 
                         className="object-cover w-full h-full hover:scale-105 transition-transform duration-300 cursor-pointer"
                         onClick={() => {
@@ -482,7 +655,7 @@ const Projects = () => {
                 <Card key={project.id} className="overflow-hidden">
                   <div className="aspect-video relative overflow-hidden">
                     <img 
-                          src={project.cover_image_url || project.image_url || "https://images.unsplash.com/photo-1629429407759-01cd3d7cfb38?q=80&w=1000"} 
+                          src={project.cover_image_url || "https://images.unsplash.com/photo-1629429407759-01cd3d7cfb38?q=80&w=1000"} 
                       alt={project.title} 
                       className="object-cover w-full h-full hover:scale-105 transition-transform duration-300 cursor-pointer"
                           onClick={() => {

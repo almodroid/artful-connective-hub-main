@@ -1,7 +1,34 @@
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from '@/integrations/supabase/client';
+import { Json } from '@/types/supabase';
 import { Project, CreateProjectInput, ProjectDetails } from "@/types/project.types";
 import { toast } from "sonner";
 import { createProjectNotification } from "./notification.service";
+import { Database } from '@/types/supabase';
+
+type ProjectRow = Database['public']['Tables']['projects']['Row'];
+
+// Add a local type for migration compatibility
+type ProjectRowWithImages = {
+  id: string;
+  title: string;
+  description: string;
+  tags: string[];
+  image_url?: string;
+  image_urls?: string[];
+  cover_image_url: string;
+  content_blocks: Json;
+  external_link: string;
+  views: number;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+  profiles?: {
+    username?: string;
+    display_name?: string;
+    avatar_url?: string;
+  };
+  project_likes?: { count: number }[];
+};
 
 // Extended project type with user information
 export interface ProjectWithUser extends Project {
@@ -14,373 +41,274 @@ export interface ProjectWithUser extends Project {
 
 // Fetch all projects with user information
 export const fetchProjects = async (): Promise<ProjectWithUser[]> => {
-  try {
-    const { data, error } = await supabase
-      .from("projects")
-      .select(`
-        *,
-        profiles:user_id (
-          username,
-          display_name,
-          avatar_url
-        )
-      `)
-      .order("created_at", { ascending: false });
+  const { data, error } = await supabase
+    .from('projects')
+    .select(`
+      *,
+      profiles:user_id(username, display_name, avatar_url),
+      project_likes:project_likes(count)
+    `)
+    .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error("Error fetching projects:", error);
-      throw error;
-    }
+  if (error) throw error;
 
-    // Explicitly type the mapped result to ProjectWithUser[]
-    const projectsWithUser: ProjectWithUser[] = data.map(project => {
-      // Ensure profile data is handled safely
-      const profileData = project.profiles as { username?: string; display_name?: string; avatar_url?: string } | null;
-      
-      return {
-        id: project.id,
-        title: project.title,
-        description: project.description || "",
-        tags: project.tags || [],
-        image_url: project.image_url || "",
-        cover_image_url: project.cover_image_url || "",
-        // Explicitly cast content_blocks to any[] if it exists, otherwise default to empty array
-        content_blocks: (project.content_blocks as any[] | null) || [],
-        external_link: project.external_link || null,
-        views: project.views || 0,
-        user_id: project.user_id,
-        created_at: project.created_at || new Date().toISOString(),
-        updated_at: project.updated_at || new Date().toISOString(),
-        user: {
-          username: profileData?.username || "",
-          display_name: profileData?.display_name || "",
-          avatar_url: profileData?.avatar_url || ""
-        }
-      };
-    });
-    
-    return projectsWithUser;
-  } catch (error) {
-    console.error("Error in fetchProjects:", error);
-    return [];
-  }
+  const projects: ProjectWithUser[] = (data as ProjectRowWithImages[]).map(project => ({
+    id: project.id,
+    title: project.title,
+    description: project.description,
+    tags: project.tags,
+    image_urls: project.image_urls || (project.image_url ? [project.image_url] : []),
+    cover_image_url: project.cover_image_url,
+    content_blocks: project.content_blocks,
+    external_link: project.external_link,
+    views: project.views,
+    user_id: project.user_id,
+    created_at: project.created_at,
+    updated_at: project.updated_at,
+    user: {
+      username: project.profiles?.username || 'anonymous',
+      display_name: project.profiles?.display_name || 'Anonymous User',
+      avatar_url: project.profiles?.avatar_url || ""
+    },
+    likes_count: project.project_likes?.[0]?.count || 0,
+    is_liked_by_user: false // This will be updated by the hook
+  }));
+  return projects;
 };
 
 // Fetch a single project by ID
-export const fetchProjectById = async (id: string): Promise<ProjectDetails | null> => {
-  try {
-    const { data, error } = await supabase
-      .from("projects")
-      .select(`
-        *,
-        profiles:user_id (
-          username,
-          display_name,
-          avatar_url
-        )
-      `)
-      .eq("id", id)
-      .single();
+export const fetchProjectById = async (id: string): Promise<ProjectDetails> => {
+  const { data, error } = await supabase
+    .from('projects')
+    .select(`
+      *,
+      profiles:user_id(username, display_name, avatar_url),
+      project_likes:project_likes(count)
+    `)
+    .eq('id', id)
+    .single();
 
-    if (error) {
-      console.error("Error fetching project:", error);
-      throw error;
-    }
+  if (error) throw error;
+  if (!data) throw new Error('Project not found');
 
-    if (!data) return null;
+  const project = data as ProjectRowWithImages;
 
-    const profile = data.profiles || {};
-    return {
-      id: data.id,
-      title: data.title,
-      description: data.description || "",
-      tags: data.tags || [],
-      image_urls: data.image_urls || [],
-      cover_image_url: data.cover_image_url || "",
-      content_blocks: (Array.isArray(data.content_blocks) ? data.content_blocks : []) as any[],
-      external_link: data.external_link || null,
-      views: data.views || 0,
-      user_id: data.user_id,
-      created_at: data.created_at || new Date().toISOString(),
-      updated_at: data.updated_at || new Date().toISOString(),
-      user: {
-        username: (profile as any)?.username || "",
-        display_name: (profile as any)?.display_name || "",
-        avatar_url: (profile as any)?.avatar_url || ""
-      }
-    };
-  } catch (error) {
-    console.error("Error in fetchProjectById:", error);
-    return null;
-  }
+  return {
+    id: project.id,
+    title: project.title,
+    description: project.description,
+    tags: project.tags,
+    image_urls: project.image_urls || (project.image_url ? [project.image_url] : []),
+    cover_image_url: project.cover_image_url,
+    content_blocks: project.content_blocks,
+    external_link: project.external_link,
+    views: project.views,
+    user_id: project.user_id,
+    created_at: project.created_at,
+    updated_at: project.updated_at,
+    user: {
+      username: project.profiles?.username || 'anonymous',
+      display_name: project.profiles?.display_name || 'Anonymous User',
+      avatar_url: project.profiles?.avatar_url || ""
+    },
+    likes_count: project.project_likes?.[0]?.count || 0,
+    is_liked_by_user: false // This will be updated by the hook
+  };
 };
 
 // Create a new project
-export const createProject = async (
-  userId: string,
-  { title, description, tags, external_link, cover_image, gallery_images }: CreateProjectInput
-): Promise<ProjectWithUser> => {
-  try {
-    let coverImageUrl = null;
-    let galleryUrls: string[] = [];
+export const createProject = async (input: CreateProjectInput, userId: string): Promise<ProjectDetails> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
 
-    // Helper function to upload image
-    const uploadImage = async (file: File, folder: string): Promise<string> => {
-      // Convert file to ArrayBuffer
-      const arrayBuffer = await file.arrayBuffer();
-      
-      // Create a unique filename
-      const timestamp = new Date().getTime();
-      const randomString = Math.random().toString(36).substring(2);
-      const fileName = `${userId}_${timestamp}_${randomString}.${file.name.split('.').pop()}`;
-      const filePath = `${userId}/${folder}/${fileName}`;
+  // Upload cover image if provided
+  let cover_image_url = '';
+  if (input.cover_image) {
+    const fileBuffer = await input.cover_image.arrayBuffer();
+    const { data: coverData, error: coverError } = await supabase.storage
+      .from('project_images')
+      .upload(`${user.id}/cover/${Date.now()}-${input.cover_image.name}`, fileBuffer, {
+        contentType: input.cover_image.type
+      });
+    
+    if (coverError) throw coverError;
+    const { data: { publicUrl } } = supabase.storage
+      .from('project_images')
+      .getPublicUrl(coverData.path);
+    cover_image_url = publicUrl;
+  }
 
-      // Upload the file
-      const { error: uploadError } = await supabase.storage
+  // Upload gallery images if provided
+  let image_urls: string[] = [];
+  if (input.gallery_images && input.gallery_images.length > 0) {
+    const uploadPromises = input.gallery_images.map(async (file) => {
+      const fileBuffer = await file.arrayBuffer();
+      const { data: imageData, error: imageError } = await supabase.storage
         .from('project_images')
-        .upload(filePath, arrayBuffer, {
-          contentType: file.type,
-          cacheControl: '3600',
-          upsert: true
+        .upload(`${user.id}/gallery/${Date.now()}-${file.name}`, fileBuffer, {
+          contentType: file.type
         });
-
-      if (uploadError) {
-        console.error("Upload error:", uploadError);
-        throw new Error(`Upload failed: ${uploadError.message}`);
-      }
-
-      // Get public URL
+      
+      if (imageError) throw imageError;
       const { data: { publicUrl } } = supabase.storage
         .from('project_images')
-        .getPublicUrl(filePath);
-
+        .getPublicUrl(imageData.path);
       return publicUrl;
-    };
+    });
 
-    // Handle cover image upload
-    if (cover_image) {
-      try {
-        coverImageUrl = await uploadImage(cover_image, 'cover');
-      } catch (error) {
-        console.error("Cover image upload failed:", error);
-        throw new Error(`Cover image upload failed: ${error.message}`);
-      }
-    }
-
-    // Handle gallery images upload
-    if (gallery_images && gallery_images.length > 0) {
-      try {
-        const uploadPromises = gallery_images.map(file => uploadImage(file, 'gallery'));
-        galleryUrls = await Promise.all(uploadPromises);
-      } catch (error) {
-        console.error("Gallery images upload failed:", error);
-        throw new Error(`Gallery images upload failed: ${error.message}`);
-      }
-    }
-
-    // Create project with gallery images
-    const { data, error } = await supabase
-      .from("projects")
-      .insert({
-        title,
-        description: description || "",
-        tags: Array.isArray(tags) ? tags : [],
-        external_link: external_link || null,
-        cover_image_url: coverImageUrl,
-        image_urls: galleryUrls,
-        user_id: userId
-      })
-      .select(`
-        *,
-        profiles:user_id (
-          username,
-          display_name,
-          avatar_url
-        )
-      `)
-      .single();
-
-    if (error) {
-      console.error("Error creating project in database:", error);
-      throw new Error(`Database error: ${error.message}`);
-    }
-
-    if (!data) {
-      throw new Error("No data returned from project creation");
-    }
-
-    // Get user profile for the created project
-    const { data: profileData, error: profileError } = await supabase
-      .from("profiles")
-      .select("username, display_name, avatar_url")
-      .eq("id", userId)
-      .single();
-
-    if (profileError) {
-      console.warn("Could not fetch profile data:", profileError);
-    }
-
-    const profile = profileData || {};
-    
-    return {
-      id: data.id,
-      title: data.title,
-      description: data.description || "",
-      tags: data.tags || [],
-      image_urls: data.image_urls || [],
-      cover_image_url: data.cover_image_url || "",
-      content_blocks: (Array.isArray(data.content_blocks) ? data.content_blocks : []) as any[],
-      external_link: data.external_link || null,
-      views: data.views || 0,
-      user_id: data.user_id,
-      created_at: data.created_at || new Date().toISOString(),
-      updated_at: data.updated_at || new Date().toISOString(),
-      user: {
-        username: (profile as any)?.username || "",
-        display_name: (profile as any)?.display_name || "",
-        avatar_url: (profile as any)?.avatar_url || ""
-      }
-    };
-  } catch (error) {
-    console.error("Error in createProject:", error);
-    throw error;
+    image_urls = await Promise.all(uploadPromises);
   }
+
+  const { data, error } = await supabase
+    .from('projects')
+    .insert({
+      title: input.title,
+      description: input.description,
+      tags: input.tags,
+      image_urls: image_urls,
+      cover_image_url: cover_image_url,
+      content_blocks: input.content_blocks,
+      external_link: input.external_link || '',
+      user_id: userId,
+      views: 0
+    })
+    .select(`
+      *,
+      profiles:user_id(username, display_name, avatar_url),
+      project_likes:project_likes(count)
+    `)
+    .single();
+
+  if (error) throw error;
+  if (!data) throw new Error('Failed to create project');
+
+  const project = data as ProjectRowWithImages;
+  return {
+    id: project.id,
+    title: project.title,
+    description: project.description,
+    tags: project.tags,
+    image_urls: project.image_urls || (project.image_url ? [project.image_url] : []),
+    cover_image_url: project.cover_image_url,
+    content_blocks: project.content_blocks,
+    external_link: project.external_link,
+    views: project.views,
+    user_id: project.user_id,
+    created_at: project.created_at,
+    updated_at: project.updated_at,
+    user: {
+      username: project.profiles?.username || 'anonymous',
+      display_name: project.profiles?.display_name || 'Anonymous User',
+      avatar_url: project.profiles?.avatar_url || ""
+    },
+    likes_count: project.project_likes?.[0]?.count || 0,
+    is_liked_by_user: false
+  };
 };
 
 // Update an existing project
-export const updateProject = async (
-  projectId: string,
-  userId: string,
-  { title, description, tags, external_link, cover_image, gallery_images }: Partial<CreateProjectInput>
-): Promise<ProjectDetails | null> => {
-  try {
-    const updateData: any = {
-      title,
-      description,
-      tags,
-      external_link,
-      updated_at: new Date().toISOString()
-    };
+export const updateProject = async (id: string, input: CreateProjectInput, userId: string): Promise<ProjectDetails> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
 
-    // Helper function to upload image
-    const uploadImage = async (file: File, folder: string): Promise<string> => {
-      const arrayBuffer = await file.arrayBuffer();
-      const timestamp = new Date().getTime();
-      const randomString = Math.random().toString(36).substring(2);
-      const fileName = `${userId}_${timestamp}_${randomString}.${file.name.split('.').pop()}`;
-      const filePath = `${userId}/${folder}/${fileName}`;
+  // Handle cover image update if provided
+  let cover_image_url = undefined;
+  if (input.cover_image) {
+    const fileBuffer = await input.cover_image.arrayBuffer();
+    const { data: coverData, error: coverError } = await supabase.storage
+      .from('project_images')
+      .upload(`${user.id}/cover/${Date.now()}-${input.cover_image.name}`, fileBuffer, {
+        contentType: input.cover_image.type
+      });
+    
+    if (coverError) throw coverError;
+    const { data: { publicUrl } } = supabase.storage
+      .from('project_images')
+      .getPublicUrl(coverData.path);
+    cover_image_url = publicUrl;
+  }
 
-      const { error: uploadError } = await supabase.storage
+  // Handle gallery images update if provided
+  let image_urls = undefined;
+  if (input.gallery_images && input.gallery_images.length > 0) {
+    const uploadPromises = input.gallery_images.map(async (file) => {
+      const fileBuffer = await file.arrayBuffer();
+      const { data: imageData, error: imageError } = await supabase.storage
         .from('project_images')
-        .upload(filePath, arrayBuffer, {
-          contentType: file.type,
-          cacheControl: '3600',
-          upsert: true
+        .upload(`${user.id}/gallery/${Date.now()}-${file.name}`, fileBuffer, {
+          contentType: file.type
         });
-
-      if (uploadError) {
-        console.error("Upload error:", uploadError);
-        throw new Error(`Upload failed: ${uploadError.message}`);
-      }
-
+      
+      if (imageError) throw imageError;
       const { data: { publicUrl } } = supabase.storage
         .from('project_images')
-        .getPublicUrl(filePath);
-
+        .getPublicUrl(imageData.path);
       return publicUrl;
-    };
+    });
 
-    // Handle cover image upload
-    if (cover_image) {
-      try {
-        updateData.cover_image_url = await uploadImage(cover_image, 'cover');
-      } catch (error) {
-        console.error("Cover image upload failed:", error);
-        throw new Error(`Cover image upload failed: ${error.message}`);
-      }
-    }
-
-    // Handle gallery images upload
-    if (gallery_images && gallery_images.length > 0) {
-      try {
-        const uploadPromises = gallery_images.map(file => uploadImage(file, 'gallery'));
-        updateData.image_urls = await Promise.all(uploadPromises);
-      } catch (error) {
-        console.error("Gallery images upload failed:", error);
-        throw new Error(`Gallery images upload failed: ${error.message}`);
-      }
-    }
-
-    // Update project
-    const { data, error } = await supabase
-      .from("projects")
-      .update(updateData)
-      .eq("id", projectId)
-      .eq("user_id", userId)
-      .select(`
-        *,
-        profiles:user_id (
-          username,
-          display_name,
-          avatar_url
-        )
-      `)
-      .single();
-
-    if (error) {
-      console.error("Error updating project:", error);
-      throw error;
-    }
-
-    if (!data) return null;
-
-    const profile = data.profiles || {};
-    
-    return {
-      id: data.id,
-      title: data.title,
-      description: data.description || "",
-      tags: data.tags || [],
-      image_urls: data.image_urls || [],
-      cover_image_url: data.cover_image_url || "",
-      content_blocks: (Array.isArray(data.content_blocks) ? data.content_blocks : []) as any[],
-      external_link: data.external_link || null,
-      views: data.views || 0,
-      user_id: data.user_id,
-      created_at: data.created_at || new Date().toISOString(),
-      updated_at: data.updated_at || new Date().toISOString(),
-      user: {
-        username: (profile as any)?.username || "",
-        display_name: (profile as any)?.display_name || "",
-        avatar_url: (profile as any)?.avatar_url || ""
-      }
-    };
-  } catch (error) {
-    console.error("Error in updateProject:", error);
-    throw error;
+    image_urls = await Promise.all(uploadPromises);
   }
+
+  const { data, error } = await supabase
+    .from('projects')
+    .update({
+      title: input.title,
+      description: input.description,
+      tags: input.tags,
+      image_urls: image_urls,
+      cover_image_url: cover_image_url,
+      content_blocks: input.content_blocks,
+      external_link: input.external_link || '',
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', id)
+    .eq('user_id', userId)
+    .select(`
+      *,
+      profiles:user_id(username, display_name, avatar_url),
+      project_likes:project_likes(count)
+    `)
+    .single();
+
+  if (error) throw error;
+  if (!data) throw new Error('Project not found or unauthorized');
+
+  const project = data as ProjectRowWithImages;
+  return {
+    id: project.id,
+    title: project.title,
+    description: project.description,
+    tags: project.tags,
+    image_urls: project.image_urls || (project.image_url ? [project.image_url] : []),
+    cover_image_url: project.cover_image_url,
+    content_blocks: project.content_blocks,
+    external_link: project.external_link,
+    views: project.views,
+    user_id: project.user_id,
+    created_at: project.created_at,
+    updated_at: project.updated_at,
+    user: {
+      username: project.profiles?.username || 'anonymous',
+      display_name: project.profiles?.display_name || 'Anonymous User',
+      avatar_url: project.profiles?.avatar_url || ""
+    },
+    likes_count: project.project_likes?.[0]?.count || 0,
+    is_liked_by_user: false
+  };
 };
 
 // Delete a project
-export const deleteProject = async (projectId: string, userId: string): Promise<boolean> => {
-  try {
-    // Delete the project
-    const { error } = await supabase
-      .from("projects")
-      .delete()
-      .eq("id", projectId)
-      .eq("user_id", userId); // Ensure the user owns the project
+export const deleteProject = async (id: string): Promise<void> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
 
-    if (error) {
-      console.error("Error deleting project:", error);
-      throw error;
-    }
+  const { error } = await supabase
+    .from('projects')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', user.id);
 
-    return true;
-  } catch (error) {
-    console.error("Error in deleteProject:", error);
-    throw error;
-  }
+  if (error) throw error;
 };
 
 // Increment project views
@@ -446,102 +374,32 @@ export const incrementProjectViews = async (projectId: string, userId?: string):
 };
 
 // Like a project
-export const likeProject = async (projectId: string, userId: string): Promise<void> => {
-  try {
-    // Check if the project exists
-    const { data: project, error: projectError } = await supabase
-      .from("projects")
-      .select("user_id")
-      .eq("id", projectId)
-      .single();
+export const likeProject = async (projectId: string): Promise<void> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
 
-    if (projectError) {
-      console.error("Error checking project:", projectError);
-      throw projectError;
-    }
+  const { error } = await supabase
+    .from('project_likes')
+    .insert({
+      project_id: projectId,
+      user_id: user.id
+    });
 
-    // Check if the user has already liked the project
-    const { data: existingLike, error: likeError } = await supabase
-      .from("project_likes")
-      .select()
-      .eq("project_id", projectId)
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    if (likeError) {
-      console.error("Error checking existing like:", likeError);
-      throw likeError;
-    }
-
-    if (existingLike) {
-      // User already liked this project
-      return;
-    }
-
-    // Add like
-    const { error } = await supabase
-      .from("project_likes")
-      .insert({
-        project_id: projectId,
-        user_id: userId
-      });
-
-    if (error) {
-      console.error("Error adding like:", error);
-      throw error;
-    }
-
-    // Get user info for notification
-    const { data: userData, error: userError } = await supabase
-      .from("profiles")
-      .select("display_name")
-      .eq("id", userId)
-      .single();
-
-    if (userError) {
-      console.error("Error getting user data for notification:", userError);
-    } else {
-      // Send notification to project owner
-      const recipientId = project.user_id;
-      const senderName = userData?.display_name || "أحد المستخدمين";
-      
-      // Only send notification if it's not the user's own project
-      if (recipientId !== userId) {
-        await createProjectNotification(
-          recipientId,
-          userId,
-          projectId,
-          "like",
-          senderName
-        );
-      }
-    }
-  } catch (error) {
-    console.error("Error in likeProject:", error);
-    throw error;
-  }
+  if (error) throw error;
 };
 
 // Unlike a project
-export const unlikeProject = async (projectId: string, userId: string): Promise<void> => {
-  try {
-    // Delete like
-    const { error } = await supabase
-      .from("project_likes")
-      .delete()
-      .eq("project_id", projectId)
-      .eq("user_id", userId);
+export const unlikeProject = async (projectId: string): Promise<void> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
 
-    if (error) {
-      console.error("Error removing like:", error);
-      throw error;
-    }
+  const { error } = await supabase
+    .from('project_likes')
+    .delete()
+    .eq('project_id', projectId)
+    .eq('user_id', user.id);
 
-    // No notification for unlike action
-  } catch (error) {
-    console.error("Error in unlikeProject:", error);
-    throw error;
-  }
+  if (error) throw error;
 };
 
 // Check if user has liked a project
@@ -578,7 +436,8 @@ export const fetchProjectsByUserId = async (userId: string): Promise<ProjectWith
           username,
           display_name,
           avatar_url
-        )
+        ),
+        project_likes:project_likes(count)
       `)
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
@@ -588,30 +447,16 @@ export const fetchProjectsByUserId = async (userId: string): Promise<ProjectWith
       throw error;
     }
 
-    return data.map(project => {
-      // Ensure profile is treated as potentially nullable or provide a default structure
-      const profile = project.profiles as { username?: string; display_name?: string; avatar_url?: string } | null;
-      return {
-        id: project.id,
-        title: project.title,
-        description: project.description || "",
-        tags: project.tags || [],
-        image_url: project.image_url || "",
-        cover_image_url: project.cover_image_url || "",
-        // Cast content_blocks to any[] or a more specific type if known
-        content_blocks: (Array.isArray(project.content_blocks) ? project.content_blocks : []) as any[], 
-        external_link: project.external_link || null,
-        views: project.views || 0,
-        user_id: project.user_id,
-        created_at: project.created_at || new Date().toISOString(),
-        updated_at: project.updated_at || new Date().toISOString(),
-        user: {
-          username: (profile as any)?.username || "",
-          display_name: (profile as any)?.display_name || "",
-          avatar_url: (profile as any)?.avatar_url || ""
-        }
-      };
-    });
+    return (data as ProjectRowWithImages[]).map(project => ({
+      ...project,
+      image_urls: project.image_urls || (project.image_url ? [project.image_url] : []),
+      user: {
+        username: project.profiles?.username || 'anonymous',
+        display_name: project.profiles?.display_name || 'Anonymous User',
+        avatar_url: project.profiles?.avatar_url || ""
+      },
+      likes_count: project.project_likes?.[0]?.count || 0
+    })) as ProjectWithUser[];
   } catch (error) {
     console.error("Error in fetchProjectsByUserId:", error);
     return [];

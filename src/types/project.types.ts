@@ -1,16 +1,20 @@
+import { Json } from '@/types/supabase';
+
 export interface Project {
   id: string;
   title: string;
   description: string;
   tags: string[];
   image_urls: string[];
-  cover_image_url?: string;
-  content_blocks?: any[];
-  external_link?: string | null;
+  cover_image_url: string;
+  content_blocks: Json;
+  external_link: string;
   views: number;
   user_id: string;
   created_at: string;
   updated_at: string;
+  likes_count?: number;
+  is_liked_by_user?: boolean;
 }
 
 export interface CreateProjectInput {
@@ -20,7 +24,7 @@ export interface CreateProjectInput {
   external_link?: string;
   cover_image?: File | null;
   gallery_images?: File[];
-  content_blocks?: any[];
+  content_blocks?: Json;
 }
 
 export interface ProjectDetails extends Project {
@@ -29,6 +33,8 @@ export interface ProjectDetails extends Project {
     display_name: string;
     avatar_url?: string;
   };
+  likes_count: number;
+  is_liked_by_user: boolean;
 }
 
 // Types for post/comment interactions

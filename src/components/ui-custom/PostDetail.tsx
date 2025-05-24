@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
@@ -12,7 +12,8 @@ import { toast } from "sonner";
 import { FormattedText } from "./FormattedText";
 import { useNotificationsApi } from "@/hooks/use-notifications-api";
 import { supabase } from "@/integrations/supabase/client";
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ShareModal } from "./ShareModal";
 
 export interface Comment {
   id: string;
@@ -68,7 +69,47 @@ export function PostDetail({
   const [commentText, setCommentText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const { sendInteractionNotification } = useNotificationsApi();
-  
+  const [localLikes, setLocalLikes] = useState(post?.likes || 0);
+  const [localIsLiked, setLocalIsLiked] = useState(post?.isLiked || false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
+  // Subscribe to real-time updates for likes
+  useEffect(() => {
+    if (!post?.id) return;
+
+    const channel = supabase
+      .channel(`post_likes_${post.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'post_likes',
+          filter: `post_id=eq.${post.id}`
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setLocalLikes(prev => prev + 1);
+          } else if (payload.eventType === 'DELETE') {
+            setLocalLikes(prev => Math.max(0, prev - 1));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [post?.id]);
+
+  // Update local state when post changes
+  useEffect(() => {
+    if (post) {
+      setLocalLikes(post.likes || 0);
+      setLocalIsLiked(post.isLiked || false);
+    }
+  }, [post]);
+
   const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -95,11 +136,13 @@ export function PostDetail({
 
   
   const handleShare = () => {
-    onShare();
+    setIsShareModalOpen(true);
   };
 
   // Helper function to handle different date formats
   const getFormattedDate = () => {
+    if (!post) return "";
+    
     if (post.createdAt instanceof Date) {
       return formatDistanceToNow(post.createdAt, { addSuffix: true, locale: ar });
     } else if (post.created_at) {
@@ -108,9 +151,9 @@ export function PostDetail({
     return "";
   };
 
-  if (isLoading) {
+  if (isLoading || !post) {
     return (
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-3xl mx-auto animate-fade-in items-center bg-background rounded-lg p-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />
           <div className="space-y-2 flex-1">
@@ -154,7 +197,7 @@ export function PostDetail({
   }
 
   return (
-    <div className="max-w-3xl mx-auto animate-fade-in items-center">
+    <div className="max-w-3xl mx-auto animate-fade-in items-center bg-background rounded-lg p-6">
       <div className="mb-6 items-center">
         <div className="flex items-center gap-3 mb-4 ">
           <Link to={`/profile/${post.user.username}`}>
@@ -184,7 +227,7 @@ export function PostDetail({
           </div>
         </div>
         
-        <div className="text-lg mb-6 align-start flex">
+        <div className="text-lg mb-6 align-start flex text-foreground">
           <FormattedText text={post.content} />
         </div>
         
@@ -221,67 +264,52 @@ export function PostDetail({
           <Button
               variant="ghost"
               size="sm"
-              className="gap-2"
+              className="gap-2 hover:bg-secondary"
               onClick={async () => {
                  if (!isAuthenticated) {
                    toast.error("يرجى تسجيل الدخول للإعجاب بالمنشورات");
                    return;
                  }
                  
-                 // Optimistic update first
-                  const wasLiked = post.isLiked;
-                  if (wasLiked) {
-                    post.isLiked = false;
-                    post.likes = Math.max(0, (post.likes || 0) - 1);
-                  } else {
-                    post.isLiked = true;
-                    post.likes = (post.likes || 0) + 1;
-                  }
-                  
-                  try {
-                    if (wasLiked) {
-                      // Unlike the post
-                      const { error } = await supabase
-                        .from('post_likes')
-                        .delete()
-                        .eq('post_id', post.id)
-                        .eq('user_id', user?.id);
-                        
-                      if (error) throw error;
-                      toast.success('تم إزالة الإعجاب بنجاح');
-                    } else {
-                      // Like the post
-                      const { error } = await supabase
-                        .from('post_likes')
-                        .upsert(
-                          { 
-                            post_id: post.id, 
-                            user_id: user?.id,
-                            created_at: new Date().toISOString()
-                          },
-                          { onConflict: 'post_id,user_id' }
-                        );
-                        
-                      if (error) throw error;
-                      toast.success('تم تسجيل الإعجاب بنجاح');
-                      
-                      // Refresh like count after successful update
-                      const { data: likeData, error: likeError } = await supabase
-                        .from('post_likes')
-                        .select('*')
-                        .eq('post_id', post.id);
-                        
-                      if (!likeError) {
-                        post.likes = likeData.length;
-                      }
-                    }
-                  } catch (error) {
-                    // Revert optimistic update on error
-                    post.isLiked = wasLiked;
-                    post.likes = wasLiked ? (post.likes || 0) + 1 : Math.max(0, (post.likes || 0) - 1);
-                    toast.error(wasLiked ? 'حدث خطأ أثناء إزالة الإعجاب' : 'حدث خطأ أثناء تسجيل الإعجاب');
-                    console.error('Like error:', error);
-                  }
+                 // Optimistic update
+                 const wasLiked = localIsLiked;
+                 setLocalIsLiked(!wasLiked);
+                 setLocalLikes(prev => wasLiked ? Math.max(0, prev - 1) : prev + 1);
+                 
+                 try {
+                   if (wasLiked) {
+                     // Unlike the post
+                     const { error } = await supabase
+                       .from('post_likes')
+                       .delete()
+                       .eq('post_id', post.id)
+                       .eq('user_id', user?.id);
+                       
+                     if (error) throw error;
+                     toast.success('تم إزالة الإعجاب بنجاح');
+                   } else {
+                     // Like the post
+                     const { error } = await supabase
+                       .from('post_likes')
+                       .upsert(
+                         { 
+                           post_id: post.id, 
+                           user_id: user?.id,
+                           created_at: new Date().toISOString()
+                         },
+                         { onConflict: 'post_id,user_id' }
+                       );
+                       
+                     if (error) throw error;
+                     toast.success('تم تسجيل الإعجاب بنجاح');
+                   }
+                 } catch (error) {
+                   // Revert optimistic update on error
+                   setLocalIsLiked(wasLiked);
+                   setLocalLikes(prev => wasLiked ? prev + 1 : Math.max(0, prev - 1));
+                   toast.error('حدث خطأ أثناء تحديث الإعجاب');
+                   console.error('Like error:', error);
+                 }
                  }
               }
             >
@@ -289,15 +317,29 @@ export function PostDetail({
                   whileTap={{ scale: 1.2 }}
                   transition={{ type: 'spring', stiffness: 400, damping: 17 }}
                 >
-                <Heart className="h-5 w-5" fill={post.isLiked ? "#3b82f6" : "none"} />
+                <Heart 
+                  className="h-5 w-5" 
+                  fill={localIsLiked ? "#3b82f6" : "none"}
+                  style={{ color: localIsLiked ? "#3b82f6" : "currentColor" }}
+                />
               </motion.div>
-              <span>{post.likes} إعجاب</span>
+              <AnimatePresence mode="wait">
+                <motion.span
+                  key={localLikes}
+                  initial={{ y: -10, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: 10, opacity: 0 }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                >
+                  {localLikes} إعجاب
+                </motion.span>
+              </AnimatePresence>
             </Button>
           
           <Button
             variant="ghost"
             size="sm"
-            className="gap-2"
+            className="gap-2 hover:bg-secondary"
           >
             <MessageCircle className="h-5 w-5" />
             <span>{comments.length} تعليق</span>
@@ -306,7 +348,7 @@ export function PostDetail({
           <Button
             variant="ghost"
             size="sm"
-            className="gap-2"
+            className="gap-2 hover:bg-secondary"
             onClick={handleShare}
           >
             <Share2 className="h-5 w-5" />
@@ -358,11 +400,11 @@ export function PostDetail({
       
       {/* Comments */}
       <div className="space-y-6">
-        <h3 className="font-display font-bold text-xl mb-4">التعليقات ({comments.length})</h3>
+        <h3 className="font-display font-bold text-xl mb-4 text-foreground">التعليقات ({comments.length})</h3>
         
         {comments.length === 0 ? (
-          <div className="text-center py-10 border rounded-lg">
-            <h4 className="text-lg font-medium mb-2">لا توجد تعليقات بعد</h4>
+          <div className="text-center py-10 border rounded-lg bg-secondary/30">
+            <h4 className="text-lg font-medium mb-2 text-foreground">لا توجد تعليقات بعد</h4>
             <p className="text-muted-foreground">كن أول من يعلق على هذا المنشور</p>
           </div>
         ) : (
@@ -391,14 +433,14 @@ export function PostDetail({
                       })}
                     </span>
                   </div>
-                  <p className="mt-1">{comment.content}</p>
+                  <p className="mt-1 text-foreground">{comment.content}</p>
                 </div>
                 
                 <div className="flex items-center gap-4 mt-2 mr-2">
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 px-2 gap-1 text-sm"
+                    className="h-8 px-2 gap-1 text-sm hover:bg-secondary"
                     onClick={async () => {
                       if (!isAuthenticated) {
                         toast.error("يرجى تسجيل الدخول للإعجاب بالتعليقات");
@@ -450,7 +492,7 @@ export function PostDetail({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 px-2 gap-1 text-sm"
+                    className="h-8 px-2 gap-1 text-sm hover:bg-secondary"
                     disabled={!isAuthenticated}
                   >
                     <MessageCircle className="h-4 w-4" />
@@ -462,6 +504,16 @@ export function PostDetail({
           ))
         )}
       </div>
+
+      <ShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        url={`${window.location.origin}/post/${post.id}`}
+        title={post.content}
+        description={`Check out this post by ${post.user.displayName}`}
+        type="post"
+        author={post.user}
+      />
     </div>
   );
 }

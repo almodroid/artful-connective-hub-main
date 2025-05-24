@@ -10,6 +10,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTranslation } from "@/hooks/use-translation";
 import { FollowListModal } from "@/components/ui-custom/FollowListModal";
+import { motion, AnimatePresence } from "framer-motion";
+import { ShareModal } from "./ShareModal";
 
 export interface Post {
   id: string;
@@ -45,6 +47,9 @@ export function PostCard({ post, onLike, onComment, onShare }: PostCardProps) {
   const { t, isRtl } = useTranslation();
   const [isFollowing, setIsFollowing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [localLikes, setLocalLikes] = useState(post.likes);
+  const [localIsLiked, setLocalIsLiked] = useState(post.isLiked);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   useEffect(() => {
     const checkLikeAndFollowStatus = async () => {
@@ -102,7 +107,32 @@ export function PostCard({ post, onLike, onComment, onShare }: PostCardProps) {
     checkLikeAndFollowStatus();
   }, [isAuthenticated, user, post.id, post.user.id]);
 
+  // Subscribe to real-time updates for likes
+  useEffect(() => {
+    const channel = supabase
+      .channel(`post_likes_${post.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'post_likes',
+          filter: `post_id=eq.${post.id}`
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setLocalLikes(prev => prev + 1);
+          } else if (payload.eventType === 'DELETE') {
+            setLocalLikes(prev => Math.max(0, prev - 1));
+          }
+        }
+      )
+      .subscribe();
 
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [post.id]);
 
   const handleFollow = async () => {
     if (!isAuthenticated || !user || user.id === post.user.id) return;
@@ -165,6 +195,10 @@ export function PostCard({ post, onLike, onComment, onShare }: PostCardProps) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleShare = () => {
+    setIsShareModalOpen(true);
   };
 
   return (
@@ -330,10 +364,10 @@ export function PostCard({ post, onLike, onComment, onShare }: PostCardProps) {
               return;
             }
             
-            // Optimistic update first
-            const wasLiked = post.isLiked;
-            post.isLiked = !wasLiked;
-            post.likes = wasLiked ? Math.max(0, post.likes - 1) : post.likes + 1;
+            // Optimistic update
+            const wasLiked = localIsLiked;
+            setLocalIsLiked(!wasLiked);
+            setLocalLikes(prev => wasLiked ? Math.max(0, prev - 1) : prev + 1);
             
             try {
               if (wasLiked) {
@@ -364,15 +398,34 @@ export function PostCard({ post, onLike, onComment, onShare }: PostCardProps) {
               }
             } catch (error) {
               // Revert optimistic update on error
-              post.isLiked = wasLiked;
-              post.likes = wasLiked ? post.likes + 1 : Math.max(0, post.likes - 1);
+              setLocalIsLiked(wasLiked);
+              setLocalLikes(prev => wasLiked ? prev + 1 : Math.max(0, prev - 1));
               toast.error(isRtl ? 'حدث خطأ أثناء تحديث الإعجاب' : 'Error updating like status');
               console.error('Like error:', error);
             }
           }}
         >
-          <Heart className="h-4 w-4" fill={post.isLiked ? "currentColor" : "none"} />
-          <span>{post.likes}</span>
+          <motion.div 
+            whileTap={{ scale: 1.2 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+          >
+            <Heart 
+              className="h-4 w-4" 
+              fill={localIsLiked ? "currentColor" : "none"}
+              style={{ color: localIsLiked ? "#3b82f6" : "currentColor" }}
+            />
+          </motion.div>
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={localLikes}
+              initial={{ y: -10, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 10, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            >
+              {localLikes}
+            </motion.span>
+          </AnimatePresence>
         </Button>
 
         <Button
@@ -389,7 +442,7 @@ export function PostCard({ post, onLike, onComment, onShare }: PostCardProps) {
           variant="ghost"
           size="sm"
           className="gap-2"
-          onClick={() => onShare?.(post.id)}
+          onClick={handleShare}
         >
           <Share2 className="h-4 w-4" />
         </Button>
@@ -407,6 +460,16 @@ export function PostCard({ post, onLike, onComment, onShare }: PostCardProps) {
         </div>
       )}
       </div>
+
+      <ShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        url={`${window.location.origin}/post/${post.id}`}
+        title={post.content}
+        description={`Check out this post by ${post.user.displayName}`}
+        type="post"
+        author={post.user}
+      />
     </div>
   );
 }

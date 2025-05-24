@@ -92,7 +92,7 @@ export const useMessages = () => {
           .from('conversation_participants')
           .select(`
             user_id,
-            profiles:user_id(username, display_name, avatar_url)
+            profiles!inner(username, display_name, avatar_url)
           `)
           .eq('conversation_id', conv.id);
 
@@ -158,7 +158,7 @@ export const useMessages = () => {
         .from('conversation_participants')
         .select(`
           user_id,
-          profiles:user_id(username, display_name, avatar_url)
+          profiles!inner(username, display_name, avatar_url)
         `)
         .eq('conversation_id', conversationId);
 

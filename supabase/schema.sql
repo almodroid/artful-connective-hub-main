@@ -511,39 +511,64 @@ ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE conversation_participants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 
--- Create policies for conversations
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Users can view conversations they are part of" ON conversations;
+DROP POLICY IF EXISTS "Any authenticated user can create conversations" ON conversations;
+DROP POLICY IF EXISTS "Users can view conversation participants for their conversations" ON conversation_participants;
+DROP POLICY IF EXISTS "Users can add participants to conversations they created" ON conversation_participants;
+DROP POLICY IF EXISTS "Users can view messages in conversations they are part of" ON messages;
+DROP POLICY IF EXISTS "Users can send messages to conversations they are part of" ON messages;
+DROP POLICY IF EXISTS "Users can update their own messages" ON messages;
+DROP POLICY IF EXISTS "Users can delete their own messages" ON messages;
+
+-- Create updated policies for conversations
 CREATE POLICY "Users can view conversations they are part of"
 ON conversations FOR SELECT
-USING (EXISTS (
-  SELECT 1 FROM conversation_participants
-  WHERE conversation_id = id AND user_id = auth.uid()
-));
+USING (
+  EXISTS (
+    SELECT 1 FROM conversation_participants
+    WHERE conversation_id = conversations.id 
+    AND user_id = auth.uid()
+  )
+);
 
 CREATE POLICY "Any authenticated user can create conversations"
 ON conversations FOR INSERT
 TO authenticated
 WITH CHECK (true);
 
--- Create policies for conversation_participants
+-- Create updated policies for conversation_participants
 CREATE POLICY "Users can view conversation participants for their conversations"
 ON conversation_participants FOR SELECT
-USING (EXISTS (
-  SELECT 1 FROM conversation_participants
-  WHERE conversation_id = conversation_participants.conversation_id AND user_id = auth.uid()
-));
+USING (
+  EXISTS (
+    SELECT 1 FROM conversation_participants cp
+    WHERE cp.conversation_id = conversation_participants.conversation_id 
+    AND cp.user_id = auth.uid()
+  )
+);
 
-CREATE POLICY "Users can add participants to conversations they created"
+CREATE POLICY "Users can add participants to conversations they are part of"
 ON conversation_participants FOR INSERT
 TO authenticated
-WITH CHECK (true);
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM conversation_participants
+    WHERE conversation_id = conversation_participants.conversation_id 
+    AND user_id = auth.uid()
+  )
+);
 
--- Create policies for messages
+-- Create updated policies for messages
 CREATE POLICY "Users can view messages in conversations they are part of"
 ON messages FOR SELECT
-USING (EXISTS (
-  SELECT 1 FROM conversation_participants
-  WHERE conversation_id = messages.conversation_id AND user_id = auth.uid()
-));
+USING (
+  EXISTS (
+    SELECT 1 FROM conversation_participants
+    WHERE conversation_id = messages.conversation_id 
+    AND user_id = auth.uid()
+  )
+);
 
 CREATE POLICY "Users can send messages to conversations they are part of"
 ON messages FOR INSERT
@@ -552,14 +577,60 @@ WITH CHECK (
   auth.uid() = sender_id AND
   EXISTS (
     SELECT 1 FROM conversation_participants
-    WHERE conversation_id = messages.conversation_id AND user_id = auth.uid()
+    WHERE conversation_id = messages.conversation_id 
+    AND user_id = auth.uid()
   )
 );
 
 CREATE POLICY "Users can update their own messages"
 ON messages FOR UPDATE
-USING (auth.uid() = sender_id);
+USING (
+  auth.uid() = sender_id AND
+  EXISTS (
+    SELECT 1 FROM conversation_participants
+    WHERE conversation_id = messages.conversation_id 
+    AND user_id = auth.uid()
+  )
+);
 
 CREATE POLICY "Users can delete their own messages"
 ON messages FOR DELETE
-USING (auth.uid() = sender_id);
+USING (
+  auth.uid() = sender_id AND
+  EXISTS (
+    SELECT 1 FROM conversation_participants
+    WHERE conversation_id = messages.conversation_id 
+    AND user_id = auth.uid()
+  )
+);
+
+-- First, disable RLS temporarily to clean up
+ALTER TABLE conversation_participants DISABLE ROW LEVEL SECURITY;
+
+-- Drop all existing policies
+DROP POLICY IF EXISTS "Users can manage their conversation participants" ON conversation_participants;
+DROP POLICY IF EXISTS "Users can view their own conversation participants" ON conversation_participants;
+DROP POLICY IF EXISTS "Users can view participants in their conversations" ON conversation_participants;
+
+-- Re-enable RLS
+ALTER TABLE conversation_participants ENABLE ROW LEVEL SECURITY;
+
+-- Create a single policy for all operations
+CREATE POLICY "Users can manage their conversation participants"
+ON conversation_participants
+FOR ALL
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM conversation_participants cp
+    WHERE cp.conversation_id = conversation_participants.conversation_id
+    AND cp.user_id = auth.uid()
+  )
+)
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM conversation_participants cp
+    WHERE cp.conversation_id = conversation_participants.conversation_id
+    AND cp.user_id = auth.uid()
+  )
+);

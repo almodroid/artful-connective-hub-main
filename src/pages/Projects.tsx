@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Eye, Link as LinkIcon, Plus, GalleryHorizontalEnd, X, Grid2X2, Grid3X3, Grid, Rows } from "lucide-react";
-import { useProjects } from "@/hooks/use-projects";
+import { useProjects, ProjectWithUser } from "@/hooks/use-projects";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import { TagInput } from "@/components/ui-custom/TagInput";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { ProjectCard } from "@/components/ui-custom/ProjectCard";
 
 const Projects = () => {
   const { t, isRtl } = useTranslation();
@@ -64,7 +65,7 @@ const Projects = () => {
   const topTags = getTopTags();
   
   // Filter projects based on active filter
-  const filteredProjects = projects.filter(project => {
+  const filteredProjects = (projects as ProjectWithUser[]).filter(project => {
     // First apply search filter if any
     const matchesSearch = searchTerm === "" || 
       project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -300,7 +301,7 @@ const Projects = () => {
                   <span>{t("createProject")}</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[550px]">
+              <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
                 <form onSubmit={handleSubmit}>
                   <DialogHeader>
                     <DialogTitle>{t("createProject")}</DialogTitle>
@@ -582,42 +583,27 @@ const Projects = () => {
             ) : filteredProjects.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {filteredProjects.map((project) => (
-                  <Card key={project.id} className="overflow-hidden">
-                    <div className="aspect-video relative overflow-hidden">
-                      <img 
-                        src={project.cover_image_url || "https://images.unsplash.com/photo-1629429407759-01cd3d7cfb38?q=80&w=1000"} 
-                        alt={project.title} 
-                        className="object-cover w-full h-full hover:scale-105 transition-transform duration-300 cursor-pointer"
-                        onClick={() => {
-                          navigate(`/projects/${project.id}`);
-                        }}
-                      />
-                    </div>
-                    <CardHeader>
-                      <CardTitle className="text-xl">{project.title}</CardTitle>
-                      <p className="text-muted-foreground line-clamp-2">{project.description}</p>
-                    </CardHeader>
-                    <CardContent className="pb-0">
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {project.tags.map((tag, i) => (
-                          <Badge 
-                            key={i} 
-                            variant="secondary"
-                            className="cursor-pointer hover:bg-secondary/80"
-                            onClick={() => setActiveFilter(tag.toLowerCase())}
-                          >
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    </CardContent>
-                    <CardFooter className="flex justify-end">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Eye className="h-4 w-4" />
-                        <span>{project.views} {t("views")}</span>
-                      </div>
-                    </CardFooter>
-                  </Card>
+                  <ProjectCard
+                    key={project.id}
+                    project={{
+                      id: project.id,
+                      title: project.title,
+                      description: project.description,
+                      thumbnail_url: project.cover_image_url || "https://images.unsplash.com/photo-1629429407759-01cd3d7cfb38?q=80&w=1000",
+                      project_url: project.external_link,
+                      technologies: project.tags,
+                      createdAt: new Date(project.created_at),
+                      likes: project.likes_count || 0,
+                      isLiked: project.is_liked_by_user || false,
+                      comments: 0,
+                      user: {
+                        id: project.user_id,
+                        username: project.user?.username || 'anonymous',
+                        displayName: project.user?.display_name || 'Anonymous User',
+                        avatar: project.user?.avatar_url || ""
+                      }
+                    }}
+                  />
                 ))}
               </div>
             ) : (
@@ -650,46 +636,31 @@ const Projects = () => {
           {topTags.map(tag => (
             <TabsContent key={tag} value={tag} className="mt-0">
               {filteredProjects.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                   {filteredProjects.map((project) => (
-                <Card key={project.id} className="overflow-hidden">
-                  <div className="aspect-video relative overflow-hidden">
-                    <img 
-                          src={project.cover_image_url || "https://images.unsplash.com/photo-1629429407759-01cd3d7cfb38?q=80&w=1000"} 
-                      alt={project.title} 
-                      className="object-cover w-full h-full hover:scale-105 transition-transform duration-300 cursor-pointer"
-                          onClick={() => {
-                            navigate(`/projects/${project.id}`);
-                          }}
+                    <ProjectCard
+                      key={project.id}
+                      project={{
+                        id: project.id,
+                        title: project.title,
+                        description: project.description,
+                        thumbnail_url: project.cover_image_url || "https://images.unsplash.com/photo-1629429407759-01cd3d7cfb38?q=80&w=1000",
+                        project_url: project.external_link,
+                        technologies: project.tags,
+                        createdAt: new Date(project.created_at),
+                        likes: project.likes_count || 0,
+                        isLiked: project.is_liked_by_user || false,
+                        comments: 0,
+                        user: {
+                          id: project.user_id,
+                          username: project.user?.username || 'anonymous',
+                          displayName: project.user?.display_name || 'Anonymous User',
+                          avatar: project.user?.avatar_url || ""
+                        }
+                      }}
                     />
-                  </div>
-                  <CardHeader>
-                    <CardTitle className="text-xl">{project.title}</CardTitle>
-                        <p className="text-muted-foreground line-clamp-2">{project.description}</p>
-                  </CardHeader>
-                  <CardContent className="pb-0">
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {project.tags.map((tag, i) => (
-                            <Badge 
-                              key={i} 
-                              variant="secondary"
-                              className="cursor-pointer hover:bg-secondary/80"
-                              onClick={() => setActiveFilter(tag.toLowerCase())}
-                            >
-                              {tag}
-                            </Badge>
-                      ))}
-                    </div>
-                  </CardContent>
-                      <CardFooter className="flex justify-end">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Eye className="h-4 w-4" />
-                          <span>{project.views} {t("views")}</span>
-                    </div>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
+                  ))}
+                </div>
               ) : (
                 <div className="text-center py-12 border rounded-lg">
                   {searchTerm || activeFilter !== "all" ? (

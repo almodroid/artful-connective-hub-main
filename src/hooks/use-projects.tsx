@@ -91,14 +91,14 @@ export function useProjects() {
           imageSize: cover_image?.size || 0
         });
         
-        const result = await createProject(user.id, {
+        const result = await createProject({
           title,
-          description: description || "", // Ensure empty string if description is null/undefined
+          description: description || "",
           tags: tags || [],
           external_link: external_link || "",
           cover_image,
           gallery_images
-        });
+        }, user.id);
         
         console.log("Project created successfully:", result);
         return result;
@@ -177,7 +177,7 @@ export function useProjects() {
       if (!user) {
         throw new Error("User must be logged in to like a project");
       }
-      await likeProjectService(projectId, user.id);
+      await likeProjectService(projectId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
@@ -190,7 +190,7 @@ export function useProjects() {
       if (!user) {
         throw new Error("User must be logged in to unlike a project");
       }
-      await unlikeProjectService(projectId, user.id);
+      await unlikeProjectService(projectId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });

@@ -40,6 +40,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { ShareModal } from "@/components/ui-custom/ShareModal";
+import { supabase } from "@/integrations/supabase/client";
+import { motion, AnimatePresence } from 'framer-motion';
 
 const GalleryLayoutSelector = ({ value, onChange, disabled }: {
   value: 'grid-2' | 'grid-3' | 'grid-4' | 'rows',
@@ -104,11 +107,11 @@ const ProjectDetail = () => {
   const navigate = useNavigate();
   const { t, isRtl } = useTranslation();
   const { user } = useAuth();
-  const { incrementViews } = useProjects();
+  const { incrementViews, likeProject, unlikeProject } = useProjects();
   const [project, setProject] = useState<ProjectDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isLiked, setIsLiked] = useState(false);
-  const [likesCount, setLikesCount] = useState(0);
+  const [localLikes, setLocalLikes] = useState(0);
+  const [localIsLiked, setLocalIsLiked] = useState(false);
 
   // Edit and delete states
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -129,6 +132,9 @@ const ProjectDetail = () => {
     return (savedLayout as 'grid-2' | 'grid-3' | 'grid-4' | 'rows') || 'grid-3';
   });
 
+  // Share modal state
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
   // Check if the current user is the owner of the project
   const isOwner = user && project && user.id === project.user_id;
 
@@ -141,6 +147,9 @@ const ProjectDetail = () => {
         const projectData = await fetchProjectById(id);
         if (projectData) {
           setProject(projectData);
+          // Initialize likes from project data
+          setLocalLikes(projectData.likes_count || 0);
+          setLocalIsLiked(projectData.is_liked_by_user || false);
 
           // Set initial edit form data
           setEditFormData({
@@ -175,25 +184,69 @@ const ProjectDetail = () => {
     loadProject();
   }, [id, navigate, t, incrementViews]);
 
+  // Subscribe to real-time updates for likes
+  useEffect(() => {
+    if (!project?.id) return;
+
+    const channel = supabase
+      .channel(`project_likes_${project.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'project_likes',
+          filter: `project_id=eq.${project.id}`
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setLocalLikes(prev => prev + 1);
+          } else if (payload.eventType === 'DELETE') {
+            setLocalLikes(prev => Math.max(0, prev - 1));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [project?.id]);
+
   const handleLike = async () => {
     if (!user) {
       toast.error(t("loginToLikeProjects"));
       return;
     }
-    setIsLiked(!isLiked);
-    setLikesCount(prev => isLiked ? prev - 1 : prev + 1);
+
+    if (!project?.id) return;
+
+    // Optimistic update
+    const wasLiked = localIsLiked;
+    setLocalIsLiked(!wasLiked);
+    setLocalLikes(prev => wasLiked ? Math.max(0, prev - 1) : prev + 1);
+
+    try {
+      if (wasLiked) {
+        // Unlike the project
+        await unlikeProject(project.id);
+        toast.success(t("unlikeSuccess"));
+      } else {
+        // Like the project
+        await likeProject(project.id);
+        toast.success(t("likeSuccess"));
+      }
+    } catch (error) {
+      // Revert optimistic update on error
+      setLocalIsLiked(wasLiked);
+      setLocalLikes(prev => wasLiked ? prev + 1 : Math.max(0, prev - 1));
+      toast.error(t("errorUpdatingLike"));
+      console.error('Like error:', error);
+    }
   };
 
-  const handleShare = async () => {
-    try {
-      await navigator.share({
-        title: project?.title,
-        text: project?.description,
-        url: window.location.href,
-      });
-    } catch (error) {
-      console.error("Error sharing:", error);
-    }
+  const handleShare = () => {
+    setIsShareModalOpen(true);
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -268,8 +321,15 @@ const ProjectDetail = () => {
       setIsSubmitting(true);
       const updatedProject = await updateProject(
         id,
-        user.id,
-        editFormData
+        {
+          title: editFormData.title || project.title,
+          description: editFormData.description || project.description,
+          tags: editFormData.tags || project.tags,
+          external_link: editFormData.external_link || project.external_link,
+          cover_image: editFormData.cover_image || null,
+          gallery_images: editFormData.gallery_images || []
+        },
+        user.id
       );
 
       if (updatedProject) {
@@ -292,13 +352,10 @@ const ProjectDetail = () => {
 
     try {
       setIsSubmitting(true);
-      const success = await deleteProject(id, user.id);
-
-      if (success) {
-        setIsDeleteDialogOpen(false);
-        toast.success(t("projectDeletedSuccess"));
-        navigate("/projects");
-      }
+      await deleteProject(id);
+      setIsDeleteDialogOpen(false);
+      toast.success(t("projectDeletedSuccess"));
+      navigate("/projects");
     } catch (error) {
       console.error("Error deleting project:", error);
       toast.error(t("errorDeletingProject"));
@@ -369,7 +426,7 @@ const ProjectDetail = () => {
             )}
           </div>
 
-          <div className="mb-8 flex justify-between ">
+          <div className="mb-8 flex justify-between sm:flex-row flex-col">
             <div className="flex items-center gap-4 mb-6">
               <Link
                 to={`/profile/${project.user.username}`}
@@ -393,21 +450,7 @@ const ProjectDetail = () => {
                 <Eye className="h-5 w-5 text-muted-foreground" />
                 <span className="text-sm">{project.views} {t("views")}</span>
               </div>
-              {/* Tags */}
-              <div className={`flex flex-wrap gap-2`}>
-                {project.tags.map((tag, index) => (
-                  <Badge key={index} variant="secondary">
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Project header */}
-          <div className="my-8 flex justify-between gap-3">
-            <h1 className={`text-3xl font-bold font-cairo line-2 leading-[1.5] mb-4 ${isRtl ? "text-right" : "text-left"}`}>{project.title}</h1>
-            {/* Actions */}
+              {/* Actions */}
             <div className="space-y-2 flex gap-4">
               <div className="flex gap-2">
                 <Button
@@ -415,11 +458,26 @@ const ProjectDetail = () => {
                   className="flex-1 justify-center"
                   onClick={handleLike}
                 >
-                  <Heart className={cn(
-                    `h-4 w-4 ${isRtl ? "ml-2" : "mr-2"}`,
-                    isLiked ? "text-red-500 fill-red-500" : ""
-                  )} />
-                  {isLiked ? t("unlike") : t("like")}
+                  <motion.div 
+                    whileTap={{ scale: 1.2 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                  >
+                    <Heart className={cn(
+                      `h-4 w-4 ${isRtl ? "ml-2" : "mr-2"}`,
+                      localIsLiked ? "text-red-500 fill-red-500" : ""
+                    )} />
+                  </motion.div>
+                  <AnimatePresence mode="wait">
+                    <motion.span
+                      key={localLikes}
+                      initial={{ y: -10, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      exit={{ y: 10, opacity: 0 }}
+                      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                    >
+                      {localLikes} {t("likes")}
+                    </motion.span>
+                  </AnimatePresence>
                 </Button>
                 <Button
                   variant="outline"
@@ -448,6 +506,21 @@ const ProjectDetail = () => {
               </div>
 
             </div>
+              
+            </div>
+          </div>
+
+          {/* Project header */}
+          <div className="my-8 flex justify-between gap-3">
+            <h1 className={`text-3xl font-bold font-cairo line-2 leading-[1.5] mb-4 ${isRtl ? "text-right" : "text-left"}`}>{project.title}</h1>
+            {/* Tags */}
+            <div className={`flex-1 flex-wrap gap-2`}>
+                {project.tags.map((tag, index) => (
+                  <Badge key={index} variant="secondary">
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
           </div>
           {/* Project image */}
           <div className="relative aspect-video w-full mb-8 rounded-lg overflow-hidden">
@@ -489,7 +562,7 @@ const ProjectDetail = () => {
               <p className={`text-lg ${isRtl ? "text-right" : "text-left"} text-muted-foreground`}>{project.description}</p>
             </div>
             {/* Content blocks */}
-            {project.content_blocks?.map((block, index) => (
+            {(project.content_blocks as any[])?.map((block, index) => (
               <div key={index} className="mb-8">
                 {block.type === "image" && (
                   <img
@@ -513,11 +586,26 @@ const ProjectDetail = () => {
                 className="flex-1 justify-center"
                 onClick={handleLike}
               >
-                <Heart className={cn(
-                  `h-4 w-4 ${isRtl ? "ml-2" : "mr-2"}`,
-                  isLiked ? "text-red-500 fill-red-500" : ""
-                )} />
-                {isLiked ? t("unlike") : t("like")}
+                <motion.div 
+                  whileTap={{ scale: 1.2 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                >
+                  <Heart className={cn(
+                    `h-4 w-4 ${isRtl ? "ml-2" : "mr-2"}`,
+                    localIsLiked ? "text-red-500 fill-red-500" : ""
+                  )} />
+                </motion.div>
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={localLikes}
+                    initial={{ y: -10, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: 10, opacity: 0 }}
+                    transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                  >
+                    {localLikes} {t("likes")}
+                  </motion.span>
+                </AnimatePresence>
               </Button>
               <Button
                 variant="outline"
@@ -552,7 +640,7 @@ const ProjectDetail = () => {
 
       {/* Edit Project Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[550px]">
+        <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
           <form onSubmit={handleEditSubmit}>
             <DialogHeader>
               <DialogTitle>{t("editProject")}</DialogTitle>
@@ -764,6 +852,20 @@ const ProjectDetail = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ShareModal */}
+      <ShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        url={`${window.location.origin}/projects/${project.id}`}
+        title={project.title}
+        description={project.description}
+        type="project"
+        author={{
+          username: project.user.username,
+          displayName: project.user.display_name
+        }}
+      />
     </Layout>
   );
 };

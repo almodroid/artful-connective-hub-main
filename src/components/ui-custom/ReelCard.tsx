@@ -31,6 +31,9 @@ import { useNotificationsApi } from "@/hooks/use-notifications-api";
 import { useTranslation } from "@/hooks/use-translation";
 import { ReelWithUser, useReels } from "@/hooks/use-reels";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { motion, AnimatePresence } from "framer-motion";
+import { ShareModal } from "./ShareModal";
 
 // Define an interface for animated hearts
 interface AnimatedHeart {
@@ -330,6 +333,8 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
     return "";
   };
 
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
   return (
     <Card className={cn("overflow-hidden border-border/40 bg-card/30 animate-scale-in hover:shadow-md transition-shadow duration-300 h-full", className)}>
       <CardContent className="p-0 relative h-full">
@@ -590,6 +595,16 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
           }
         }
       `}} />
+
+      <ShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        url={`${window.location.origin}/reel/${reel.id}`}
+        title={reel.caption || `Reel by ${reel.user.displayName}`}
+        description={`Check out this reel by ${reel.user.displayName}`}
+        type="reel"
+        author={reel.user}
+      />
     </Card>
   );
 }

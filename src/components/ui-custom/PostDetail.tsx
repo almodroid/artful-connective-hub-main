@@ -513,6 +513,7 @@ export function PostDetail({
         description={`Check out this post by ${post.user.displayName}`}
         type="post"
         author={post.user}
+        image={post.images?.[0] || post.media_urls?.[0]}
       />
     </div>
   );

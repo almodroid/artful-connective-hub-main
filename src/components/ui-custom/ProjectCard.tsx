@@ -246,6 +246,7 @@ export function ProjectCard({ project, onLike, onComment }: ProjectCardProps) {
         description={project.description}
         type="project"
         author={project.user}
+        image={project.thumbnail_url}
       />
     </div>
   );

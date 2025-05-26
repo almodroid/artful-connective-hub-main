@@ -469,6 +469,7 @@ export function PostCard({ post, onLike, onComment, onShare }: PostCardProps) {
         description={`Check out this post by ${post.user.displayName}`}
         type="post"
         author={post.user}
+        image={post.images?.[0] || post.media_urls?.[0]}
       />
     </div>
   );

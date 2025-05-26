@@ -865,6 +865,7 @@ const ProjectDetail = () => {
           username: project.user.username,
           displayName: project.user.display_name
         }}
+        image={project.cover_image_url}
       />
     </Layout>
   );

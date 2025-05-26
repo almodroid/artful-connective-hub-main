@@ -759,6 +759,7 @@ export function ReelCardSingle({
           description={`Check out this reel by ${reel.user.displayName}`}
           type="reel"
           author={reel.user}
+          image={reel.thumbnail_url}
         />
       </CardContent>
 

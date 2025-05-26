@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,9 +33,10 @@ interface ShareModalProps {
     username: string;
     displayName: string;
   };
+  image?: string;
 }
 
-export function ShareModal({ isOpen, onClose, url, title, description, type, author }: ShareModalProps) {
+export function ShareModal({ isOpen, onClose, url, title, description, type, author, image }: ShareModalProps) {
   const { t, isRtl } = useTranslation();
   const { theme } = useTheme();
   const [includeAttribution, setIncludeAttribution] = useState(true);
@@ -66,20 +67,20 @@ export function ShareModal({ isOpen, onClose, url, title, description, type, aut
 
   const getShareText = () => {
     const typeLabel = getTypeLabel();
-    const authorText = author ? `by ${author.displayName}` : '';
-    const artSpaceText = 'on Artful Connective Hub';
+    const authorText = author ? (isRtl ? `بواسطة ${author.displayName}` : `by ${author.displayName}`) : '';
+    const artSpaceText = isRtl ? 'في ارت سبيس' : 'on Art Space';
     return `${title} ${authorText} ${artSpaceText}`;
   };
 
   const getShareDescription = () => {
     const typeLabel = getTypeLabel();
-    const authorText = author ? `by ${author.displayName}` : '';
-    const artSpaceText = 'on Artful Connective Hub';
+    const authorText = author ? (isRtl ? `بواسطة ${author.displayName}` : `by ${author.displayName}`) : '';
+    const artSpaceText = isRtl ? 'في ارت سبيس' : 'on Art Space';
     return `${description || ''}\n\n${authorText} ${artSpaceText}`;
   };
 
   const shareUrl = getShareUrl(url, includeAttribution, author);
-  const shareLinks = getShareLinks(shareUrl, getShareText(), getShareDescription());
+  const shareLinks = getShareLinks(shareUrl, getShareText(), getShareDescription(), image);
 
   const handleCopy = async () => {
     const success = await handleCopyLink(shareUrl);
@@ -99,6 +100,44 @@ export function ShareModal({ isOpen, onClose, url, title, description, type, aut
       onClose();
     }
   };
+
+  // Add Open Graph metadata when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      // Create or update meta tags
+      const updateMetaTag = (property: string, content: string) => {
+        let meta = document.querySelector(`meta[property="${property}"]`);
+        if (!meta) {
+          meta = document.createElement('meta');
+          meta.setAttribute('property', property);
+          document.head.appendChild(meta);
+        }
+        meta.setAttribute('content', content);
+      };
+
+      // Set Open Graph metadata
+      updateMetaTag('og:title', getShareText());
+      updateMetaTag('og:description', getShareDescription());
+      updateMetaTag('og:url', shareUrl);
+      updateMetaTag('og:type', 'website');
+      
+      // Use post image if available, otherwise use Art Space logo
+      const shareImage = image || (theme === 'light' ? '/assets/logolight.png' : '/assets/logo.png');
+      updateMetaTag('og:image', shareImage);
+      
+      // Twitter Card metadata
+      updateMetaTag('twitter:card', 'summary_large_image');
+      updateMetaTag('twitter:title', getShareText());
+      updateMetaTag('twitter:description', getShareDescription());
+      updateMetaTag('twitter:image', shareImage);
+
+      // Cleanup function to remove meta tags when modal closes
+      return () => {
+        const metaTags = document.querySelectorAll('meta[property^="og:"], meta[property^="twitter:"]');
+        metaTags.forEach(tag => tag.remove());
+      };
+    }
+  }, [isOpen, url, title, description, image, theme, isRtl]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -237,10 +276,10 @@ export function ShareModal({ isOpen, onClose, url, title, description, type, aut
           <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mt-4">
             <img 
               src={theme === 'light' ? '/assets/logolight.png' : '/assets/logo.png'}
-              alt="Artful Connective Hub Logo" 
+              alt="Art Space Logo" 
               className="h-4 w-auto object-contain"
             />
-            <span>Shared via Artful Connective Hub</span>
+            <span>{isRtl ? 'تمت المشاركة عبر ارت سبيس' : 'Shared via Art Space'}</span>
           </div>
         </div>
       </DialogContent>

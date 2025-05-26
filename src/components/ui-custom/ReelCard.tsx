@@ -608,6 +608,7 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
         description={`Check out this reel by ${reel.user.displayName}`}
         type="reel"
         author={reel.user}
+        image={reel.thumbnail_url}
       />
     </Card>
   );

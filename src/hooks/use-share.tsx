@@ -11,6 +11,7 @@ interface ShareOptions {
     username: string;
     displayName: string;
   };
+  image?: string;
 }
 
 export function useShare() {
@@ -33,32 +34,56 @@ export function useShare() {
     if (includeAttribution && author) {
       baseUrl.searchParams.set('via', author.username);
     }
-    baseUrl.searchParams.set('source', 'artful-connective-hub');
+    baseUrl.searchParams.set('source', 'art-space');
     return baseUrl.toString();
   };
 
-  const getShareLinks = (url: string, title: string, description: string) => {
+  const getShareLinks = (url: string, title: string, description: string, image?: string) => {
     const encodedUrl = encodeURIComponent(url);
     const encodedTitle = encodeURIComponent(title);
     const encodedDescription = encodeURIComponent(description);
-    const artSpaceBranding = 'via Artful Connective Hub';
+    const encodedImage = image ? encodeURIComponent(image) : '';
 
     return {
-      facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&quote=${encodedTitle} ${artSpaceBranding}`,
-      twitter: `https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle} ${artSpaceBranding}`,
-      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}&title=${encodedTitle}&summary=${encodedDescription} ${artSpaceBranding}`,
-      whatsapp: `https://wa.me/?text=${encodedTitle} ${artSpaceBranding} ${encodedUrl}`,
-      telegram: `https://t.me/share/url?url=${encodedUrl}&text=${encodedTitle} ${artSpaceBranding}`,
-      email: `mailto:?subject=${encodedTitle}&body=${encodedDescription} ${artSpaceBranding}%0A%0A${encodedUrl}`
+      facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&quote=${encodedTitle}${image ? `&picture=${encodedImage}` : ''}`,
+      twitter: `https://twitter.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}${image ? `&via=artspace&related=artspace&hashtags=artspace` : ''}`,
+      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}&title=${encodedTitle}&summary=${encodedDescription}${image ? `&image=${encodedImage}` : ''}`,
+      whatsapp: `https://wa.me/?text=${encodedTitle} ${encodedUrl}${image ? ` ${encodedImage}` : ''}`,
+      telegram: `https://t.me/share/url?url=${encodedUrl}&text=${encodedTitle}${image ? `&image=${encodedImage}` : ''}`,
+      email: `mailto:?subject=${encodedTitle}&body=${encodedDescription} %0A%0A${encodedUrl}${image ? `%0A%0AImage: ${encodedImage}` : ''}`
     };
   };
 
   const handleCopyLink = async (url: string) => {
     try {
-      await navigator.clipboard.writeText(url);
-      toast.success(t('linkCopied'));
-      return true;
+      // Try using the modern Clipboard API first
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(url);
+        toast.success(t('linkCopied'));
+        return true;
+      } else {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+          document.execCommand('copy');
+          textArea.remove();
+          toast.success(t('linkCopied'));
+          return true;
+        } catch (err) {
+          textArea.remove();
+          throw err;
+        }
+      }
     } catch (error) {
+      console.error('Error copying link:', error);
       toast.error(t('errorCopyingLink'));
       return false;
     }
@@ -77,7 +102,16 @@ export function useShare() {
 
   const handleSocialShare = (platform: string, url: string) => {
     try {
-      window.open(url, '_blank', 'width=600,height=400');
+      const width = 600;
+      const height = 400;
+      const left = (window.innerWidth - width) / 2;
+      const top = (window.innerHeight - height) / 2;
+      
+      window.open(
+        url,
+        '_blank',
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`
+      );
       return true;
     } catch (error) {
       toast.error(t('errorSharingSocial'));

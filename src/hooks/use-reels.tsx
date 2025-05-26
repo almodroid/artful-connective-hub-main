@@ -152,12 +152,16 @@ export function useReels() {
       const fileExt = video.name.split(".").pop();
       const filePath = `${user.id}/${uuidv4()}.${fileExt}`;
 
+      // Convert video to ArrayBuffer
+      const videoArrayBuffer = await video.arrayBuffer();
+
       // Try to upload directly first
       const { error: uploadError } = await supabase.storage
         .from("reels")
-        .upload(filePath, video, {
+        .upload(filePath, videoArrayBuffer, {
           cacheControl: "3600",
-          upsert: false
+          upsert: false,
+          contentType: `video/${fileExt}` // Set proper content type
         });
 
       if (uploadError) {
@@ -178,9 +182,10 @@ export function useReels() {
           // Retry upload after bucket creation
           const { error: retryUploadError } = await supabase.storage
             .from("reels")
-            .upload(filePath, video, {
+            .upload(filePath, videoArrayBuffer, {
               cacheControl: "3600",
-              upsert: false
+              upsert: false,
+              contentType: `video/${fileExt}` // Set proper content type
             });
 
           if (retryUploadError) {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { ReelCard } from "@/components/ui-custom/ReelCard";
@@ -29,6 +29,8 @@ export default function Reel() {
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const isMobile = useMediaQuery("(max-width: 768px)");
   const cn = (...classes: string[]) => classes.filter(Boolean).join(" ");
+  const [isPlaying, setIsPlaying] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   // Find the current reel and get adjacent reels
   const currentReelIndex = reels.findIndex(reel => reel.id === id);
@@ -53,7 +55,8 @@ export default function Reel() {
     likes: currentReel.likes_count || 0,
     comments: currentReel.comments_count || 0,
     views: currentReel.views_count || 0,
-    isLiked: isLiked
+    isLiked: isLiked,
+    nextReelId: nextReel?.id
   } : null;
 
   useEffect(() => {
@@ -76,7 +79,32 @@ export default function Reel() {
 
     // Increment view count when reel is viewed
     viewReel(reelWithUser.id);
-  }, [reelWithUser, isAuthenticated, checkIfReelLiked, viewReel, navigate, isRtl]);
+
+    // Auto-play video on mobile
+    if (isMobile && videoRef.current) {
+      videoRef.current.play().catch(error => {
+        console.error("Error auto-playing video:", error);
+      });
+      setIsPlaying(true);
+    }
+
+    // Handle video end
+    const handleVideoEnd = () => {
+      if (nextReel) {
+        navigate(`/reel/${nextReel.id}`);
+      }
+    };
+
+    if (videoRef.current) {
+      videoRef.current.addEventListener('ended', handleVideoEnd);
+    }
+
+    return () => {
+      if (videoRef.current) {
+        videoRef.current.removeEventListener('ended', handleVideoEnd);
+      }
+    };
+  }, [reelWithUser, isAuthenticated, checkIfReelLiked, viewReel, navigate, isRtl, isMobile, nextReel]);
 
   if (isLoading) {
     return (
@@ -142,8 +170,6 @@ export default function Reel() {
         onTouchEnd={handleTouchEnd}
       >
         <div className="h-full md:max-w-2xl md:mx-auto md:p-4 relative flex justify-between flex-auto">
-          
-
           <div className="h-full flex items-center justify-center">
             <ReelCardSingle
               reel={reelWithUser}
@@ -152,25 +178,19 @@ export default function Reel() {
               onView={viewReel}
               onDelete={() => navigate("/")}
               className={cn(isMobile ? "w-full h-full max-h-screen object-contain" : "h-full max-h-[80vh] max-w-[300px] aspect-[9/16] object-contain")}
+              videoRef={videoRef}
+              isPlaying={isPlaying}
+              setIsPlaying={setIsPlaying}
+              onCommentsClick={() => setIsCommentsOpen(true)}
             />
           </div>
           
           {isMobile ? (
-            <>
-              <Button
-                variant="ghost"
-                className="fixed bottom-3 left-20 z-20 bg-background/95 backdrop-blur rounded-full shadow-lg hover:shadow-xl transition-shadow"
-                onClick={() => setIsCommentsOpen(true)}
-              >
-                <MessageCircle className="h-6 w-6" />{t('comments')}
-              </Button>
-
-              <Dialog open={isCommentsOpen} onOpenChange={setIsCommentsOpen}>
-                <DialogContent className="sm:max-w-[425px] h-[80vh]">
-                  <ReelCommentsSection reelId={reelWithUser.id} />
-                </DialogContent>
-              </Dialog>
-            </>
+            <Dialog open={isCommentsOpen} onOpenChange={setIsCommentsOpen}>
+              <DialogContent className="sm:max-w-[425px] h-[80vh]">
+                <ReelCommentsSection reelId={reelWithUser.id} />
+              </DialogContent>
+            </Dialog>
           ) : (
             <Card className="rounded-lg border mx-6">
               <CardContent className="pt-6">

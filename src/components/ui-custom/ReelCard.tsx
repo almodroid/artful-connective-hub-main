@@ -455,11 +455,6 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
             ))}
           </div>
           
-          {/* Views counter */}
-          <div className="absolute right-0 bottom-0 p-3 text-sm text-white/90">
-            {reel.views} {isRtl ? "مشاهدة" : "views"}
-          </div>
-
           {/* Bottom video controls */}
           <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/70 to-transparent flex justify-between items-center video-controls">
             <div className="flex gap-2">
@@ -479,7 +474,16 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
                   className="h-9 w-9 rounded-full bg-black/50 text-white hover:bg-black/70 reel-link"
                   asChild
                 >
-                  <Link to={`/reel/${reel.id}`}>
+                  <Link 
+                    to={`/reel/${reel.id}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (videoRef.current) {
+                        videoRef.current.pause();
+                        setIsPlaying(false);
+                      }
+                    }}
+                  >
                     <LinkIcon className="h-4 w-4" />
                   </Link>
                 </Button>

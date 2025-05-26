@@ -1,4 +1,3 @@
-
 import { Link, useNavigate } from "react-router-dom";
 import { User, LogOut, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,13 +19,14 @@ export function UserMenu() {
   const { user, logout, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { t, isRtl } = useTranslation();
+  const isMobile = useIsMobile();
   
   const handleLogout = async () => {
     await logout();
     navigate("/login");
   };
   
-  if (!isAuthenticated) {
+  if (!isAuthenticated && !isMobile) {
     return (
       <>
         <Button variant="ghost" asChild>
@@ -39,15 +39,25 @@ export function UserMenu() {
     );
   }
 
+  if (isMobile && !isAuthenticated) {
+    return (
+      <>
+      <Link to="/login">
+        <User className="rounded-full bg-gray-900 p-2 w-10 h-10 mx-2"/>
+        </Link>
+      </>
+    );
+  }
+
   
   return (
     <>
-      <NotificationsDropdown />
+      {!isMobile && <NotificationsDropdown />}
       
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="rounded-full">
-            <Avatar className="h-8 w-8 border overflow-hidden">
+          <Button variant="ghost" size="icon" className="rounded-full mt-1 mr-2">
+            <Avatar className="h-10 w-10 border overflow-hidden">
               <AvatarImage 
                 src={user?.avatar} 
                 alt={user?.displayName}

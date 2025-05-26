@@ -23,11 +23,11 @@ export function Header() {
     return (
       <>
       <div className={`flex items-center justify-between`}>
-        <div>
+        <div className="flex">
         {!isHome && (
           <button 
             onClick={() => window.history.back()}
-            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 ml-[30px]"
+            className="px-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 "
           >
             {isRtl ? (
                 <ArrowRight className="h-6 w-6" />
@@ -37,8 +37,9 @@ export function Header() {
            
           </button>
         )}
+        <UserMenu />
         </div>
-        <div className={`flex items-center ${isHome ? 'ml-[-70px]' : ''}`}>
+        <div className={`flex items-center m-auto`}>
           <Logo /> <Link to="/" className={` sm:block ${isRtl ? 'ml-1' : 'mr-1'}`}></Link>
         </div>
         <div className="flex items-center justify-center">

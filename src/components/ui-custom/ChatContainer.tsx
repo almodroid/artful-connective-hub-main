@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import { ChatMessage } from "@/hooks/use-chat";
 import { Palette, Brush, Wand, Layers, User, Bot, Save, History, Trash2, Search, ArrowUpDown, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,12 +25,24 @@ interface ChatContainerProps {
   isLoading: boolean;
   onSendMessage: (message: string) => void;
   onClearChat: () => void;
+  onPollMessages?: () => Promise<void>;
+  pollInterval?: number;
+  onLoadMessages?: (messages: ChatMessage[]) => void;
 }
 
 type SortOption = 'newest' | 'oldest' | 'title';
 
-export function ChatContainer({ messages, isLoading, onSendMessage, onClearChat }: ChatContainerProps) {
+export function ChatContainer({ 
+  messages, 
+  isLoading, 
+  onSendMessage, 
+  onClearChat,
+  onPollMessages,
+  pollInterval = 3000,
+  onLoadMessages
+}: ChatContainerProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const { t, isRtl } = useTranslation();
   const [savedConversations, setSavedConversations] = useState<SavedConversation[]>(() => {
     const saved = localStorage.getItem('savedConversations');
@@ -40,6 +52,10 @@ export function ChatContainer({ messages, isLoading, onSendMessage, onClearChat 
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const [lastMessageId, setLastMessageId] = useState<string | null>(null);
+  const [isPolling, setIsPolling] = useState(false);
+  const pollingTimeoutRef = useRef<NodeJS.Timeout>();
   
   // Get unique tags from all conversations
   const allTags = Array.from(new Set(
@@ -125,32 +141,37 @@ export function ChatContainer({ messages, isLoading, onSendMessage, onClearChat 
 
   // Load a saved conversation
   const loadConversation = (conversation: SavedConversation) => {
-    // Instead of clearing, we'll check if we're continuing or starting fresh
-    const shouldContinue = messages.length > 0;
-    
-    if (shouldContinue) {
-      // Add a separator message to indicate continuation
-      const separatorMessage: ChatMessage = {
-        id: `separator-${Date.now()}`,
-        role: "assistant",
-        content: t("continuingConversation"),
-        timestamp: new Date()
-      };
-      
-      // Add the separator and then the conversation messages
-      onSendMessage(separatorMessage.content);
-      conversation.messages.forEach(msg => {
-        if (msg.role === 'user') {
-          onSendMessage(msg.content);
-        }
-      });
+    if (onLoadMessages) {
+      // If we have a direct message loader, use it
+      onLoadMessages(conversation.messages);
     } else {
-      // If no current conversation, just load the saved one
-      conversation.messages.forEach(msg => {
-        if (msg.role === 'user') {
-          onSendMessage(msg.content);
-        }
-      });
+      // Fallback to the old behavior if no loader is provided
+      const shouldContinue = messages.length > 0;
+      
+      if (shouldContinue) {
+        // Add a separator message to indicate continuation
+        const separatorMessage: ChatMessage = {
+          id: `separator-${Date.now()}`,
+          role: "assistant",
+          content: t("continuingConversation"),
+          timestamp: new Date()
+        };
+        
+        // Add the separator and then the conversation messages
+        onSendMessage(separatorMessage.content);
+        conversation.messages.forEach(msg => {
+          if (msg.role === 'user') {
+            onSendMessage(msg.content);
+          }
+        });
+      } else {
+        // If no current conversation, just load the saved one
+        conversation.messages.forEach(msg => {
+          if (msg.role === 'user') {
+            onSendMessage(msg.content);
+          }
+        });
+      }
     }
     
     setShowHistory(false);
@@ -183,58 +204,145 @@ export function ChatContainer({ messages, isLoading, onSendMessage, onClearChat 
     },
   ];
 
-  // Scroll to bottom when messages change
+  // Poll for new messages
+  const pollForMessages = useCallback(async () => {
+    if (!onPollMessages || isPolling) return;
+
+    try {
+      setIsPolling(true);
+      await onPollMessages();
+    } catch (error) {
+      console.error('Error polling for messages:', error);
+    } finally {
+      setIsPolling(false);
+    }
+  }, [onPollMessages, isPolling]);
+
+  // Set up polling interval
   useEffect(() => {
-    if (messagesEndRef.current) {
-      const container = messagesEndRef.current.parentElement;
-      if (container) {
-        container.scrollTo({
-          top: container.scrollHeight,
-          behavior: "smooth"
-        });
+    if (!onPollMessages) return;
+
+    const startPolling = () => {
+      pollingTimeoutRef.current = setInterval(pollForMessages, pollInterval);
+    };
+
+    const stopPolling = () => {
+      if (pollingTimeoutRef.current) {
+        clearInterval(pollingTimeoutRef.current);
+      }
+    };
+
+    // Start polling when component mounts
+    startPolling();
+
+    // Stop polling when component unmounts
+    return () => {
+      stopPolling();
+    };
+  }, [onPollMessages, pollInterval, pollForMessages]);
+
+  // Track last message for new message detection
+  useEffect(() => {
+    if (messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.id !== lastMessageId) {
+        setLastMessageId(lastMessage.id);
+        // Scroll to bottom when new message arrives
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTo({
+            top: messagesContainerRef.current.scrollHeight,
+            behavior: "smooth"
+          });
+        }
       }
     }
-  }, [messages]);
+  }, [messages, lastMessageId]);
 
-  const renderMessage = (message: ChatMessage) => (
-    <div
-      key={message.id}
-      className={cn(
-        "flex items-start gap-3 ",
-        message.role === "user" 
-          ? isRtl ? "mr-auto" : "ml-auto"
-          : isRtl ? "ml-auto" : "mr-auto",
-        isRtl && message.role === "user" ? "flex-row" : isRtl ? "flex-row-reverse" : "flex-row"
-      )}
-    >
-      <div className={cn(
-        "flex items-center justify-center w-8 h-8 rounded-full shrink-0",
-        message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
-      )}>
-        {message.role === "user" ? (
-          <User className="w-4 h-4" />
-        ) : (
-          <Bot className="w-4 h-4" />
+  // Handle keyboard visibility
+  useEffect(() => {
+    const handleResize = () => {
+      // Check if we're on a mobile device
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      if (!isMobile) return;
+
+      // Get the viewport height
+      const viewportHeight = window.visualViewport?.height || window.innerHeight;
+      const windowHeight = window.innerHeight;
+      
+      // If viewport height is significantly smaller than window height, keyboard is likely open
+      const keyboardOpen = viewportHeight < windowHeight * 0.8;
+      
+      if (isKeyboardVisible && !keyboardOpen) {
+        // Keyboard just closed, scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      
+      setIsKeyboardVisible(keyboardOpen);
+    };
+
+    // Use visualViewport API if available
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleResize);
+      window.visualViewport.addEventListener('scroll', handleResize);
+    } else {
+      // Fallback to window resize
+      window.addEventListener('resize', handleResize);
+    }
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleResize);
+        window.visualViewport.removeEventListener('scroll', handleResize);
+      } else {
+        window.removeEventListener('resize', handleResize);
+      }
+    };
+  }, [isKeyboardVisible]);
+
+  const renderMessage = (message: ChatMessage) => {
+    const isNewMessage = message.id === lastMessageId;
+    
+    return (
+      <div
+        key={message.id}
+        className={cn(
+          "flex items-start gap-3",
+          message.role === "user" 
+            ? isRtl ? "mr-auto" : "ml-auto"
+            : isRtl ? "ml-auto" : "mr-auto",
+          isRtl && message.role === "user" ? "flex-row" : isRtl ? "flex-row-reverse" : "flex-row",
+          isNewMessage && "animate-fade-in"
         )}
+      >
+        <div className={cn(
+          "flex items-center justify-center w-8 h-8 rounded-full shrink-0",
+          message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
+        )}>
+          {message.role === "user" ? (
+            <User className="w-4 h-4" />
+          ) : (
+            <Bot className="w-4 h-4" />
+          )}
+        </div>
+        <div className={cn(
+          "rounded-lg p-3 break-words",
+          message.role === "user" 
+            ? "bg-primary text-primary-foreground" 
+            : "bg-muted",
+          isRtl ? "text-right" : "text-left"
+        )}>
+          <p className="whitespace-pre-wrap overflow-x-auto">{message.content}</p>
+          <span className="text-xs opacity-70 mt-1 block">
+            {new Date(message.timestamp).toLocaleTimeString()}
+          </span>
+        </div>
       </div>
-      <div className={cn(
-        "rounded-lg p-3",
-        message.role === "user" 
-          ? "bg-primary text-primary-foreground" 
-          : "bg-muted",
-        isRtl ? "text-right" : "text-left"
-      )}>
-        <p className="whitespace-pre-wrap">{message.content}</p>
-        <span className="text-xs opacity-70 mt-1 block">
-          {new Date(message.timestamp).toLocaleTimeString()}
-        </span>
-      </div>
-    </div>
-  );
+    );
+  };
 
   const renderHistoryPanel = () => (
-    <div className="space-y-2">
-      <div className={cn("flex gap-2", isRtl && "flex-row-reverse")}>
+    <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+      <div className={cn("flex gap-2 sticky top-0 bg-background z-20 p-2", isRtl && "flex-row-reverse")}>
         <div className="relative flex-1">
           <Search className={cn(
             "absolute h-4 w-4 text-muted-foreground",
@@ -269,7 +377,7 @@ export function ChatContainer({ messages, isLoading, onSendMessage, onClearChat 
       </div>
 
       {allTags.length > 0 && (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1 p-2 sticky top-[72px] bg-background z-10">
           {allTags.map(tag => (
             <Button
               key={tag}
@@ -285,7 +393,7 @@ export function ChatContainer({ messages, isLoading, onSendMessage, onClearChat 
       )}
 
       {filteredConversations.length > 0 ? (
-        <div className="space-y-2">
+        <div className="space-y-2 p-2">
           {filteredConversations.map((conv) => (
             <div
               key={conv.id}
@@ -301,7 +409,7 @@ export function ChatContainer({ messages, isLoading, onSendMessage, onClearChat 
                   onClick={() => loadConversation(conv)}
                 >
                   <div className={cn(
-                    "flex flex-col items-start",
+                    "flex flex-col items-start w-full",
                     isRtl && "items-end"
                   )}>
                     <span className="truncate font-medium">{conv.title}</span>
@@ -327,7 +435,7 @@ export function ChatContainer({ messages, isLoading, onSendMessage, onClearChat 
                   </div>
                 </Button>
               </div>
-              <div className={cn("flex gap-1", isRtl && "flex-row-reverse")}>
+              <div className={cn("flex gap-1 shrink-0", isRtl && "flex-row-reverse")}>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon">
@@ -366,9 +474,9 @@ export function ChatContainer({ messages, isLoading, onSendMessage, onClearChat 
   );
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-hidden">
       {messages.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center gap-6 px-4 py-8 text-center">
+        <div className="flex-1 flex flex-col items-center justify-center gap-6 px-4 py-8 text-center overflow-y-auto">
           <div className="space-y-2">
             <h2 className="text-2xl font-bold">{t("meetSpaceAI")}</h2>
             <p className="text-muted-foreground max-w-md text-center">
@@ -405,7 +513,11 @@ export function ChatContainer({ messages, isLoading, onSendMessage, onClearChat 
                 {t("chatHistory")}
               </Button>
               
-              {showHistory && renderHistoryPanel()}
+              {showHistory && (
+                <div className="mt-2 bg-muted rounded-lg">
+                  {renderHistoryPanel()}
+                </div>
+              )}
             </div>
           ) : (
             <div className="w-full max-w-md mt-4 text-center text-muted-foreground">
@@ -414,9 +526,9 @@ export function ChatContainer({ messages, isLoading, onSendMessage, onClearChat 
           )}
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto p-4 space-y-6 relative">
+        <div className="flex-1 flex flex-col overflow-hidden">
           <div className={cn(
-            "flex justify-end mb-2 sticky top-0 bg-background z-10 pb-2",
+            "flex justify-end p-2 sticky top-0 bg-background z-10 border-b",
             isRtl && "flex-row-reverse"
           )}>
             <Button
@@ -441,32 +553,34 @@ export function ChatContainer({ messages, isLoading, onSendMessage, onClearChat 
           </div>
 
           {showHistory && (
-            <div className="mb-4 p-2 bg-muted rounded-lg sticky top-12 bg-background z-10">
+            <div className="border-b">
               {renderHistoryPanel()}
             </div>
           )}
 
-          <div className="space-y-4">
-            {messages.map(renderMessage)}
-            {isLoading && (
-              <div className={cn(
-                "flex items-start gap-3 ",
-                isRtl ? "ml-auto" : "mr-auto",
-                isRtl ? "flex-row-reverse" : "flex-row"
-              )}>
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muted shrink-0">
-                  <Bot className="w-4 h-4" />
-                </div>
-                <div className="rounded-lg p-3 bg-muted">
-                  <div className="flex gap-1">
-                    <div className="w-2 h-2 rounded-full bg-muted-foreground animate-bounce" />
-                    <div className="w-2 h-2 rounded-full bg-muted-foreground animate-bounce delay-100" />
-                    <div className="w-2 h-2 rounded-full bg-muted-foreground animate-bounce delay-200" />
+          <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-6">
+            <div className="space-y-4">
+              {messages.map(renderMessage)}
+              {isLoading && (
+                <div className={cn(
+                  "flex items-start gap-3",
+                  isRtl ? "ml-auto" : "mr-auto",
+                  isRtl ? "flex-row-reverse" : "flex-row"
+                )}>
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muted shrink-0">
+                    <Bot className="w-4 h-4" />
+                  </div>
+                  <div className="rounded-lg p-3 bg-muted">
+                    <div className="flex gap-1">
+                      <div className="w-2 h-2 rounded-full bg-muted-foreground animate-bounce" />
+                      <div className="w-2 h-2 rounded-full bg-muted-foreground animate-bounce delay-100" />
+                      <div className="w-2 h-2 rounded-full bg-muted-foreground animate-bounce delay-200" />
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
+              )}
+              <div ref={messagesEndRef} />
+            </div>
           </div>
         </div>
       )}

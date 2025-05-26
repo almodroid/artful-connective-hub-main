@@ -238,19 +238,25 @@ const Index = () => {
             ) : (
               <div className="space-y-6">
                 {(() => {
-                  // Randomly intersperse reels between posts
                   const postsWithReels = [...displayPosts];
-                  const reelFrequency = Math.max(3, Math.floor(postsWithReels.length / 3));
+                  const reelFrequency = 3; // Show reels after every 3 posts
+                  let reelSectionCount = 0;
                   
+                  // Insert reels at regular intervals
                   for (let i = reelFrequency; i < postsWithReels.length; i += reelFrequency + 1) {
-                    postsWithReels.splice(i, 0, { isReel: true });
+                    postsWithReels.splice(i, 0, { isReel: true, sectionIndex: reelSectionCount++ });
                   }
                   
                   return postsWithReels.map((item, index) => {
                     if (item.isReel) {
                       return (
                         <div key={`reel-${index}`} className="mb-6">
-                          <ReelsSection isActive={false} key={`reels-${Math.random()}`} />
+                          <ReelsSection 
+                            isActive={false} 
+                            key={`reels-${index}`}
+                            showHeader={index === 0}
+                            sectionIndex={item.sectionIndex}
+                          />
                         </div>
                       );
                     }

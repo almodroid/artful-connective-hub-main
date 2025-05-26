@@ -1,6 +1,6 @@
 import { useLocation } from "react-router-dom";
 import { Link } from "react-router-dom";
-import { Home, Search, PlusSquare, Bell, User, FolderKanban, Plus, MessageSquare } from "lucide-react";
+import { Home, Search, PlusSquare, Bell, User, FolderKanban, Plus, MessageSquare, Wand } from "lucide-react";
 import { useTranslation } from "@/hooks/use-translation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ export function BottomBar() {
     { name: t("explore"), href: "/explore", icon: Search },
     { name: t("projects"), href: "/projects", icon: FolderKanban },
     { name: t("messages"), href: "/messages", icon: MessageSquare },
+    { name: t("Space Ai"), href: "/space-ai", icon: Wand},
   ];
 
   if (!isAuthenticated) {
@@ -30,10 +31,11 @@ export function BottomBar() {
       { name: t("home"), href: "/", icon: Home },
       { name: t("explore"), href: "/explore", icon: Search },
       { name: t("projects"), href: "/projects", icon: FolderKanban },
-      { name: t("login"), href: "/login", icon: User},
+      { name: t("Space Ai"), href: "/space-ai", icon: Wand},
+      
     ];
     return (
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/90">
       {!location.pathname.startsWith('/reel/') && (
       <div className="flex h-16 items-center justify-around px-4">
         {navigation.map((item) => (
@@ -82,8 +84,6 @@ export function BottomBar() {
             <span className="text-xs">{item.name}</span>
           </Link>
         ))}
-        
-        
           <Link
             to={isAuthenticated ? "/create" : "/login"}
             className="fixed right-4 bottom-20 z-50"
@@ -92,32 +92,6 @@ export function BottomBar() {
               <Plus className="h-6 w-6" />
             </Button>
           </Link>
-        
-
-        
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className="flex flex-col items-center justify-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <Avatar className="h-8 w-8">
-                <AvatarImage src="/placeholder-avatar.jpg" />
-                <AvatarFallback>U</AvatarFallback>
-              </Avatar>
-              <span className="text-xs">Profile</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56" side="top">
-            <DropdownMenuItem>
-              <User className="mr-2 h-4 w-4" />
-              <span>Profile</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem>Settings</DropdownMenuItem>
-            <DropdownMenuItem>Sign out</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
       )}
     </nav>

@@ -13,9 +13,11 @@ const REELS_PER_PAGE = 8;
 
 interface ReelsSectionProps {
   isActive?: boolean;
+  showHeader?: boolean;
+  sectionIndex?: number;
 }
 
-export function ReelsSection({ isActive = false }: ReelsSectionProps) {
+export function ReelsSection({ isActive = false, showHeader = true, sectionIndex = 0 }: ReelsSectionProps) {
   const { reels, isLoading, likeReel, viewReel, hasMore, loadMore } = useReels();
   const { isAuthenticated } = useAuth();
   const { t, isRtl } = useTranslation();
@@ -28,7 +30,7 @@ export function ReelsSection({ isActive = false }: ReelsSectionProps) {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
-  // Convert Reel to ReelWithUser and randomize order
+  // Use reels directly from the query without additional sorting
   const reelsWithUser = reels
     .map(reel => ({
       id: reel.id,
@@ -47,8 +49,10 @@ export function ReelsSection({ isActive = false }: ReelsSectionProps) {
       comments: reel.comments_count || 0,
       views: reel.views_count || 0,
       isLiked: false
-    }))
-    .sort(() => Math.random() - 0.5);
+    }));
+
+  // Take a subset of reels for this section
+  const sectionReels = reelsWithUser.slice(0, 4);
 
   // Handle scroll navigation
   const handleScrollLeft = () => {
@@ -169,26 +173,30 @@ export function ReelsSection({ isActive = false }: ReelsSectionProps) {
   }, [isRtl]);
 
   // If there are no reels and not loading, don't render the section
-  if (reelsWithUser.length === 0 && !isLoading) {
+  if (sectionReels.length === 0 && !isLoading) {
     return null;
   }
 
   return (
     <div className="mb-8 px-5">
-      <div className="flex justify-between items-center mb-4" dir={isRtl? 'rtl' :'ltr'}>
-        <h2 className="text-lg font-semibold m-2">{t('reels')}</h2>
-        {isAuthenticated && (
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="gap-1"
-            onClick={() => setIsCreateReelOpen(true)}
-          >
-            <Plus className="h-4 w-4" />
-            <span>{t('createReel')}</span>
-          </Button>
-        )}
-      </div>
+      {showHeader && (
+        <div className="flex justify-between items-center mb-4" dir={isRtl? 'rtl' :'ltr'}>
+          <h2 className="text-lg font-semibold m-2">
+            {sectionIndex === 0 ? t('reels') : t('moreReels')}
+          </h2>
+          {isAuthenticated && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-1"
+              onClick={() => setIsCreateReelOpen(true)}
+            >
+              <Plus className="h-4 w-4" />
+              <span>{t('createReel')}</span>
+            </Button>
+          )}
+        </div>
+      )}
 
       <div className="relative">
         {/* Navigation Arrows */}
@@ -210,7 +218,7 @@ export function ReelsSection({ isActive = false }: ReelsSectionProps) {
             size="icon" 
             className="h-10 w-10 rounded-full bg-black/50 text-white hover:bg-black/70 shadow-lg"
             onClick={handleScrollRight}
-            disabled={activeIndex >= reelsWithUser.length - 1}
+            disabled={activeIndex >= sectionReels.length - 1}
           >
             {isRtl ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
           </Button>
@@ -229,7 +237,7 @@ export function ReelsSection({ isActive = false }: ReelsSectionProps) {
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
-          {isLoading && reelsWithUser.length === 0 ? (
+          {isLoading && sectionReels.length === 0 ? (
             // Loading skeletons
             Array(4).fill(0).map((_, i) => (
               <div 
@@ -238,7 +246,7 @@ export function ReelsSection({ isActive = false }: ReelsSectionProps) {
               />
             ))
           ) : (
-            reelsWithUser.map((reel, index) => (
+            sectionReels.map((reel, index) => (
               <div 
                 key={reel.id} 
                 className="flex-shrink-0 w-[250px] h-[350px] reel-card object-cover"

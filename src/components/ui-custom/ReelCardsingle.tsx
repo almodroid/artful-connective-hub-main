@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
 import { Heart, MessageCircle, Share2, Play, Pause, Volume2, VolumeX, Link as LinkIcon, MoreVertical, Flag, Trash, ArrowLeft, ArrowRight } from "lucide-react";
@@ -32,6 +32,7 @@ import { useTranslation } from "@/hooks/use-translation";
 import { ReelWithUser, useReels } from "@/hooks/use-reels";
 import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { ShareModal } from "@/components/ui-custom/ShareModal";
 
 // Define an interface for animated hearts
 interface AnimatedHeart {
@@ -45,22 +46,39 @@ interface AnimatedHeart {
 }
 
 interface ReelCardProps {
-  reel: ReelWithUser;
+  reel: ReelWithUser & {
+    nextReelId?: string;
+  };
   onLike?: (reelId: string) => void;
   onView?: (reelId: string) => void;
   isActive?: boolean;
   onDelete?: () => void; // Callback for after deletion
   className?: string;
+  videoRef?: React.RefObject<HTMLVideoElement>;
+  isPlaying?: boolean;
+  setIsPlaying?: (isPlaying: boolean) => void;
+  onCommentsClick?: () => void;
 }
 
-export function ReelCardSingle({ reel, onLike, onView, isActive = false, onDelete, className }: ReelCardProps) {
+export function ReelCardSingle({ 
+  reel, 
+  onLike, 
+  onView, 
+  isActive = false, 
+  onDelete, 
+  className,
+  videoRef: externalVideoRef,
+  isPlaying = false,
+  setIsPlaying,
+  onCommentsClick
+}: ReelCardProps) {
   const { isAuthenticated, user } = useAuth();
   const { isRtl, t } = useTranslation();
   const location = useLocation();
+  const navigate = useNavigate();
   const isSingleReelPage = location.pathname.startsWith('/reel/');
   const [isLiked, setIsLiked] = useState(reel.isLiked || false);
   const [likeCount, setLikeCount] = useState(reel.likes || 0);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -73,13 +91,20 @@ export function ReelCardSingle({ reel, onLike, onView, isActive = false, onDelet
   const [heartCount, setHeartCount] = useState(0);
   const heartContainerRef = useRef<HTMLDivElement>(null);
   
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const internalVideoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = externalVideoRef || internalVideoRef;
   const { sendInteractionNotification } = useNotificationsApi();
   const { deleteReel, reportReel } = useReels();
   const isMobile = useMediaQuery("(max-width: 768px)");
   
   // Check if the current user is the owner of this reel
   const isOwner = isAuthenticated && user?.id === reel.user.id;
+
+  const [showControls, setShowControls] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const controlsTimeoutRef = useRef<NodeJS.Timeout>();
 
   // Function to generate random hearts
   const generateHearts = (count: number) => {
@@ -143,7 +168,7 @@ export function ReelCardSingle({ reel, onLike, onView, isActive = false, onDelet
         video.removeEventListener('error', handleError);
       };
     }
-  }, []);
+  }, [videoRef]);
 
   // Handle video playback
   useEffect(() => {
@@ -152,25 +177,50 @@ export function ReelCardSingle({ reel, onLike, onView, isActive = false, onDelet
     const video = videoRef.current;
     
     if (isActive) {
-      // Only set initial state, don't auto-play
-      setIsPlaying(false);
-      video.pause();
+      if (isPlaying) {
+        video.play().catch(error => {
+          console.error("Error playing video:", error);
+        });
+      } else {
+        video.pause();
+      }
     } else {
       video.pause();
-      setIsPlaying(false);
     }
-  }, [isActive]);
+  }, [isActive, isPlaying, videoRef]);
+
+  // Handle video time updates
+  useEffect(() => {
+    if (!videoRef.current) return;
+    
+    const video = videoRef.current;
+    
+    const handleTimeUpdate = () => {
+      setCurrentTime(video.currentTime);
+    };
+    
+    const handleDurationChange = () => {
+      setDuration(video.duration);
+    };
+    
+    video.addEventListener('timeupdate', handleTimeUpdate);
+    video.addEventListener('durationchange', handleDurationChange);
+    
+    return () => {
+      video.removeEventListener('timeupdate', handleTimeUpdate);
+      video.removeEventListener('durationchange', handleDurationChange);
+    };
+  }, [videoRef]);
 
   // Handle manual playback toggle
   const togglePlayback = () => {
-    if (!videoRef.current) return;
+    if (!videoRef.current || !setIsPlaying) return;
     
-    if (isPlaying) {
-      videoRef.current.pause();
-      setIsPlaying(false);
-    } else {
+    const newPlayingState = !isPlaying;
+    setIsPlaying(newPlayingState);
+    
+    if (newPlayingState) {
       videoRef.current.play().then(() => {
-        setIsPlaying(true);
         if (onView && !isPlaying) {
           onView(reel.id);
         }
@@ -185,6 +235,8 @@ export function ReelCardSingle({ reel, onLike, onView, isActive = false, onDelet
           });
         }
       });
+    } else {
+      videoRef.current.pause();
     }
   };
   
@@ -206,7 +258,6 @@ export function ReelCardSingle({ reel, onLike, onView, isActive = false, onDelet
     setLikeCount(prev => newLikedState ? prev + 1 : prev - 1);
     
     if (newLikedState) {
-      // Only send notification and show animation when liking, not unliking
       sendInteractionNotification(reel.user.id, "like", reel.id, "reel");
       generateHearts(5 + Math.floor(Math.random() * 3)); // Generate 5-7 hearts
     }
@@ -228,7 +279,7 @@ export function ReelCardSingle({ reel, onLike, onView, isActive = false, onDelet
         
         // If we're on the single reel page, navigate back
         if (isSingleReelPage) {
-          window.history.back();
+          navigate(-1);
         }
       }
     } finally {
@@ -332,6 +383,35 @@ export function ReelCardSingle({ reel, onLike, onView, isActive = false, onDelet
     return "";
   };
 
+  // Handle controls visibility
+  const handleMouseEnter = () => {
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current);
+    }
+    setShowControls(true);
+  };
+
+  const handleMouseLeave = () => {
+    controlsTimeoutRef.current = setTimeout(() => {
+      setShowControls(false);
+    }, 2000);
+  };
+
+  // Handle seeking
+  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!videoRef.current) return;
+    const time = parseFloat(e.target.value);
+    videoRef.current.currentTime = time;
+    setCurrentTime(time);
+  };
+
+  // Format time (seconds to MM:SS)
+  const formatTime = (time: number) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
   return (
     <Card className={cn("overflow-hidden border-border/40 bg-card/30 animate-scale-in hover:shadow-md transition-shadow duration-300 h-full", className)}>
       <CardContent className="p-0 relative h-full">
@@ -342,7 +422,7 @@ export function ReelCardSingle({ reel, onLike, onView, isActive = false, onDelet
                 variant="ghost"
                 size="icon"
                 className="h-9 w-9 rounded-full bg-black/50 backdrop-blur mt-[-2px]"
-                onClick={() => window.history.back()}
+                onClick={() => navigate(-1)}
               >
                 {isRtl ? (
                   <ArrowRight className="h-4 w-4" />
@@ -404,7 +484,11 @@ export function ReelCardSingle({ reel, onLike, onView, isActive = false, onDelet
           </div>
         </div>
         
-        <div className="relative bg-black h-full">
+        <div 
+          className="relative bg-black h-full"
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+        >
           {isLoading && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/50">
               <div className="w-6 h-6 border-4 border-primary border-t-transparent rounded-full animate-spin" />
@@ -433,12 +517,16 @@ export function ReelCardSingle({ reel, onLike, onView, isActive = false, onDelet
             ref={videoRef}
             src={reel.video_url} 
             className="w-full h-full object-cover cursor-pointer"
-            loop
             playsInline
             muted={isMuted}
             poster={reel.thumbnail_url}
             onClick={togglePlayback}
             onTouchEnd={togglePlayback}
+            onEnded={() => {
+              if (isSingleReelPage && reel.nextReelId) {
+                navigate(`/reel/${reel.nextReelId}`);
+              }
+            }}
           />
           
           {/* Hearts animation container */}
@@ -466,33 +554,106 @@ export function ReelCardSingle({ reel, onLike, onView, isActive = false, onDelet
             ))}
           </div>
           
-          {/* Play button */}
-          {!isPlaying && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-12 w-12 rounded-full bg-black/50 text-white hover:bg-black/70"
-                onClick={togglePlayback}
-              >
-                <Play className="h-6 w-6" />
-              </Button>
-            </div>
-          )}
-
-          {/* Bottom video controls */}
-          <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/70 to-transparent flex justify-between items-center video-controls">
-            <div className="flex gap-2">
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-9 w-9 rounded-full bg-black/50 text-white hover:bg-black/70"
-                onClick={toggleMute}
-              >
-                {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-              </Button>
+          {/* Video Controls */}
+          {isSingleReelPage ? (
+            <div 
+              className={cn(
+                "absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent transition-opacity duration-300",
+                showControls ? "opacity-100" : "opacity-0"
+              )}
+            >
+              {/* Progress Bar */}
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs text-white/90">{formatTime(currentTime)}</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={duration || 0}
+                  value={currentTime}
+                  onChange={handleSeek}
+                  className="flex-1 h-1 bg-white/20 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
+                />
+                <span className="text-xs text-white/90">{formatTime(duration)}</span>
+              </div>
               
-              {!isSingleReelPage && (
+              {/* Control Buttons */}
+              <div className="flex items-center justify-between">
+                <div className="flex gap-2">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-9 w-9 rounded-full bg-black/50 text-white hover:bg-black/70"
+                    onClick={togglePlayback}
+                  >
+                    {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                  </Button>
+                  
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-9 w-9 rounded-full bg-black/50 text-white hover:bg-black/70"
+                    onClick={toggleMute}
+                  >
+                    {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                  </Button>
+
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-9 w-9 rounded-full bg-black/50 text-white hover:bg-black/70"
+                    onClick={onCommentsClick}
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-9 w-9 rounded-full bg-black/50 text-white hover:bg-black/70"
+                    onClick={handleLike}
+                  >
+                    <Heart className={cn("h-4 w-4", isLiked && "fill-primary text-primary")} />
+                  </Button>
+
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-9 w-9 rounded-full bg-black/50 text-white hover:bg-black/70"
+                    onClick={handleShare}
+                  >
+                    <Share2 className="h-4 w-4" />
+                  </Button>
+
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-9 w-9 rounded-full bg-black/50 text-white hover:bg-black/70"
+                    onClick={() => setIsShareModalOpen(true)}
+                  >
+                    <LinkIcon className="h-4 w-4" />
+                  </Button>
+                </div>
+                
+                <div className="text-sm text-white/90">
+                  {reel.views} {isRtl ? "مشاهدة" : "views"}
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Bottom video controls for non-single reel page */
+            <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/70 to-transparent flex justify-between items-center video-controls">
+              <div className="flex gap-2">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-9 w-9 rounded-full bg-black/50 text-white hover:bg-black/70"
+                  onClick={toggleMute}
+                >
+                  {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                </Button>
+                
                 <Button
                   variant="ghost"
                   size="icon"
@@ -503,13 +664,13 @@ export function ReelCardSingle({ reel, onLike, onView, isActive = false, onDelet
                     <LinkIcon className="h-4 w-4" />
                   </Link>
                 </Button>
-              )}
+              </div>
+              
+              <div className="text-sm text-white/90">
+                {reel.views} {isRtl ? "مشاهدة" : "views"}
+              </div>
             </div>
-            
-            <div className="text-sm text-white/90">
-              {reel.views} {isRtl ? "مشاهدة" : "views"}
-            </div>
-          </div>
+          )}
         </div>
         
         {/* Caption below video */}
@@ -588,6 +749,17 @@ export function ReelCardSingle({ reel, onLike, onView, isActive = false, onDelet
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Share Modal */}
+        <ShareModal
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          url={`${window.location.origin}/reel/${reel.id}`}
+          title={reel.caption || `Reel by ${reel.user.displayName}`}
+          description={`Check out this reel by ${reel.user.displayName}`}
+          type="reel"
+          author={reel.user}
+        />
       </CardContent>
 
       {/* Style for animations */}

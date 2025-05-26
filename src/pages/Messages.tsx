@@ -71,7 +71,18 @@ const Messages = () => {
   const [loadingGiphy, setLoadingGiphy] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { isRtl } = useTranslation();
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollContainer) {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      }
+    }
+  }, [messages.length, conversationId]);
 
   // Load conversations and blocked users on mount
   useEffect(() => {
@@ -598,7 +609,7 @@ const handleSendMessage = async (e: React.FormEvent) => {
             </div>
 
             {/* Messages */}
-            <ScrollArea className="flex-1 p-4" dir={isRtl? 'rtl' : 'ltr'} style={{ height: 'calc(100vh - 200px)' }}>
+            <ScrollArea ref={scrollAreaRef} className="flex-1 p-4" dir={isRtl? 'rtl' : 'ltr'} style={{ height: 'calc(100vh - 200px)' }}>
               {(isBlocked || amIBlocked) && (
                 <div className="mb-4 p-3 bg-destructive/10 text-destructive rounded-md text-sm">
                   {isBlocked 

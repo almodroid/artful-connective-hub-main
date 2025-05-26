@@ -39,7 +39,7 @@ export function HeaderNav() {
     },
     {
       label: "Space Ai",
-      href: "/arter",
+      href: "/space-ai",
       icon: <Wand className="h-5 w-5 mx-2" />
     }
   ];

@@ -1,4 +1,3 @@
-
 import { useChat } from "@/hooks/use-chat";
 import { Layout } from "@/components/layout/Layout";
 import { ChatContainer } from "@/components/ui-custom/ChatContainer";
@@ -8,7 +7,7 @@ import { useTranslation } from "@/hooks/use-translation";
 import { Trash2 } from "lucide-react";
 import { Logo } from "@/components/layout/header/Logo";
 
-const ArterPage = () => {
+const SpaceAIPage = () => {
   const { messages, isLoading, sendMessage, clearChat } = useChat();
   const { t } = useTranslation();
 
@@ -17,7 +16,7 @@ const ArterPage = () => {
       <div className="max-w-3xl mx-auto h-[calc(100vh-16rem)] flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <div className="flex text-center align-center items-center">
-          <Logo /><h1 className="text-2xl font-bold">Space Ai</h1>
+            <Logo /><h1 className="text-2xl font-bold">Space AI</h1>
           </div>
           {messages.length > 0 && (
             <Button
@@ -36,7 +35,8 @@ const ArterPage = () => {
           <ChatContainer 
             messages={messages} 
             isLoading={isLoading} 
-            onSendMessage={sendMessage} 
+            onSendMessage={sendMessage}
+            onClearChat={clearChat}
           />
           <div className="p-4 border-t">
             <ChatInput onSendMessage={sendMessage} isLoading={isLoading} />
@@ -47,4 +47,4 @@ const ArterPage = () => {
   );
 };
 
-export default ArterPage;
+export default SpaceAIPage;

@@ -24,11 +24,11 @@ import AdminUsers from "./pages/AdminUsers";
 import AdminReports from "./pages/AdminReports";
 import AdminSettings from "./pages/AdminSettings";
 import AdminNotifications from "./pages/AdminNotifications";
-import Arter from "./pages/Arter";
 import Reel from "./pages/Reel";
 import CreatePost from "./pages/CreatePost";
 import Reels from "./pages/Reels";
 import Messages from "./pages/Messages";
+import SpaceAI from "./pages/SpaceAI";
 
 // Create a new query client instance
 const queryClient = new QueryClient();
@@ -51,7 +51,7 @@ function App() {
                   <Route path="/edit-profile" element={<EditProfile />} />
                   <Route path="/projects" element={<Projects />} />
                   <Route path="/projects/:id" element={<ProjectDetail />} />
-                  <Route path="/arter" element={<Arter />} />
+                  <Route path="/space-ai" element={<SpaceAI />} />
                   <Route path="/post/:postId" element={<Post />} />
                   <Route path="/reel/:id" element={<Reel />} />
                   <Route path="/reels/:reelId" element={<Reel />} />

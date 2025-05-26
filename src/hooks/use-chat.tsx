@@ -1,8 +1,8 @@
-
 import { useState, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "@/hooks/use-translation";
 import { toast } from "sonner";
+import { sendToOpenRouter, convertToOpenRouterMessages } from "@/lib/openrouter";
 
 export interface ChatMessage {
   id: string;
@@ -35,38 +35,33 @@ export function useChat() {
     setIsLoading(true);
     
     try {
-      const response = await fetch('/api/arter-chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          prompt: content,
-          userId: user?.id,
-          previousMessages: messages
-            .slice(-6) // Only include last 6 messages for context
-            .map(msg => ({ role: msg.role, content: msg.content })),
-        }),
+      // Convert messages to OpenRouter format
+      const openRouterMessages = convertToOpenRouterMessages([
+        ...messages.slice(-6), // Only include last 6 messages for context
+        userMessage,
+      ]);
+
+      // Add system message for context
+      openRouterMessages.unshift({
+        role: "system",
+        content: "You are Space AI, powered by InternVL3, specializing in art, design, and UI/UX. You are an expert in visual arts, graphic design, user interface design, user experience, color theory, typography, composition, and design principles. You excel at providing creative suggestions, color palettes, and design ideas. You can suggest harmonious color combinations, creative concepts, and innovative design solutions. You help users by offering specific color recommendations, design hints, and creative inspiration while explaining the reasoning behind your suggestions. You can analyze color schemes, suggest complementary colors, and provide guidance on color psychology in design. Your responses are knowledgeable, creative, and focused on helping users develop their artistic and design skills. You maintain professional conduct and avoid any content related to abuse, nudity, or inappropriate material. You focus on educational, constructive, and professional discussions about art and design.",
       });
-      
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status}`);
-      }
-      
-      const data = await response.json();
+
+      // Send to OpenRouter API
+      const response = await sendToOpenRouter(openRouterMessages);
       
       // Add assistant response to chat
       const assistantMessage: ChatMessage = {
         id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
         role: "assistant",
-        content: data.generatedText || "Sorry, I couldn't generate a response.",
+        content: response,
         timestamp: new Date(),
       };
       
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
       console.error('Error sending message:', error);
-      toast.error(isRtl ? "حدث خطأ أثناء التواصل مع آرتر" : "Error communicating with Arter");
+      toast.error(isRtl ? "حدث خطأ أثناء التواصل مع Space AI" : "Error communicating with Space AI");
     } finally {
       setIsLoading(false);
     }

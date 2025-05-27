@@ -1,18 +1,22 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
-import { PostCard } from "@/components/ui-custom/PostCard";
+import { PostCard, Post as PostCardType } from "@/components/ui-custom/PostCard";
 import { CreatePostForm } from "@/components/ui-custom/CreatePostForm";
 import { ReelsSection } from "@/components/ui-custom/ReelsSection";
 import { useAuth } from "@/contexts/AuthContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { usePosts, Post } from "@/hooks/use-posts";
+import { usePosts, Post as DatabasePost } from "@/hooks/use-posts";
 import { useTranslation } from "@/hooks/use-translation";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Database } from "@/integrations/supabase/types";
 
-
+type Profile = Database["public"]["Tables"]["profiles"]["Row"];
+type SupabasePost = Database["public"]["Tables"]["posts"]["Row"] & {
+  profiles: Profile | null;
+};
 
 const Index = () => {
   const { isAuthenticated, user } = useAuth();
@@ -23,7 +27,9 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState("for-you");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [topTags, setTopTags] = useState<string[]>([]);
-  const [filteredPosts, setFilteredPosts] = useState<Post[]>([]);
+  const [filteredPosts, setFilteredPosts] = useState<DatabasePost[]>([]);
+  const [followingPosts, setFollowingPosts] = useState<PostCardType[]>([]);
+  const [loadingFollowing, setLoadingFollowing] = useState(false);
   
   const likePost = async (postId: string) => {
     if (!isAuthenticated || !user) return;
@@ -201,6 +207,90 @@ const Index = () => {
     }
   }, [selectedTag]);
 
+  // Fetch following posts when tab changes to following
+  useEffect(() => {
+    const fetchFollowingPosts = async () => {
+      if (!isAuthenticated || !user || activeTab !== 'following') return;
+      
+      setLoadingFollowing(true);
+      try {
+        // First get the list of users being followed
+        const { data: followingData, error: followingError } = await supabase
+          .from('followers')
+          .select('following_id')
+          .eq('follower_id', user.id);
+
+        if (followingError) throw followingError;
+
+        if (!followingData || followingData.length === 0) {
+          setFollowingPosts([]);
+          return;
+        }
+
+        const followingIds = followingData.map(f => f.following_id);
+
+        // Then get posts from those users
+        const { data: postsData, error: postsError } = await supabase
+          .from('posts')
+          .select(`
+            *,
+            profiles:user_id (
+              username,
+              display_name,
+              avatar_url
+            )
+          `)
+          .in('user_id', followingIds)
+          .order('created_at', { ascending: false });
+
+        if (postsError) throw postsError;
+
+        // Transform posts to match the PostCard type
+        const transformedPosts = await Promise.all((postsData as SupabasePost[]).map(async post => {
+          // Get comment count
+          const { count: commentCount } = await supabase
+            .from('post_comments')
+            .select('*', { count: 'exact', head: true })
+            .eq('post_id', post.id);
+
+          // Get like count and check if current user liked
+          const { data: likeData } = await supabase
+            .from('post_likes')
+            .select('*', { count: 'exact', head: false })
+            .eq('post_id', post.id);
+
+          const isLiked = likeData?.some(like => like.user_id === user.id) || false;
+
+          return {
+            id: post.id,
+            content: post.content,
+            title: post.title || "",
+            images: post.media_urls || [],
+            createdAt: new Date(post.created_at || ""),
+            user: {
+              id: post.user_id,
+              username: post.profiles?.username || "unknown",
+              displayName: post.profiles?.display_name || "Unknown User",
+              avatar: post.profiles?.avatar_url || "",
+            },
+            comments: commentCount || 0,
+            likes: likeData?.length || 0,
+            isLiked
+          };
+        }));
+
+        setFollowingPosts(transformedPosts);
+      } catch (error) {
+        console.error('Error fetching following posts:', error);
+        toast.error(isRtl ? 'حدث خطأ أثناء جلب المنشورات' : 'Error fetching posts');
+      } finally {
+        setLoadingFollowing(false);
+      }
+    };
+
+    fetchFollowingPosts();
+  }, [activeTab, isAuthenticated, user]);
+
   return (
     <Layout>
       <div className={`max-w-4xl mx-auto ${isRtl ? 'rtl text-right' : 'ltr text-left'}`}>
@@ -274,10 +364,52 @@ const Index = () => {
             )}
           </TabsContent>
           <TabsContent value="following" className="mt-0">
-            <div className={`py-12 ${isRtl ? 'text-right' : 'text-center'}`}>
-              <h3 className="text-lg font-medium mb-2">{t('noFollowing')}</h3>
-              <p className="text-muted-foreground">{t('startFollowingPrompt')}</p>
-            </div>
+            {isAuthenticated ? (
+              <>
+                <CreatePostForm onPostCreated={handlePostCreated} />
+                {loadingFollowing ? (
+                  <div className="space-y-4">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="border rounded-lg p-4 space-y-3" dir={isRtl ? "rtl" : "ltr"}>
+                        <div className="flex items-center gap-3">
+                          <Skeleton className="h-10 w-10 rounded-full" />
+                          <div className="space-y-2 flex-1">
+                            <Skeleton className="h-4 w-1/3" />
+                            <Skeleton className="h-3 w-1/4" />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-full" />
+                          <Skeleton className="h-4 w-5/6" />
+                          <Skeleton className="h-4 w-4/6" />
+                        </div>
+                        <Skeleton className="h-48 w-full rounded-md" />
+                      </div>
+                    ))}
+                  </div>
+                ) : followingPosts.length > 0 ? (
+                  <div className="space-y-6">
+                    {followingPosts.map((post) => (
+                      <PostCard 
+                        key={post.id}
+                        post={post}
+                        onLike={likePost}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className={`py-12 ${isRtl ? 'text-right' : 'text-center'}`}>
+                    <h3 className="text-lg font-medium mb-2">{t('noFollowing')}</h3>
+                    <p className="text-muted-foreground">{t('startFollowingPrompt')}</p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className={`py-12 ${isRtl ? 'text-right' : 'text-center'}`}>
+                <h3 className="text-lg font-medium mb-2">{t('loginRequired')}</h3>
+                <p className="text-muted-foreground">{t('loginToSeeFollowing')}</p>
+              </div>
+            )}
           </TabsContent>
           <TabsContent value="trending" className="mt-0">
             <div className="space-y-6">

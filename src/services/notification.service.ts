@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
+import { getNotificationPreferences } from "./notificationPreferences.service";
 
 type Notification = Database["public"]["Tables"]["notifications"]["Row"];
 
@@ -27,6 +28,13 @@ export const createPostNotification = async (
     return false;
   }
 
+  // Check push notification preference
+  const prefs = await getNotificationPreferences(recipientId);
+  if (prefs && prefs.push_enabled === false && prefs.email_enabled === false) {
+    // User has disabled both push and email notifications
+    return false;
+  }
+
   try {
     // Get post details for more context
     const { data: post } = await supabase
@@ -46,22 +54,27 @@ export const createPostNotification = async (
       : `علق ${senderName} على منشورك: "${postContentPreview}"`;
 
     // Create notification record
-    const { error } = await supabase
-      .from("notifications")
-      .insert({
-        user_id: recipientId,
-        title,
-        message,
-        action_link: `/post/${postId}`,
-        action_type: action,
-        sender_id: senderId,
-        is_global: false,
-        read: false
-      });
+    if (!prefs || prefs.push_enabled !== false) {
+      const { error } = await supabase
+        .from("notifications")
+        .insert({
+          user_id: recipientId,
+          title,
+          message,
+          action_link: `/post/${postId}`,
+          action_type: action,
+          sender_id: senderId,
+          is_global: false,
+          read: false
+        });
+      if (error) {
+        console.error("Error creating post notification:", error);
+        return false;
+      }
+    }
 
-    if (error) {
-      console.error("Error creating post notification:", error);
-      return false;
+    if (prefs && prefs.email_enabled) {
+      // TODO: Implement sendEmailNotification(recipientId, title, message)
     }
 
     return true;
@@ -83,6 +96,13 @@ export const createProjectNotification = async (
 ): Promise<boolean> => {
   // Don't send notifications to yourself
   if (recipientId === senderId) {
+    return false;
+  }
+
+  // Check push notification preference
+  const prefs = await getNotificationPreferences(recipientId);
+  if (prefs && prefs.push_enabled === false && prefs.email_enabled === false) {
+    // User has disabled both push and email notifications
     return false;
   }
 
@@ -110,22 +130,27 @@ export const createProjectNotification = async (
     }
 
     // Create notification record
-    const { error } = await supabase
-      .from("notifications")
-      .insert({
-        user_id: recipientId,
-        title,
-        message,
-        action_link: `/projects/${projectId}`,
-        action_type: action,
-        sender_id: senderId,
-        is_global: false,
-        read: false
-      });
+    if (!prefs || prefs.push_enabled !== false) {
+      const { error } = await supabase
+        .from("notifications")
+        .insert({
+          user_id: recipientId,
+          title,
+          message,
+          action_link: `/projects/${projectId}`,
+          action_type: action,
+          sender_id: senderId,
+          is_global: false,
+          read: false
+        });
+      if (error) {
+        console.error("Error creating project notification:", error);
+        return false;
+      }
+    }
 
-    if (error) {
-      console.error("Error creating project notification:", error);
-      return false;
+    if (prefs && prefs.email_enabled) {
+      // TODO: Implement sendEmailNotification(recipientId, title, message)
     }
 
     return true;
@@ -147,6 +172,13 @@ export const createReelNotification = async (
 ): Promise<boolean> => {
   // Don't send notifications to yourself
   if (recipientId === senderId) {
+    return false;
+  }
+
+  // Check push notification preference
+  const prefs = await getNotificationPreferences(recipientId);
+  if (prefs && prefs.push_enabled === false && prefs.email_enabled === false) {
+    // User has disabled both push and email notifications
     return false;
   }
 
@@ -174,22 +206,27 @@ export const createReelNotification = async (
     }
 
     // Create notification record
-    const { error } = await supabase
-      .from("notifications")
-      .insert({
-        user_id: recipientId,
-        title,
-        message,
-        action_link: `/reel/${reelId}`,
-        action_type: action,
-        sender_id: senderId,
-        is_global: false,
-        read: false
-      });
+    if (!prefs || prefs.push_enabled !== false) {
+      const { error } = await supabase
+        .from("notifications")
+        .insert({
+          user_id: recipientId,
+          title,
+          message,
+          action_link: `/reel/${reelId}`,
+          action_type: action,
+          sender_id: senderId,
+          is_global: false,
+          read: false
+        });
+      if (error) {
+        console.error("Error creating reel notification:", error);
+        return false;
+      }
+    }
 
-    if (error) {
-      console.error("Error creating reel notification:", error);
-      return false;
+    if (prefs && prefs.email_enabled) {
+      // TODO: Implement sendEmailNotification(recipientId, title, message)
     }
 
     return true;
@@ -217,28 +254,40 @@ export const createCommentReplyNotification = async (
     return false;
   }
 
+  // Check push notification preference
+  const prefs = await getNotificationPreferences(recipientId);
+  if (prefs && prefs.push_enabled === false && prefs.email_enabled === false) {
+    // User has disabled both push and email notifications
+    return false;
+  }
+
   try {
     // Prepare notification content
     const title = "رد جديد على تعليقك";
     const message = `رد ${senderName} على تعليقك: "${replyContent.substring(0, 50) + (replyContent.length > 50 ? "..." : "")}"`;
 
     // Create notification record
-    const { error } = await supabase
-      .from("notifications")
-      .insert({
-        user_id: recipientId,
-        title,
-        message,
-        action_link: `/post/${postId}#comment-${commentId}`,
-        action_type: "comment_reply",
-        sender_id: senderId,
-        is_global: false,
-        read: false
-      });
+    if (!prefs || prefs.push_enabled !== false) {
+      const { error } = await supabase
+        .from("notifications")
+        .insert({
+          user_id: recipientId,
+          title,
+          message,
+          action_link: `/post/${postId}#comment-${commentId}`,
+          action_type: "comment_reply",
+          sender_id: senderId,
+          is_global: false,
+          read: false
+        });
+      if (error) {
+        console.error("Error creating comment reply notification:", error);
+        return false;
+      }
+    }
 
-    if (error) {
-      console.error("Error creating comment reply notification:", error);
-      return false;
+    if (prefs && prefs.email_enabled) {
+      // TODO: Implement sendEmailNotification(recipientId, title, message)
     }
 
     return true;

@@ -42,11 +42,6 @@ export function Footer() {
                   {t('aboutUs')}
                 </Link>
               </li>
-              <li>
-                <Link to="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">
-                  {t('privacyPolicy')}
-                </Link>
-              </li>
             </ul>
           </div>
           <div>
@@ -73,8 +68,12 @@ export function Footer() {
             </div>
           </div>
         </div>
-        <div className="mt-10 pt-6 border-t text-center text-muted-foreground">
-          <p>© {new Date().getFullYear()} آرت سبيس. جميع الحقوق محفوظة.</p>
+        <div className="mt-10 pt-6 border-t text-center text-muted-foreground flex items-center justify-between">
+          <p>{t("footerCopyright")}</p>
+          <div className={`flex flex-wrap justify-center gap-4  ${isRtl ? 'flex-row-reverse' : ''}`}>
+            <Link to="/privacy-policy" className="hover:underline">{t("privacyPolicy")}</Link>
+            <Link to="/terms-and-conditions" className="hover:underline">{t("termsOfService")}</Link>
+          </div>
         </div>
       </div>
     </footer>

@@ -368,6 +368,8 @@ export type Database = {
           followers_count?: number
           following_count?: number
           allow_messages?: boolean
+          deleted_at: string | null;
+          deletion_deadline: string | null;
         }
         Insert: {
           avatar_url?: string | null
@@ -383,6 +385,8 @@ export type Database = {
           followers_count?: number
           following_count?: number
           allow_messages?: boolean
+          deleted_at?: string | null;
+          deletion_deadline?: string | null;
         }
         Update: {
           avatar_url?: string | null
@@ -398,6 +402,8 @@ export type Database = {
           followers_count?: number
           following_count?: number
           allow_messages?: boolean
+          deleted_at?: string | null;
+          deletion_deadline?: string | null;
         }
         Relationships: [
           {

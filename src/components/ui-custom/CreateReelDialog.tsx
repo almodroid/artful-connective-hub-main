@@ -30,6 +30,8 @@ export function CreateReelDialog({ open, onOpenChange, onReelCreated }: CreateRe
   const [showCropper, setShowCropper] = useState(false);
   const [croppedThumbnail, setCroppedThumbnail] = useState<Blob | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Add state for filter info
+  const [filterInfo, setFilterInfo] = useState<{ filter: string, brightness: number, contrast: number, saturation: number } | null>(null);
   
   if (!user) return null;
   
@@ -82,8 +84,9 @@ export function CreateReelDialog({ open, onOpenChange, onReelCreated }: CreateRe
     onOpenChange(open);
   };
   
-  const handleCropComplete = (croppedBlob: Blob) => {
+  const handleCropComplete = (croppedBlob: Blob, filterInfoObj: { filter: string, brightness: number, contrast: number, saturation: number }) => {
     setCroppedThumbnail(croppedBlob);
+    setFilterInfo(filterInfoObj);
     setShowCropper(false);
     
     // Create a preview URL for the thumbnail to display in the UI
@@ -108,14 +111,17 @@ export function CreateReelDialog({ open, onOpenChange, onReelCreated }: CreateRe
     setIsSubmitting(true);
     
     try {
-      // Include the cropped thumbnail if available
-      const options = croppedThumbnail ? { caption, video, thumbnail: croppedThumbnail } : { caption, video };
-      
+      // Include the cropped thumbnail and filter info if available
+      const options = croppedThumbnail
+        ? { caption, video, thumbnail: croppedThumbnail, filterInfo }
+        : { caption, video, filterInfo };
+      // TODO: Process video with filterInfo before uploading (future enhancement)
       const newReel = await createReel(options);
       
       if (newReel !== null) {
         setCaption("");
         removeVideo();
+        setFilterInfo(null);
         
         if (onReelCreated) {
           onReelCreated();

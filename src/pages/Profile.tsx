@@ -177,6 +177,7 @@ const Profile = () => {
               createdAt: new Date(post.created_at),
               likes: post.likes_count || 0,
               comments: post.comments_count || 0,
+              isLiked: false,
               user: {
                 id: post.user_id,
                 username: (profile as any).username || "",
@@ -305,7 +306,7 @@ const Profile = () => {
           
         case "media":
           // Filter posts with media
-          setUserMediaPosts(userPosts.filter(post => post.image));
+          setUserMediaPosts(userPosts.filter(post => post.image).map(post => ({ ...post, isLiked: post.isLiked ?? false })));
           break;
           
         case "likes":
@@ -317,7 +318,7 @@ const Profile = () => {
               posts!inner (
                 id,
                 content,
-                image_url,
+                media_urls,
                 created_at,
                 likes_count,
                 comments_count,
@@ -351,6 +352,7 @@ const Profile = () => {
                 createdAt: new Date(post.created_at),
                 likes: post.likes_count || 0,
                 comments: post.comments_count || 0,
+                isLiked: true,
                 user: {
                   id: post.user_id,
                   username: (profile as any).username || "",
@@ -750,33 +752,35 @@ const Profile = () => {
         
         {/* Profile Content */}
         <Tabs defaultValue="posts" onValueChange={setActiveTab}>
-          <TabsList className={`w-full mb-8 ${isRtl ? 'flex-row-reverse' : ''}`}>
-            <TabsTrigger value="posts" className={`flex-1 gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
-              <MessageSquare className="h-4 w-4" />
-              <span>{isRtl ? "المنشورات" : "Posts"}</span>
+          <TabsList className={`w-full mb-8 ${isRtl ? 'flex-row-reverse' : ''} overflow-x-auto scrollbar-none flex-nowrap sm:flex-wrap`} style={{ WebkitOverflowScrolling: 'touch' }}>
+            <TabsTrigger value="posts" className={`group flex-1 min-w-[48px] sm:min-w-[100px] gap-2 ${isRtl ? 'flex-row-reverse' : ''} sm:flex-1 transition-all duration-300 data-[state=active]:min-w-[100px]`}>
+              <MessageSquare className="h-5 w-5 flex-shrink-0" />
+              <span className="hidden group-data-[state=active]:block sm:inline transition-all duration-300">{isRtl ? "المنشورات" : "Posts"}</span>
             </TabsTrigger>
-            <TabsTrigger value="reels" className={`flex-1 gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
-              <Film className="h-4 w-4" />
-              <span>{isRtl ? "الريلز" : "Reels"}</span>
+            <TabsTrigger value="reels" className={`group flex-1 min-w-[48px] sm:min-w-[100px] gap-2 ${isRtl ? 'flex-row-reverse' : ''} sm:flex-1 transition-all duration-300 data-[state=active]:min-w-[100px]`}>
+              <Film className="h-5 w-5 flex-shrink-0" />
+              <span className="hidden group-data-[state=active]:block sm:inline transition-all duration-300">{isRtl ? "الريلز" : "Reels"}</span>
             </TabsTrigger>
-            <TabsTrigger value="media" className={`flex-1 gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
-              <Image className="h-4 w-4" />
-              <span>{isRtl ? "الوسائط" : "Media"}</span>
+            <TabsTrigger value="media" className={`group flex-1 min-w-[48px] sm:min-w-[100px] gap-2 ${isRtl ? 'flex-row-reverse' : ''} sm:flex-1 transition-all duration-300 data-[state=active]:min-w-[100px]`}>
+              <Image className="h-5 w-5 flex-shrink-0" />
+              <span className="hidden group-data-[state=active]:block sm:inline transition-all duration-300">{isRtl ? "الوسائط" : "Media"}</span>
             </TabsTrigger>
-            <TabsTrigger value="projects" className={`flex-1 gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+            <TabsTrigger value="projects" className={`group flex-1 min-w-[48px] sm:min-w-[100px] gap-2 ${isRtl ? 'flex-row-reverse' : ''} sm:flex-1 transition-all duration-300 data-[state=active]:min-w-[100px]`}>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 flex-shrink-0">
                 <path d="M15 3v18a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1z"></path>
                 <path d="M18 6v15a1 1 0 0 1-1 1h-2"></path>
                 <path d="M21 9V6a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1z"></path>
               </svg>
-              <span>{isRtl ? "المشاريع" : "Projects"}</span>
+              <span className="hidden group-data-[state=active]:block sm:inline transition-all duration-300">{isRtl ? "المشاريع" : "Projects"}</span>
             </TabsTrigger>
-            <TabsTrigger value="likes" className={`flex-1 gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>
-              </svg>
-              <span>{isRtl ? "الإعجابات" : "Likes"}</span>
-            </TabsTrigger>
+            {isOwnProfile && (
+              <TabsTrigger value="likes" className={`group flex-1 min-w-[48px] sm:min-w-[100px] gap-2 ${isRtl ? 'flex-row-reverse' : ''} sm:flex-1 transition-all duration-300 data-[state=active]:min-w-[100px]`}>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 flex-shrink-0">
+                  <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>
+                </svg>
+                <span className="hidden group-data-[state=active]:block sm:inline transition-all duration-300">{isRtl ? "الإعجابات" : "Likes"}</span>
+              </TabsTrigger>
+            )}
           </TabsList>
           
           <TabsContent value="posts" className="mt-0">
@@ -935,44 +939,46 @@ const Profile = () => {
             )}
           </TabsContent>
           
-          <TabsContent value="likes" className="mt-0">
-            {loadingTab ? (
-              <div className="space-y-6">
-                {Array(3).fill(0).map((_, i) => (
-                  <div key={i} className="bg-card rounded-lg border p-4 space-y-4">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />
-                      <div className="space-y-2">
-                        <div className="h-4 w-24 bg-muted animate-pulse rounded" />
-                        <div className="h-3 w-32 bg-muted animate-pulse rounded" />
+          {isOwnProfile && (
+            <TabsContent value="likes" className="mt-0">
+              {loadingTab ? (
+                <div className="space-y-6">
+                  {Array(3).fill(0).map((_, i) => (
+                    <div key={i} className="bg-card rounded-lg border p-4 space-y-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />
+                        <div className="space-y-2">
+                          <div className="h-4 w-24 bg-muted animate-pulse rounded" />
+                          <div className="h-3 w-32 bg-muted animate-pulse rounded" />
+                        </div>
                       </div>
+                      <div className="h-4 w-full bg-muted animate-pulse rounded" />
+                      <div className="h-4 w-3/4 bg-muted animate-pulse rounded" />
                     </div>
-                    <div className="h-4 w-full bg-muted animate-pulse rounded" />
-                    <div className="h-4 w-3/4 bg-muted animate-pulse rounded" />
-                  </div>
-                ))}
-              </div>
-            ) : userLikedPosts.length === 0 ? (
-              <div className="text-center py-12 border rounded-lg">
-                <h3 className="text-lg font-medium mb-2">{isRtl ? "لا توجد إعجابات بعد" : "No likes yet"}</h3>
-                <p className="text-muted-foreground">
-                  {isOwnProfile ? 
-                    (isRtl ? "ستظهر هنا المنشورات التي أعجبت بها" : "Posts you like will appear here") : 
-                    (isRtl ? "سيظهر هنا المنشورات التي أعجب بها" : "Liked posts will appear here")}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {userLikedPosts.map((post) => (
-                  <Link to={`/post/${post.id}`} key={post.id}>
-                    <PostCard 
-                      post={post} 
-                    />
-                  </Link>
-                ))}
-              </div>
-            )}
-          </TabsContent>
+                  ))}
+                </div>
+              ) : userLikedPosts.length === 0 ? (
+                <div className="text-center py-12 border rounded-lg">
+                  <h3 className="text-lg font-medium mb-2">{isRtl ? "لا توجد إعجابات بعد" : "No likes yet"}</h3>
+                  <p className="text-muted-foreground">
+                    {isOwnProfile ? 
+                      (isRtl ? "ستظهر هنا المنشورات التي أعجبت بها" : "Posts you like will appear here") : 
+                      (isRtl ? "سيظهر هنا المنشورات التي أعجب بها" : "Liked posts will appear here")}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {userLikedPosts.map((post) => (
+                    <Link to={`/post/${post.id}`} key={post.id}>
+                      <PostCard 
+                        post={post} 
+                      />
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          )}
           
           <TabsContent value="projects" className="mt-0">
             {loadingProjects ? (
@@ -1013,18 +1019,18 @@ const Profile = () => {
                   <Card key={project.id} className="overflow-hidden">
                     <Link to={`/projects/${project.id}`} className="block aspect-video relative overflow-hidden">
                       <img 
-                        src={project.cover_image_url || project.image_url || "https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?q=80&w=1000"} 
+                        src={project.cover_image_url || "https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?q=80&w=1000"} 
                         alt={project.title} 
                         className="object-cover w-full h-full hover:scale-105 transition-transform duration-300"
                       />
                     </Link>
                     <CardHeader>
-                      <CardTitle className="text-xl line-clamp-1">
+                      <CardTitle className="text-xl line-clamp-1 text-start rtl:text-right">
                         <Link to={`/projects/${project.id}`} className="hover:underline">
                           {project.title}
                         </Link>
                       </CardTitle>
-                      <p className="text-muted-foreground line-clamp-2 h-10">{project.description}</p>
+                      <p className="text-muted-foreground line-clamp-2 h-18 text-start rtl:text-right leading-6">{project.description}</p>
                     </CardHeader>
                     <CardContent className="pb-0">
                       <div className="flex flex-wrap gap-2 mb-4 h-6 overflow-hidden">

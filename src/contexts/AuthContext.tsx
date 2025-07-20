@@ -280,7 +280,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         options: {
           data: {
             display_name: displayName,
-            avatar_url: `https://i.pravatar.cc/150?u=${Math.random()}`
+            avatar_url: '/placeholder.svg'
           }
         }
       });

@@ -21,6 +21,9 @@ import * as z from "zod";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from 'uuid';
+import { getNotificationPreferences, upsertNotificationPreferences, NotificationPreferences } from "@/services/notificationPreferences.service";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input as UiInput } from "@/components/ui/input";
 
 const profileFormSchema = z.object({
   displayName: z.string().min(2, {
@@ -57,6 +60,16 @@ const EditProfile = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
+  const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences | null>(null);
+  const [notifLoading, setNotifLoading] = useState(true);
+  const [notifSaving, setNotifSaving] = useState(false);
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [isEmailSaving, setIsEmailSaving] = useState(false);
+  const [isPasswordSaving, setIsPasswordSaving] = useState(false);
+  const [oldPassword, setOldPassword] = useState("");
   
   // Default values from user context
   const defaultValues: ProfileFormValues = {
@@ -72,6 +85,34 @@ const EditProfile = () => {
     resolver: zodResolver(profileFormSchema),
     defaultValues,
   });
+
+  useEffect(() => {
+    async function fetchPrefs() {
+      if (user?.id) {
+        setNotifLoading(true);
+        const prefs = await getNotificationPreferences(user.id);
+        setNotificationPrefs(
+          prefs || {
+            user_id: user.id,
+            email_enabled: true,
+            push_enabled: true,
+            frequency: 'instant',
+          }
+        );
+        setNotifLoading(false);
+      }
+    }
+    fetchPrefs();
+  }, [user?.id]);
+
+  async function handleNotifChange(changes: Partial<NotificationPreferences>) {
+    if (!user?.id) return;
+    setNotifSaving(true);
+    const updated = { ...notificationPrefs, ...changes };
+    setNotificationPrefs(updated as NotificationPreferences);
+    await upsertNotificationPreferences(user.id, updated);
+    setNotifSaving(false);
+  }
 
   const onSelectFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -226,6 +267,96 @@ const EditProfile = () => {
     }
   }
 
+  async function handleDeleteAccount() {
+    if (!user?.id) return;
+    setIsDeleting(true);
+    try {
+      const now = new Date();
+      const deadline = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          deleted_at: now.toISOString(),
+          deletion_deadline: deadline.toISOString(),
+        })
+        .eq('id', user.id);
+      if (error) throw error;
+      toast({
+        title: t("deleteAccount"),
+        description: t("accountScheduledDeletion") + ' ' + deadline.toLocaleDateString(),
+        variant: "default",
+      });
+      // Sign out the user
+      await logout();
+      // Optionally, redirect to home page
+      navigate("/");
+    } catch (error) {
+      toast({
+        title: t("error"),
+        description: t("errorDeletingAccount") || "حدث خطأ أثناء حذف الحساب.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
+    }
+  }
+
+  async function handleChangeEmail() {
+    if (!newEmail) return;
+    setIsEmailSaving(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ email: newEmail });
+      if (error) throw error;
+      toast({
+        title: t("success"),
+        description: t("emailChanged") || "Email updated successfully.",
+        variant: "default",
+      });
+      setIsEmailModalOpen(false);
+    } catch (error) {
+      toast({
+        title: t("error"),
+        description: t("errorUpdatingEmail") || "Failed to update email.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsEmailSaving(false);
+    }
+  }
+
+  async function handleChangePassword() {
+    if (!oldPassword || !newPassword) return;
+    setIsPasswordSaving(true);
+    try {
+      // Re-authenticate user with old password
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user?.email,
+        password: oldPassword,
+      });
+      if (signInError) throw new Error(t("incorrectCurrentPassword") || "Current password is incorrect.");
+      // Update password
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      toast({
+        title: t("success"),
+        description: t("passwordChanged") || "Password updated successfully.",
+        variant: "default",
+      });
+      setIsPasswordModalOpen(false);
+      setOldPassword("");
+      setNewPassword("");
+    } catch (error: any) {
+      toast({
+        title: t("error"),
+        description: error.message || t("errorUpdatingPassword") || "Failed to update password.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsPasswordSaving(false);
+    }
+  }
+
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
@@ -357,7 +488,7 @@ const EditProfile = () => {
                           <FormItem>
                             <FormLabel className="rtl:text-right">{t("location")}</FormLabel>
                             <FormControl>
-                              <Input placeholder="Dubai, UAE" {...field} className="rtl:text-right" />
+                              <Input placeholder="Riyadh, Saudi Arabia" {...field} className="rtl:text-right" />
                             </FormControl>
                             <FormMessage className="rtl:text-right" />
                           </FormItem>
@@ -380,96 +511,80 @@ const EditProfile = () => {
                 <CardTitle>{t("accountSettings")}</CardTitle>
                 <CardDescription>{t("accountSettingsDesc")}</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4 rtl:text-right">
-                <div className="space-y-6">
-                  {/* Email Change Section */}
-                  <div className="space-y-2">
-                    <h3 className="text-lg font-medium">{t("emailSettings")}</h3>
-                    <p className="text-sm text-muted-foreground">{t("emailSettingsDesc")}</p>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">{user?.email}</p>
-                        <p className="text-sm text-muted-foreground">{t("currentEmail")}</p>
-                      </div>
-                      <Button variant="outline" onClick={() => toast({
-                        title: t("comingSoon"),
-                        description: t("featureComingSoon"),
-                      })}>
-                        {t("changeEmail")}
-                      </Button>
+              <CardContent className="space-y-8 rtl:text-right">
+                {/* Email Change Section */}
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold text-foreground dark:text-white mb-1">{t("emailSettings")}</h3>
+                  <p className="text-sm text-muted-foreground mb-2">{t("emailSettingsDesc")}</p>
+                  <div className={`flex items-center justify-between gap-4 p-4 rounded-lg border bg-muted/30 dark:bg-muted/60 ${isRtl ? 'flex-row-reverse' : 'flex-row'}`}>
+                    <div className={isRtl ? 'text-right' : 'text-left'}>
+                      <p className="font-medium text-foreground dark:text-white">{user?.email}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{t("currentEmail")}</p>
                     </div>
+                    <Button variant="outline" onClick={() => setIsEmailModalOpen(true)}>
+                      {t("changeEmail")}
+                    </Button>
                   </div>
-                  
-                  <Separator />
-                  
-                  {/* Password Change Section */}
-                  <div className="space-y-2">
-                    <h3 className="text-lg font-medium">{t("passwordSettings")}</h3>
-                    <p className="text-sm text-muted-foreground">{t("passwordSettingsDesc")}</p>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">********</p>
-                        <p className="text-sm text-muted-foreground">{t("currentPassword")}</p>
-                      </div>
-                      <Button variant="outline" onClick={() => toast({
-                        title: t("comingSoon"),
-                        description: t("featureComingSoon"),
-                      })}>
-                        {t("changePassword")}
-                      </Button>
+                </div>
+                <Separator />
+                {/* Password Change Section */}
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold text-foreground dark:text-white mb-1">{t("passwordSettings")}</h3>
+                  <p className="text-sm text-muted-foreground mb-2">{t("passwordSettingsDesc")}</p>
+                  <div className={`flex items-center justify-between gap-4 p-4 rounded-lg border bg-muted/30 dark:bg-muted/60 ${isRtl ? 'flex-row-reverse' : 'flex-row'}`}>
+                    <div className={isRtl ? 'text-right' : 'text-left'}>
+                      <p className="font-medium text-foreground dark:text-white">********</p>
+                      <p className="text-xs text-muted-foreground mt-1">{t("currentPassword")}</p>
                     </div>
+                    <Button variant="outline" onClick={() => setIsPasswordModalOpen(true)}>
+                      {t("changePassword")}
+                    </Button>
                   </div>
-                  
-                  <Separator />
-                  
-                  {/* Direct Message Settings */}
-                  <div className="space-y-2">
-                    <h3 className="text-lg font-medium">{t("messageSettings")}</h3>
-                    <p className="text-sm text-muted-foreground">{t("messageSettingsDesc")}</p>
+                </div>
+                <Separator />
+                {/* Direct Message Settings */}
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold text-foreground dark:text-white mb-1">{t("messageSettings")}</h3>
+                  <p className="text-sm text-muted-foreground mb-2">{t("messageSettingsDesc")}</p>
+                  <div className={`flex items-center justify-between gap-4 p-4 rounded-lg border bg-muted/30 dark:bg-muted/60 ${isRtl ? 'flex-row-reverse' : 'flex-row'}`}>
+                    <div className={isRtl ? 'text-right' : 'text-left'}>
+                      <span className="font-medium text-foreground dark:text-white">{t("allowDirectMessages")}</span>
+                      <div className="text-xs text-muted-foreground mt-1">{t("allowDirectMessagesDesc")}</div>
+                    </div>
                     <Form {...form}>
-                      <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                        <FormField
-                          control={form.control}
-                          name="allowMessages"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 shadow-sm">
-                              <div className="space-y-0.5">
-                                <FormLabel>{t("allowDirectMessages")}</FormLabel>
-                                <FormDescription>
-                                  {t("allowDirectMessagesDesc")}
-                                </FormDescription>
-                              </div>
-                              <FormControl>
-                                <Switch
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                      </div>
+                      <FormField
+                        control={form.control}
+                        name="allowMessages"
+                        render={({ field }) => (
+                          <FormItem className="m-0 p-0 border-0 shadow-none flex flex-row items-center justify-end">
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
                     </Form>
                   </div>
-                  
-                  <Separator />
-                  
-                  {/* Account Deletion */}
-                  <div className="space-y-2">
-                    <h3 className="text-lg font-medium">{t("dangerZone")}</h3>
-                    <p className="text-sm text-muted-foreground">{t("dangerZoneDesc")}</p>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-destructive">{t("deleteAccount")}</p>
-                        <p className="text-sm text-muted-foreground">{t("deleteAccountDesc")}</p>
-                      </div>
-                      <Button 
-                        variant="destructive" 
-                        onClick={() => setIsDeleteModalOpen(true)}
-                      >
-                        {t("deleteAccount")}
-                      </Button>
+                </div>
+                <Separator />
+                {/* Account Deletion */}
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold text-destructive mb-1">{t("dangerZone")}</h3>
+                  <p className="text-sm text-muted-foreground mb-2">{t("dangerZoneDesc")}</p>
+                  <div className={`flex items-center justify-between gap-4 p-4 rounded-lg border border-destructive/40 bg-destructive/5 ${isRtl ? 'flex-row-reverse' : 'flex-row'}`}>
+                    <div className={isRtl ? 'text-right' : 'text-left'}>
+                      <span className="font-medium text-destructive">{t("deleteAccount")}</span>
+                      <div className="text-xs text-muted-foreground mt-1">{t("deleteAccountDesc")}</div>
                     </div>
+                    <Button 
+                      variant="destructive" 
+                      onClick={() => setIsDeleteModalOpen(true)}
+                    >
+                      {t("deleteAccount")}
+                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -479,18 +594,134 @@ const EditProfile = () => {
           <TabsContent value="notifications">
             <Card>
               <CardHeader>
-                <CardTitle>الإشعارات</CardTitle>
-                <CardDescription>إدارة تفضيلات الإشعارات الخاصة بك.</CardDescription>
+                <CardTitle>{t("notifications")}</CardTitle>
+                <CardDescription>{t("manageNotificationPrefs") || "إدارة تفضيلات الإشعارات الخاصة بك."}</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground">إعدادات الإشعارات قريباً.</p>
+                {notifLoading ? (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <span className="animate-spin h-5 w-5 border-2 border-t-transparent border-muted rounded-full"></span>
+                    {t("loading") || "جاري التحميل..."}
+                  </div>
+                ) : notificationPrefs && (
+                  <form className="space-y-6">
+                    <div className="flex flex-col gap-4">
+                      <div className={`flex items-center justify-between p-4 rounded-lg border bg-muted/30 dark:bg-muted/60 ${isRtl ? 'flex-row-reverse' : 'flex-row'}`}>
+                        <div className={isRtl ? 'text-right' : 'text-left'}>
+                          <span className="font-medium text-foreground dark:text-white">{t("emailNotifications") || "إشعارات البريد الإلكتروني"}</span>
+                          <div className="text-xs text-muted-foreground mt-1">{t("emailNotificationsDesc") || "ستتلقى إشعارات عبر البريد الإلكتروني للأحداث المهمة."}</div>
+                        </div>
+                        <Switch
+                          checked={notificationPrefs.email_enabled}
+                          onCheckedChange={v => handleNotifChange({ email_enabled: v })}
+                          disabled={notifSaving}
+                        />
+                      </div>
+                      <div className={`flex items-center justify-between p-4 rounded-lg border bg-muted/30 dark:bg-muted/60 ${isRtl ? 'flex-row-reverse' : 'flex-row'}`}>
+                        <div className={isRtl ? 'text-right' : 'text-left'}>
+                          <span className="font-medium text-foreground dark:text-white">{t("pushNotifications") || "إشعارات الدفع"}</span>
+                          <div className="text-xs text-muted-foreground mt-1">{t("pushNotificationsDesc") || "ستتلقى إشعارات فورية على جهازك."}</div>
+                        </div>
+                        <Switch
+                          checked={notificationPrefs.push_enabled}
+                          onCheckedChange={v => handleNotifChange({ push_enabled: v })}
+                          disabled={notifSaving}
+                        />
+                      </div>
+                      <div className={`flex items-center justify-between p-4 rounded-lg border bg-muted/30 dark:bg-muted/60 ${isRtl ? 'flex-row-reverse' : 'flex-row'}`}>
+                        <div className={isRtl ? 'text-right' : 'text-left'}>
+                          <span className="font-medium text-foreground dark:text-white">{t("notificationFrequency") || "تكرار الإشعارات"}</span>
+                          <div className="text-xs text-muted-foreground mt-1">{t("notificationFrequencyDesc") || "اختر عدد مرات تلقي الإشعارات."}</div>
+                        </div>
+                        <select
+                          className="border rounded px-3 py-2 bg-background dark:bg-muted text-foreground dark:text-white focus:ring-2 focus:ring-primary focus:outline-none transition-all"
+                          value={notificationPrefs.frequency}
+                          onChange={e => handleNotifChange({ frequency: e.target.value })}
+                          disabled={notifSaving}
+                        >
+                          <option value="instant">{t("instant") || "فوري"}</option>
+                          <option value="daily">{t("daily") || "يومي"}</option>
+                          <option value="weekly">{t("weekly") || "أسبوعي"}</option>
+                        </select>
+                      </div>
+                    </div>
+                    {notifSaving && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
+                        <span className="animate-spin h-4 w-4 border-2 border-t-transparent border-muted rounded-full"></span>
+                        {t("saving") || "جاري الحفظ..."}
+                      </div>
+                    )}
+                    <div className={`mt-4 p-3 rounded bg-muted/40 dark:bg-muted/70 text-xs ${isRtl ? 'text-right' : 'text-left'} text-muted-foreground border-l-4 border-primary`}>
+                      {isRtl
+                        ? "عند إيقاف إشعارات الدفع أو البريد الإلكتروني هنا، لن تصلك هذه الإشعارات من المنصة بعد الآن."
+                        : "Turning off push or email notifications here will immediately stop those types of notifications from being sent to you."}
+                    </div>
+                  </form>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
       </div>
+      <DeleteAccountModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleDeleteAccount}
+        isLoading={isDeleting}
+      />
+      <Dialog open={isEmailModalOpen} onOpenChange={setIsEmailModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("changeEmail")}</DialogTitle>
+            <DialogDescription>{t("emailSettingsDesc")}</DialogDescription>
+          </DialogHeader>
+          <UiInput
+            type="email"
+            placeholder={t("emailAddress") || "New Email"}
+            value={newEmail}
+            onChange={e => setNewEmail(e.target.value)}
+            disabled={isEmailSaving}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEmailModalOpen(false)} className="rtl:ml-2">{t("cancel")}</Button>
+            <Button onClick={handleChangeEmail} disabled={isEmailSaving || !newEmail}>
+              {isEmailSaving ? t("saving") : t("save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isPasswordModalOpen} onOpenChange={setIsPasswordModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("changePassword")}</DialogTitle>
+            <DialogDescription>{t("passwordSettingsDesc")}</DialogDescription>
+          </DialogHeader>
+          <UiInput
+            type="password"
+            placeholder={t("currentPassword") || "Current Password"}
+            value={oldPassword}
+            onChange={e => setOldPassword(e.target.value)}
+            disabled={isPasswordSaving}
+            className="mb-2"
+          />
+          <UiInput
+            type="password"
+            placeholder={t("password") || "New Password"}
+            value={newPassword}
+            onChange={e => setNewPassword(e.target.value)}
+            disabled={isPasswordSaving}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsPasswordModalOpen(false)}>{t("cancel")}</Button>
+            <Button onClick={handleChangePassword} disabled={isPasswordSaving || !oldPassword || !newPassword}>
+              {isPasswordSaving ? t("saving") : t("save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 };
 
 export default EditProfile;
+

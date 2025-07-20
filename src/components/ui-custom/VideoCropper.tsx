@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface VideoCropperProps {
   videoSrc: string;
-  onCrop: (blob: Blob) => void;
+  onCrop: (croppedBlob: Blob, filterInfo: { filter: FilterType, brightness: number, contrast: number, saturation: number }) => void;
   onCancel: () => void;
 }
 
@@ -209,27 +209,18 @@ export function VideoCropper({ videoSrc, onCrop, onCancel }: VideoCropperProps) 
     setCropPreview(previewUrl);
   };
   
+  // When cropping is complete, pass filter info to parent
   const handleCropComplete = () => {
     if (!videoRef.current || !canvasRef.current) return;
-    
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    
-    // Pause video
     video.pause();
-    
-    // Capture frame at current time
     const captureCanvas = document.createElement('canvas');
     captureCanvas.width = cropArea.width;
     captureCanvas.height = cropArea.height;
-    
     const ctx = captureCanvas.getContext('2d');
     if (!ctx) return;
-    
-    // Apply filter to the cropped image
     ctx.filter = getFilterStyle();
-    
-    // Draw the cropped video frame to the canvas
     ctx.drawImage(
       video,
       cropArea.x,
@@ -241,14 +232,15 @@ export function VideoCropper({ videoSrc, onCrop, onCancel }: VideoCropperProps) 
       cropArea.width,
       cropArea.height
     );
-    
-    // Reset filter
     ctx.filter = "none";
-    
-    // Convert to blob
     captureCanvas.toBlob((blob) => {
       if (blob) {
-        onCrop(blob);
+        onCrop(blob, {
+          filter: selectedFilter,
+          brightness,
+          contrast,
+          saturation
+        });
       }
     }, 'image/jpeg', 0.95);
   };

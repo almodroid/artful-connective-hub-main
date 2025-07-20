@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
 import { Heart, MessageCircle, Share2, Play, Pause, Volume2, VolumeX, Link as LinkIcon, MoreVertical, Flag, Trash } from "lucide-react";
@@ -34,6 +34,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
 import { ShareModal } from "./ShareModal";
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 // Define an interface for animated hearts
 interface AnimatedHeart {
@@ -79,6 +80,11 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
   const { sendInteractionNotification } = useNotificationsApi();
   const { deleteReel, reportReel } = useReels();
   
+  const navigate = useNavigate();
+  const isMobile = useMediaQuery("(max-width: 768px)");
+  const [fallbackPoster, setFallbackPoster] = useState<string | null>(null);
+  const fallbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   // Check if the current user is the owner of this reel
   const isOwner = isAuthenticated && user?.id === reel.user.id;
 
@@ -161,6 +167,44 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
       setIsPlaying(false);
     }
   }, [isActive]);
+
+  // On mobile, if video is loading for more than 1.5s, show a random frame as poster
+  useEffect(() => {
+    if (!isMobile) return;
+    if (isLoading && !fallbackPoster) {
+      fallbackTimeoutRef.current = setTimeout(() => {
+        // Try to extract a random frame from the video
+        if (videoRef.current) {
+          const video = videoRef.current;
+          // Create a hidden video element to seek and capture frame
+          const tempVideo = document.createElement('video');
+          tempVideo.src = video.src;
+          tempVideo.crossOrigin = 'anonymous';
+          tempVideo.muted = true;
+          tempVideo.currentTime = Math.random() * (video.duration || 5);
+          tempVideo.addEventListener('seeked', () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = tempVideo.videoWidth;
+            canvas.height = tempVideo.videoHeight;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(tempVideo, 0, 0, canvas.width, canvas.height);
+              setFallbackPoster(canvas.toDataURL('image/png'));
+            }
+          }, { once: true });
+        }
+      }, 1500);
+    } else if (!isLoading && fallbackTimeoutRef.current) {
+      clearTimeout(fallbackTimeoutRef.current);
+      fallbackTimeoutRef.current = null;
+    }
+    return () => {
+      if (fallbackTimeoutRef.current) {
+        clearTimeout(fallbackTimeoutRef.current);
+        fallbackTimeoutRef.current = null;
+      }
+    };
+  }, [isLoading, isMobile, fallbackPoster]);
 
   // Handle manual playback toggle
   const togglePlayback = () => {
@@ -335,8 +379,25 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
 
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
+  // Add a click handler for mobile full-card navigation
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (!isMobile) return;
+    // Prevent navigation if clicking on interactive elements
+    if (
+      e.target instanceof HTMLElement &&
+      (e.target.closest('button') || e.target.closest('a') || e.target.closest('input'))
+    ) {
+      return;
+    }
+    navigate(`/reel/${reel.id}`);
+  };
+
   return (
-    <Card className={cn("overflow-hidden border-border/40 bg-card/30 animate-scale-in hover:shadow-md transition-shadow duration-300 h-full", className)}>
+    <Card
+      className={cn("overflow-hidden border-border/40 bg-card/30 animate-scale-in hover:shadow-md transition-shadow duration-300 h-full", className)}
+      onClick={handleCardClick}
+      style={isMobile ? { cursor: 'pointer' } : {}}
+    >
       <CardContent className="p-0 relative h-full">
         <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-black/70 to-transparent p-4">
           <div className="flex items-center gap-3">
@@ -394,11 +455,13 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
         </div>
         
         <div className="relative bg-black h-full">
-          {isLoading && (
+          {isLoading && isMobile && fallbackPoster ? (
+            <img src={fallbackPoster} alt="Video frame" className="absolute inset-0 w-full h-full object-cover" />
+          ) : isLoading ? (
             <div className="absolute inset-0 flex items-center justify-center bg-black/50">
               <div className="w-6 h-6 border-4 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
-          )}
+          ) : null}
           
           {hasError && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white p-4 text-center">
@@ -425,7 +488,7 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
             loop
             playsInline
             muted={isMuted}
-            poster={reel.thumbnail_url}
+            poster={fallbackPoster || reel.thumbnail_url}
             onClick={togglePlayback}
             onTouchEnd={togglePlayback}
           />

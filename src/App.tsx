@@ -29,6 +29,9 @@ import CreatePost from "./pages/CreatePost";
 import Reels from "./pages/Reels";
 import Messages from "./pages/Messages";
 import SpaceAI from "./pages/SpaceAI";
+import About from "@/pages/About";
+import PrivacyPolicy from "@/pages/PrivacyPolicy";
+import TermsAndConditions from "@/pages/TermsAndConditions";
 
 // Create a new query client instance
 const queryClient = new QueryClient();
@@ -59,6 +62,9 @@ function App() {
                   <Route path="/messages" element={<Messages />} />
                   <Route path="/messages/:conversationId" element={<Messages />} />
                   <Route path="/messages/user/:userId" element={<Messages />} />
+                  <Route path="/about" element={<About />} />
+                  <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                  <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
                   
                   {/* Admin Routes */}
                   <Route path="/admin" element={<Admin />} />

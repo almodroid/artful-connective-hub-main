@@ -38,7 +38,8 @@ export function Layout({ children, hideFooter = false }: LayoutProps) {
       <main className="flex-1 container px-4 md:px-8 py-6 pb-24 md:py-12">
         {children}
       </main>
-      {!hideFooter && <Footer />}
+      {/* Only show Footer on md and up */}
+      {!hideFooter && <div className="hidden md:block"><Footer /></div>}
       <BottomBar />
     </div>
   );

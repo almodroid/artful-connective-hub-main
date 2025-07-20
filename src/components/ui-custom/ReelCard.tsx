@@ -84,7 +84,7 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [fallbackPoster, setFallbackPoster] = useState<string | null>(null);
   const fallbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
+  
   // Check if the current user is the owner of this reel
   const isOwner = isAuthenticated && user?.id === reel.user.id;
 

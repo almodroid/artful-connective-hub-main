@@ -98,7 +98,7 @@ export function ReelCardSingle({
   const isMobile = useMediaQuery("(max-width: 768px)");
   
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
-
+  
   // Check if the current user is the owner of this reel
   const isOwner = isAuthenticated && user?.id === reel.user.id;
 
@@ -638,14 +638,14 @@ export function ReelCardSingle({
                   </Button>
                   {/* Only show comment button on mobile */}
                   {isMobile && (
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-9 w-9 rounded-full bg-black/50 text-white hover:bg-black/70"
-                      onClick={onCommentsClick}
-                    >
-                      <MessageCircle className="h-4 w-4" />
-                    </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-9 w-9 rounded-full bg-black/50 text-white hover:bg-black/70"
+                    onClick={onCommentsClick}
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                  </Button>
                   )}
                 </div>
                 <div className="flex gap-2">

@@ -476,9 +476,9 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
           </div>
         </div>
       ) : (
-        <Link to={`/post/${post.id}`} className="block">
-          <p className="text-sm whitespace-pre-wrap text-start p-3">{post.content}</p>
-        </Link>
+      <Link to={`/post/${post.id}`} className="block">
+        <p className="text-sm whitespace-pre-wrap text-start p-3">{post.content}</p>
+      </Link>
       )}
 
       {(post.images?.length > 0 && !post.media_urls) && (

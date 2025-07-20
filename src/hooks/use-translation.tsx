@@ -276,7 +276,7 @@ const translations = {
     reporting: "Reporting...",
     reportSuccess: "Reported successfully. Our team will review it.",
     alreadyReported: "You have already reported this content",
-    cancel: "Cancel",
+
   },
   ar: {
     // Navigation
@@ -561,7 +561,7 @@ const translations = {
     reporting: "جارٍ الإبلاغ...",
     reportSuccess: "تم الإبلاغ بنجاح. سيقوم فريقنا بمراجعته.",
     alreadyReported: "لقد أبلغت بالفعل عن هذا المحتوى",
-    cancel: "إلغاء",
+
   }
 };
 

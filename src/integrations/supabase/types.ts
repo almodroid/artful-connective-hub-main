@@ -146,6 +146,7 @@ export type Database = {
           sender_id: string | null
           title: string
           user_id: string | null
+          image_url: string | null
         }
         Insert: {
           action_link?: string | null
@@ -158,6 +159,7 @@ export type Database = {
           sender_id?: string | null
           title: string
           user_id?: string | null
+          image_url?: string | null
         }
         Update: {
           action_link?: string | null
@@ -170,6 +172,7 @@ export type Database = {
           sender_id?: string | null
           title?: string
           user_id?: string | null
+          image_url?: string | null
         }
         Relationships: []
       }
@@ -902,6 +905,30 @@ export type Database = {
             referencedColumns: ["id"]
           }
         ]
+      },
+      settings: {
+        Row: {
+          key: string;
+          value: string;
+          description: string | null;
+          category: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          key: string;
+          value: string;
+          description?: string | null;
+          category?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          key?: string;
+          value?: string;
+          description?: string | null;
+          category?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [];
       },
     }
     Views: {

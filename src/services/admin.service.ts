@@ -235,3 +235,22 @@ export async function fetchContentDistribution() {
     throw error;
   }
 }
+
+export async function setAIEnabled(enabled: boolean) {
+  const { error } = await supabase
+    .from('settings')
+    .update({ value: enabled ? 'true' : 'false', updated_at: new Date().toISOString() })
+    .eq('key', 'ai_enabled');
+  if (error) throw error;
+  return true;
+}
+
+export async function setAIUnlimited(unlimited: boolean, limit: number = 20) {
+  const value = unlimited ? 'unlimited' : String(limit);
+  const { error } = await supabase
+    .from('settings')
+    .update({ value, updated_at: new Date().toISOString() })
+    .eq('key', 'ai_daily_limit');
+  if (error) throw error;
+  return true;
+}

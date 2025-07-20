@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
-import { Heart, MessageCircle, Share2, UserPlus, UserMinus } from "lucide-react";
+import { Heart, MessageCircle, Share2, UserPlus, UserMinus, MoreVertical, Edit, Trash2, Flag } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,6 +12,8 @@ import { useTranslation } from "@/hooks/use-translation";
 import { FollowListModal } from "@/components/ui-custom/FollowListModal";
 import { motion, AnimatePresence } from "framer-motion";
 import { ShareModal } from "./ShareModal";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 
 export interface Post {
   id: string;
@@ -40,9 +42,10 @@ interface PostCardProps {
   onLike?: (postId: string) => Promise<void>;
   onComment?: (postId: string) => void;
   onShare?: (postId: string) => void;
+  onDelete?: () => void;
 }
 
-export function PostCard({ post, onLike, onComment, onShare }: PostCardProps) {
+export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCardProps) {
   const { user, isAuthenticated } = useAuth();
   const { t, isRtl } = useTranslation();
   const [isFollowing, setIsFollowing] = useState(false);
@@ -50,6 +53,14 @@ export function PostCard({ post, onLike, onComment, onShare }: PostCardProps) {
   const [localLikes, setLocalLikes] = useState(post.likes);
   const [localIsLiked, setLocalIsLiked] = useState(post.isLiked);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editContent, setEditContent] = useState(post.content);
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const isOwner = isAuthenticated && user?.id === post.user.id;
+  const canEdit = isOwner && (Date.now() - new Date(post.createdAt).getTime() < 60000);
 
   useEffect(() => {
     const checkLikeAndFollowStatus = async () => {
@@ -201,6 +212,95 @@ export function PostCard({ post, onLike, onComment, onShare }: PostCardProps) {
     setIsShareModalOpen(true);
   };
 
+  // Delete post handler
+  const handleDeletePost = async () => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .from('posts')
+        .delete()
+        .eq('id', post.id)
+        .eq('user_id', user.id);
+      if (error) throw error;
+      toast.success(isRtl ? "تم حذف المنشور" : "Post deleted");
+      setIsDeleteDialogOpen(false);
+      if (onDelete) onDelete();
+    } catch (error) {
+      toast.error(isRtl ? "حدث خطأ أثناء حذف المنشور" : "Error deleting post");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Edit post handler
+  const handleEditPost = async () => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .from('posts')
+        .update({ content: editContent })
+        .eq('id', post.id)
+        .eq('user_id', user.id);
+      if (error) throw error;
+      toast.success(isRtl ? "تم تعديل المنشور" : "Post updated");
+      setIsEditMode(false);
+      // Optionally: update UI
+    } catch (error) {
+      toast.error(isRtl ? "حدث خطأ أثناء تعديل المنشور" : "Error updating post");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const reportPost = async (postId: string, reason: string): Promise<boolean> => {
+    if (!isAuthenticated || !user) {
+      toast.error(t('report') + ': ' + (isRtl ? "يجب تسجيل الدخول للإبلاغ عن منشور" : "You must be logged in to report a post"));
+      return false;
+    }
+    if (!reason.trim()) {
+      toast.error(t('report') + ': ' + t('reportReason'));
+      return false;
+    }
+    try {
+      // Check if the user has already reported this post
+      const { data: existingReport, error: checkError } = await supabase
+        .from("post_reports")
+        .select()
+        .eq("post_id", postId)
+        .eq("reporter_id", user.id)
+        .maybeSingle();
+      if (checkError) {
+        console.error("Error checking existing report:", checkError);
+        toast.error(t('report') + ': ' + (isRtl ? "تعذر التحقق من حالة البلاغ" : "Could not check report status"));
+        return false;
+      }
+      if (existingReport) {
+        toast.info(t('alreadyReported'));
+        return false;
+      }
+      // Create a report
+      const { error: reportError } = await supabase
+        .from("post_reports")
+        .insert({
+          post_id: postId,
+          reporter_id: user.id,
+          reason: reason.trim(),
+          status: "pending"
+        });
+      if (reportError) {
+        console.error("Error reporting post:", reportError);
+        toast.error(t('report') + ': ' + (isRtl ? "فشل الإبلاغ عن المنشور" : "Failed to report post"));
+        return false;
+      }
+      toast.success(t('reportSuccess'));
+      return true;
+    } catch (error) {
+      console.error("Error in reportPost:", error);
+      toast.error(t('report') + ': ' + (isRtl ? "حدث خطأ ما. يرجى المحاولة مرة أخرى." : "Something went wrong. Please try again."));
+      return false;
+    }
+  };
+
   return (
     <div className={`bg-card rounded-lg border p-4 space-y-5 m-5 ${isRtl ? 'direction-rtl' : ''}`}>
       
@@ -314,11 +414,72 @@ export function PostCard({ post, onLike, onComment, onShare }: PostCardProps) {
             </div>
           </div>
         </div>
+        {isOwner ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5" /></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {canEdit && (
+                <DropdownMenuItem 
+                  onClick={() => setIsEditMode(true)}
+                  dir={isRtl ? "rtl" : "ltr"}
+                >
+                  <Edit className={`h-4 w-4 ${isRtl ? 'ml-2' : 'mr-2'}`} />
+                  {isRtl ? "تعديل" : "Edit"}
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem 
+                className="text-destructive" 
+                onClick={() => setIsDeleteDialogOpen(true)}
+                dir={isRtl ? "rtl" : "ltr"}
+              >
+                <Trash2 className={`h-4 w-4 ${isRtl ? 'ml-2' : 'mr-2'}`} />
+                {isRtl ? "حذف" : "Delete"}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5" /></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem 
+                onClick={() => setIsReportDialogOpen(true)}
+                dir={isRtl ? "rtl" : "ltr"}
+              >
+                <Flag className={`h-4 w-4 ${isRtl ? 'ml-2' : 'mr-2'}`} />
+                {isRtl ? "الإبلاغ عن المنشور" : "Report Post"}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
-      <Link to={`/post/${post.id}`} className="block">
-        <p className="text-sm whitespace-pre-wrap text-start p-3">{post.content}</p>
-      </Link>
+      {isEditMode ? (
+        <div className="mb-4">
+          <textarea
+            className="w-full border rounded p-2 mb-2"
+            value={editContent}
+            onChange={e => setEditContent(e.target.value)}
+            rows={3}
+            disabled={isLoading}
+          />
+          <div className="flex gap-2">
+            <Button size="sm" onClick={handleEditPost} disabled={isLoading}>
+              {isRtl ? "حفظ" : "Save"}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setIsEditMode(false)}>
+              {isRtl ? "إلغاء" : "Cancel"}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <Link to={`/post/${post.id}`} className="block">
+          <p className="text-sm whitespace-pre-wrap text-start p-3">{post.content}</p>
+        </Link>
+      )}
 
       {(post.images?.length > 0 && !post.media_urls) && (
         <Link to={`/post/${post.id}`} className="block">
@@ -471,6 +632,67 @@ export function PostCard({ post, onLike, onComment, onShare }: PostCardProps) {
         author={post.user}
         image={post.images?.[0] || post.media_urls?.[0]}
       />
+
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{isRtl ? "حذف المنشور" : "Delete Post"}</DialogTitle>
+            <DialogDescription>{isRtl ? "هل أنت متأكد من حذف هذا المنشور؟ لا يمكن التراجع عن هذا الإجراء." : "Are you sure you want to delete this post? This action cannot be undone."}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">{isRtl ? "إلغاء" : "Cancel"}</Button>
+            </DialogClose>
+            <Button variant="destructive" onClick={handleDeletePost} disabled={isLoading}>
+              {isLoading ? (isRtl ? "جارٍ الحذف..." : "Deleting...") : (isRtl ? "حذف" : "Delete")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{isRtl ? "الإبلاغ عن منشور" : "Report Post"}</DialogTitle>
+            <DialogDescription>{isRtl ? "يرجى اختيار سبب الإبلاغ عن هذا المنشور. سيقوم فريقنا بمراجعته." : "Please select a reason for reporting this post. Our team will review it."}</DialogDescription>
+          </DialogHeader>
+          <div className="mt-4">
+            <select
+              className="w-full border rounded p-2 mb-2"
+              value={reportReason}
+              onChange={e => setReportReason(e.target.value)}
+              disabled={isSubmittingReport}
+            >
+              <option value="">{isRtl ? "اختر السبب" : "Select reason"}</option>
+              <option value="spam">{isRtl ? "سبام / محتوى مزعج" : "Spam"}</option>
+              <option value="theft">{isRtl ? "سرقة / محتوى مسروق" : "Theft"}</option>
+              <option value="other">{isRtl ? "أخرى" : "Other"}</option>
+            </select>
+            {reportReason === "other" && (
+              <textarea
+                className="w-full border rounded p-2 mb-2"
+                placeholder={isRtl ? "يرجى توضيح السبب..." : "Please specify..."}
+                value={reportReason === "other" ? reportReason : ""}
+                onChange={e => setReportReason(e.target.value)}
+                disabled={isSubmittingReport}
+              />
+            )}
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">{isRtl ? "إلغاء" : "Cancel"}</Button>
+            </DialogClose>
+            <Button variant="destructive" onClick={async () => {
+              setIsSubmittingReport(true);
+              await reportPost(post.id, reportReason);
+              setIsSubmittingReport(false);
+              setIsReportDialogOpen(false);
+            }} disabled={isSubmittingReport || !reportReason}>
+              {isSubmittingReport ? t('reporting') : t('report')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

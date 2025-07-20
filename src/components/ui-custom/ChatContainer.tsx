@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import { ChatMessage } from "@/hooks/use-chat";
-import { Palette, Brush, Wand, Layers, User, Bot, Save, History, Trash2, Search, ArrowUpDown, Tag } from "lucide-react";
+import { Palette, Brush, Wand, Layers, User, Bot, Save, History, Trash2, Search, ArrowUpDown, Tag, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/hooks/use-translation";
 import { cn } from "@/lib/utils";
@@ -363,14 +363,29 @@ export function ChatContainer({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align={isRtl ? "start" : "end"}>
-            <DropdownMenuItem onClick={() => setSortBy('newest')}>
-              {t("sortByNewest")}
+            <DropdownMenuItem 
+              onClick={() => setSortBy('newest')}
+              dir={isRtl ? "rtl" : "ltr"}
+              className="flex justify-between items-center"
+            >
+              <span>{isRtl ? "الأحدث" : "Newest"}</span>
+              {sortBy === 'newest' && <Check className="h-4 w-4 text-primary" />}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setSortBy('oldest')}>
-              {t("sortByOldest")}
+            <DropdownMenuItem 
+              onClick={() => setSortBy('oldest')}
+              dir={isRtl ? "rtl" : "ltr"}
+              className="flex justify-between items-center"
+            >
+              <span>{isRtl ? "الأقدم" : "Oldest"}</span>
+              {sortBy === 'oldest' && <Check className="h-4 w-4 text-primary" />}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setSortBy('title')}>
-              {t("sortByTitle")}
+            <DropdownMenuItem 
+              onClick={() => setSortBy('title')}
+              dir={isRtl ? "rtl" : "ltr"}
+              className="flex justify-between items-center"
+            >
+              <span>{isRtl ? "العنوان" : "Title"}</span>
+              {sortBy === 'title' && <Check className="h-4 w-4 text-primary" />}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

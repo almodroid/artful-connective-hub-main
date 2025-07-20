@@ -58,18 +58,31 @@ export function useNotificationsApi() {
         throw new Error("User not authenticated");
       }
 
-      const { data, error } = await supabase
+      // Fetch the notification to check if it's global
+      const { data: notif } = await supabase
         .from("notifications")
-        .update({ read: true })
+        .select("is_global")
         .eq("id", notificationId)
-        .eq("user_id", user.id);
+        .single();
 
-      if (error) {
-        console.error("Error marking notification as read:", error);
-        throw error;
+      if (notif?.is_global) {
+        // For global, update by id only
+        const { data, error } = await supabase
+          .from("notifications")
+          .update({ read: true })
+          .eq("id", notificationId);
+        if (error) throw error;
+        return data;
+      } else {
+        // For personal, update by id and user_id
+        const { data, error } = await supabase
+          .from("notifications")
+          .update({ read: true })
+          .eq("id", notificationId)
+          .eq("user_id", user.id);
+        if (error) throw error;
+        return data;
       }
-
-      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications", user?.id] });
@@ -87,10 +100,11 @@ export function useNotificationsApi() {
         throw new Error("User not authenticated");
       }
 
+      // Mark all notifications (personal and global) as read for this user
       const { data, error } = await supabase
         .from("notifications")
         .update({ read: true })
-        .eq("user_id", user.id)
+        .or(`user_id.eq.${user.id},is_global.eq.true`)
         .eq("read", false);
 
       if (error) {

@@ -10,7 +10,7 @@ import { Separator } from '../components/ui/separator';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { Skeleton } from '../components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
-import { Send, ArrowLeft, MoreVertical, Edit, Trash2, UserX, UserPlus, UserMinus, Image as ImageIcon, Smile, X, Loader2, Search, ArrowRight, User, GrapeIcon, SmileIcon, SmilePlus } from 'lucide-react';
+import { Send, ArrowLeft, MoreVertical, Edit, Trash2, UserX, UserPlus, UserMinus, Image as ImageIcon, Smile, X, Loader2, Search, ArrowRight, User, GrapeIcon, SmileIcon, SmilePlus, Check } from 'lucide-react';
 import { useTranslation } from '../hooks/use-translation';
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from '../hooks/use-toast';
@@ -751,6 +751,19 @@ const handleSendMessage = async (e: React.FormEvent) => {
                             {message.edited && ` · ${t('edited')}`}
                           </span>
                           <div className={`flex gap-2 ${message.sender_id === user?.id ? 'flex-row' : 'flex-row-reverse'} `} >
+                           {/* Message Status Indicators */}
+                           {message.sender_id === user?.id && (
+                             <div className="flex items-center opacity-70">
+                               {message.read ? (
+                                 <div className="flex">
+                                   <Check className="h-3 w-3 text-purple-500" />
+                                   <Check className="h-3 w-3 text-purple-500 -ml-1" />
+                                 </div>
+                               ) : (
+                                 <Check className="h-3 w-3" />
+                               )}
+                             </div>
+                           )}
                             <div className="flex items-center gap-1  opacity-70">
                               
                               {!isBlocked && !amIBlocked && (

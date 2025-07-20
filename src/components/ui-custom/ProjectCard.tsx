@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
-import { Heart, MessageCircle, Share2, ExternalLink } from "lucide-react";
+import { Heart, MessageCircle, Share2, ExternalLink, Flag } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTranslation } from "@/hooks/use-translation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ShareModal } from "./ShareModal";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { useProjects } from "@/hooks/use-projects";
 
 export interface Project {
   id: string;
@@ -46,6 +48,11 @@ export function ProjectCard({ project, onLike, onComment }: ProjectCardProps) {
   const [localLikes, setLocalLikes] = useState(project.likes);
   const [localIsLiked, setLocalIsLiked] = useState(project.isLiked);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const { reportProject } = useProjects();
+  const isOwner = isAuthenticated && user?.id === project.user.id;
 
   const handleShare = () => {
     setIsShareModalOpen(true);
@@ -236,6 +243,18 @@ export function ProjectCard({ project, onLike, onComment }: ProjectCardProps) {
         >
           <Share2 className="h-4 w-4" />
         </Button>
+        {!isOwner && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-2"
+            onClick={() => setIsReportDialogOpen(true)}
+            dir={isRtl ? "rtl" : "ltr"}
+          >
+            <Flag className={`h-4 w-4 ${isRtl ? 'ml-2' : 'mr-2'}`} />
+            {isRtl ? "الإبلاغ عن المشروع" : "Report Project"}
+          </Button>
+        )}
       </div>
 
       <ShareModal
@@ -248,6 +267,49 @@ export function ProjectCard({ project, onLike, onComment }: ProjectCardProps) {
         author={project.user}
         image={project.thumbnail_url}
       />
+      <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{isRtl ? "الإبلاغ عن مشروع" : "Report Project"}</DialogTitle>
+            <DialogDescription>{isRtl ? "يرجى اختيار سبب الإبلاغ عن هذا المشروع. سيقوم فريقنا بمراجعته." : "Please select a reason for reporting this project. Our team will review it."}</DialogDescription>
+          </DialogHeader>
+          <div className="mt-4">
+            <select
+              className="w-full border rounded p-2 mb-2"
+              value={reportReason}
+              onChange={e => setReportReason(e.target.value)}
+              disabled={isSubmittingReport}
+            >
+              <option value="">{isRtl ? "اختر السبب" : "Select reason"}</option>
+              <option value="spam">{isRtl ? "سبام / محتوى مزعج" : "Spam"}</option>
+              <option value="theft">{isRtl ? "سرقة / محتوى مسروق" : "Theft"}</option>
+              <option value="other">{isRtl ? "أخرى" : "Other"}</option>
+            </select>
+            {reportReason === "other" && (
+              <textarea
+                className="w-full border rounded p-2 mb-2"
+                placeholder={isRtl ? "يرجى توضيح السبب..." : "Please specify..."}
+                value={reportReason === "other" ? reportReason : ""}
+                onChange={e => setReportReason(e.target.value)}
+                disabled={isSubmittingReport}
+              />
+            )}
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">{isRtl ? "إلغاء" : "Cancel"}</Button>
+            </DialogClose>
+            <Button variant="destructive" onClick={async () => {
+              setIsSubmittingReport(true);
+              await reportProject(project.id, reportReason);
+              setIsSubmittingReport(false);
+              setIsReportDialogOpen(false);
+            }} disabled={isSubmittingReport || !reportReason}>
+              {isSubmittingReport ? (isRtl ? "جارٍ الإبلاغ..." : "Reporting...") : (isRtl ? "إبلاغ" : "Report")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 } 

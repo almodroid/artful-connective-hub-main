@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
-import { Heart, MessageCircle, Share2, Play, Pause, Volume2, VolumeX, Link as LinkIcon, MoreVertical, Flag, Trash, ArrowLeft, ArrowRight } from "lucide-react";
+import { Heart, MessageCircle, Share2, Play, Pause, Volume2, VolumeX, Link as LinkIcon, MoreVertical, Flag, Trash, ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -97,6 +97,8 @@ export function ReelCardSingle({
   const { deleteReel, reportReel } = useReels();
   const isMobile = useMediaQuery("(max-width: 768px)");
   
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
+
   // Check if the current user is the owner of this reel
   const isOwner = isAuthenticated && user?.id === reel.user.id;
 
@@ -412,6 +414,12 @@ export function ReelCardSingle({
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.playbackRate = playbackSpeed;
+    }
+  }, [playbackSpeed, videoRef]);
+
   return (
     <Card className={cn("overflow-hidden border-border/40 bg-card/30 animate-scale-in hover:shadow-md transition-shadow duration-300 h-full", className)}>
       <CardContent className="p-0 relative h-full">
@@ -454,22 +462,55 @@ export function ReelCardSingle({
                         variant="ghost" 
                         size="icon" 
                         className="h-6 w-8 rounded-full text-white/80 hover:text-white hover:bg-black/20"
+                        
                       >
                         <MoreVertical className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-48">
                       {isOwner ? (
-                        <DropdownMenuItem className="text-destructive" onClick={() => setIsDeleteDialogOpen(true)}>
-                          <Trash className="h-4 w-4 mr-2" />
+                        <DropdownMenuItem 
+                          className="text-destructive" 
+                          onClick={() => setIsDeleteDialogOpen(true)}
+                          dir={isRtl ? "rtl" : "ltr"}
+                        >
+                          <Trash className={`h-4 w-4 ${isRtl ? 'ml-2' : 'mr-2'}`} />
                           {isRtl ? "حذف الريل" : "Delete Reel"}
                         </DropdownMenuItem>
                       ) : (
-                        <DropdownMenuItem onClick={() => setIsReportDialogOpen(true)}>
-                          <Flag className="h-4 w-4 mr-2" />
+                        <DropdownMenuItem 
+                          onClick={() => setIsReportDialogOpen(true)}
+                          dir={isRtl ? "rtl" : "ltr"}
+                        >
+                          <Flag className={`h-4 w-4 ${isRtl ? 'ml-2' : 'mr-2'}`} />
                           {isRtl ? "الإبلاغ عن الريل" : "Report Reel"}
                         </DropdownMenuItem>
                       )}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        onClick={() => setPlaybackSpeed(1)}
+                        dir={isRtl ? "rtl" : "ltr"}
+                        className="flex justify-between items-center"
+                      >
+                        <span>{isRtl ? "السرعة 1x" : "Speed 1x"}</span>
+                        {playbackSpeed === 1 && <Check className="h-4 w-4 text-primary" />}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => setPlaybackSpeed(1.5)}
+                        dir={isRtl ? "rtl" : "ltr"}
+                        className="flex justify-between items-center"
+                      >
+                        <span>{isRtl ? "السرعة 1.5x" : "Speed 1.5x"}</span>
+                        {playbackSpeed === 1.5 && <Check className="h-4 w-4 text-primary" />}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => setPlaybackSpeed(2)}
+                        dir={isRtl ? "rtl" : "ltr"}
+                        className="flex justify-between items-center"
+                      >
+                        <span>{isRtl ? "السرعة 2x" : "Speed 2x"}</span>
+                        {playbackSpeed === 2 && <Check className="h-4 w-4 text-primary" />}
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -563,7 +604,7 @@ export function ReelCardSingle({
               )}
             >
               {/* Progress Bar */}
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-2 w-full max-w-[420px] mx-auto">
                 <span className="text-xs text-white/90">{formatTime(currentTime)}</span>
                 <input
                   type="range"
@@ -571,7 +612,7 @@ export function ReelCardSingle({
                   max={duration || 0}
                   value={currentTime}
                   onChange={handleSeek}
-                  className="flex-1 h-1 bg-white/20 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
+                  className="video-progress flex-1 mx-2"
                 />
                 <span className="text-xs text-white/90">{formatTime(duration)}</span>
               </div>
@@ -587,7 +628,6 @@ export function ReelCardSingle({
                   >
                     {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                   </Button>
-                  
                   <Button 
                     variant="ghost" 
                     size="icon" 
@@ -596,17 +636,18 @@ export function ReelCardSingle({
                   >
                     {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                   </Button>
-
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-9 w-9 rounded-full bg-black/50 text-white hover:bg-black/70"
-                    onClick={onCommentsClick}
-                  >
-                    <MessageCircle className="h-4 w-4" />
-                  </Button>
+                  {/* Only show comment button on mobile */}
+                  {isMobile && (
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-9 w-9 rounded-full bg-black/50 text-white hover:bg-black/70"
+                      onClick={onCommentsClick}
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
-
                 <div className="flex gap-2">
                   <Button 
                     variant="ghost" 
@@ -616,23 +657,13 @@ export function ReelCardSingle({
                   >
                     <Heart className={cn("h-4 w-4", isLiked && "fill-primary text-primary")} />
                   </Button>
-
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-9 w-9 rounded-full bg-black/50 text-white hover:bg-black/70"
-                    onClick={handleShare}
-                  >
-                    <Share2 className="h-4 w-4" />
-                  </Button>
-
                   <Button 
                     variant="ghost" 
                     size="icon" 
                     className="h-9 w-9 rounded-full bg-black/50 text-white hover:bg-black/70"
                     onClick={() => setIsShareModalOpen(true)}
                   >
-                    <LinkIcon className="h-4 w-4" />
+                    <Share2 className="h-4 w-4" />
                   </Button>
                 </div>
                 
@@ -786,6 +817,48 @@ export function ReelCardSingle({
           100% {
             transform: scale(1);
           }
+        }
+        /* Video progress bar styles */
+        input[type="range"].video-progress {
+          width: 100%;
+          height: 4px;
+          background: transparent;
+          appearance: none;
+          outline: none;
+          margin: 0 8px;
+        }
+        input[type="range"].video-progress::-webkit-slider-runnable-track {
+          height: 4px;
+          background: #fff3;
+          border-radius: 2px;
+        }
+        input[type="range"].video-progress::-webkit-slider-thumb {
+          appearance: none;
+          width: 12px;
+          height: 12px;
+          background: #fff;
+          border-radius: 50%;
+          margin-top: -4px;
+          box-shadow: 0 0 2px #0003;
+        }
+        input[type="range"].video-progress:focus::-webkit-slider-thumb {
+          outline: 2px solid #fff;
+        }
+        input[type="range"].video-progress::-ms-fill-lower,
+        input[type="range"].video-progress::-ms-fill-upper {
+          background: #fff3;
+        }
+        input[type="range"].video-progress::-moz-range-thumb {
+          width: 12px;
+          height: 12px;
+          background: #fff;
+          border-radius: 50%;
+          border: none;
+        }
+        input[type="range"].video-progress::-moz-range-track {
+          height: 4px;
+          background: #fff3;
+          border-radius: 2px;
         }
       `}} />
     </Card>

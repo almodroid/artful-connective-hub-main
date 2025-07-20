@@ -267,6 +267,7 @@ export function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
       if (onPostCreated) {
         onPostCreated();
       }
+      toast.success(t('editWindowAlert'));
     } catch (error) {
       console.error("Form submission error:", error);
       toast.error(isRtl ? "حدث خطأ أثناء نشر المنشور" : "Error publishing post");

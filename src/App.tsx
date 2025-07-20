@@ -3,7 +3,6 @@ import "./App.css";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { TranslationProvider } from "./hooks/use-translation";
-import { NotificationsProvider } from "./hooks/use-notifications";
 import { Toaster } from "./components/ui/sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import TagPage from "@/pages/TagPage";
@@ -42,42 +41,40 @@ function App() {
       <ThemeProvider>
         <TranslationProvider>
           <AuthProvider>
-            <NotificationsProvider>
-              <Router>
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/explore" element={<Explore />} />
-                  <Route path="/explore/tag/:tag" element={<TagPage />} />
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/register" element={<Register />} />
-                  <Route path="/profile/:username" element={<Profile />} />
-                  <Route path="/edit-profile" element={<EditProfile />} />
-                  <Route path="/projects" element={<Projects />} />
-                  <Route path="/projects/:id" element={<ProjectDetail />} />
-                  <Route path="/space-ai" element={<SpaceAI />} />
-                  <Route path="/post/:postId" element={<Post />} />
-                  <Route path="/reel/:id" element={<Reel />} />
-                  <Route path="/reels/:reelId" element={<Reel />} />
-                  <Route path="/create" element={<CreatePost />} />
-                  <Route path="/messages" element={<Messages />} />
-                  <Route path="/messages/:conversationId" element={<Messages />} />
-                  <Route path="/messages/user/:userId" element={<Messages />} />
-                  <Route path="/about" element={<About />} />
-                  <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-                  <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
-                  
-                  {/* Admin Routes */}
-                  <Route path="/admin" element={<Admin />} />
-                  <Route path="/admin/users" element={<AdminUsers />} />
-                  <Route path="/admin/reports" element={<AdminReports />} />
-                  <Route path="/admin/settings" element={<AdminSettings />} />
-                  <Route path="/admin/notifications" element={<AdminNotifications />} />
-                  
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-                <Toaster />
-              </Router>
-            </NotificationsProvider>
+            <Router>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/explore" element={<Explore />} />
+                <Route path="/explore/tag/:tag" element={<TagPage />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/profile/:username" element={<Profile />} />
+                <Route path="/edit-profile" element={<EditProfile />} />
+                <Route path="/projects" element={<Projects />} />
+                <Route path="/projects/:id" element={<ProjectDetail />} />
+                <Route path="/space-ai" element={<SpaceAI />} />
+                <Route path="/post/:postId" element={<Post />} />
+                <Route path="/reel/:id" element={<Reel />} />
+                <Route path="/reels/:reelId" element={<Reel />} />
+                <Route path="/create" element={<CreatePost />} />
+                <Route path="/messages" element={<Messages />} />
+                <Route path="/messages/:conversationId" element={<Messages />} />
+                <Route path="/messages/user/:userId" element={<Messages />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+                
+                {/* Admin Routes */}
+                <Route path="/admin" element={<Admin />} />
+                <Route path="/admin/users" element={<AdminUsers />} />
+                <Route path="/admin/reports" element={<AdminReports />} />
+                <Route path="/admin/settings" element={<AdminSettings />} />
+                <Route path="/admin/notifications" element={<AdminNotifications />} />
+                
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+              <Toaster />
+            </Router>
           </AuthProvider>
         </TranslationProvider>
       </ThemeProvider>

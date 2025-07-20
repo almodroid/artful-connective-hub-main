@@ -58,6 +58,7 @@ interface Notification {
   action_type?: string;
   action_link?: string;
   created_at: string;
+  image_url?: string;
   user?: {
     id: string;
     username: string;
@@ -80,6 +81,30 @@ interface User {
   avatar_url: string;
 }
 
+// Helper to compress image using canvas
+async function compressImage(file: File): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return reject('No canvas context');
+      ctx.drawImage(img, 0, 0);
+      // Only compress for jpg/webp
+      const type = file.type === 'image/jpeg' || file.type === 'image/jpg' ? 'image/jpeg' : file.type === 'image/webp' ? 'image/webp' : file.type;
+      const quality = (type === 'image/jpeg' || type === 'image/webp') ? 0.85 : 1.0;
+      canvas.toBlob((blob) => {
+        if (blob) resolve(blob);
+        else reject('Compression failed');
+      }, type, quality);
+    };
+    img.onerror = reject;
+    img.src = URL.createObjectURL(file);
+  });
+}
+
 export function NotificationsManagement() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isGlobal, setIsGlobal] = useState(true);
@@ -92,6 +117,8 @@ export function NotificationsManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const queryClient = useQueryClient();
   const { isRtl } = useTranslation();
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   // Fetch all notifications
   const { data: notificationsList = [], isLoading } = useQuery<Notification[]>({
@@ -112,6 +139,7 @@ export function NotificationsManagement() {
             action_type,
             action_link,
             created_at,
+            image_url,
             user:profiles!notifications_user_id_fkey(id, username, display_name, avatar_url),
             sender:profiles!notifications_sender_id_fkey(id, username, display_name, avatar_url)
           `)
@@ -139,7 +167,7 @@ export function NotificationsManagement() {
       try {
         const { data: usersData, error: usersError } = await supabase
           .from('profiles')
-          .select('id, username, display_name, avatar_url')
+          .select('id, username, display_name, avatar_url, is_admin')
           .order('display_name');
         
         if (usersError) {
@@ -157,6 +185,69 @@ export function NotificationsManagement() {
     }
   });
 
+  // Get admin user IDs
+  const adminUserIds = users.filter(u => (u as any).is_admin).map(u => u.id);
+
+  // Only show manual notifications (not system/user-generated)
+  const isManualNotification = (n: Notification) => {
+    // Show if global (admin form) or sender_id is an admin
+    return n.is_global || (n.sender_id && adminUserIds.includes(n.sender_id));
+  };
+  const manualNotifications = notificationsList.filter(isManualNotification);
+  const filteredNotifications = selectedTab === "all"
+    ? manualNotifications
+    : selectedTab === "global"
+    ? manualNotifications.filter(n => n.is_global)
+    : manualNotifications.filter(n => !n.is_global && n.sender_id);
+  
+  // Filter notifications based on search term
+  const filteredNotificationsSearch = searchTerm && filteredNotifications 
+    ? filteredNotifications.filter(notification => 
+        notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        notification.message.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : filteredNotifications;
+
+  // Handle image selection
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    if (file) {
+      // Validate type
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'];
+      if (!allowedTypes.includes(file.type)) {
+        toast.error(isRtl ? 'يُسمح فقط بصور JPG و PNG و GIF و WEBP' : 'Only JPG, PNG, GIF, and WEBP images are allowed');
+        setImageFile(null);
+        setImagePreview(null);
+        return;
+      }
+      // Validate size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error(isRtl ? 'يجب أن يكون حجم الصورة أقل من 5 ميغابايت' : 'Image size must be less than 5MB');
+        setImageFile(null);
+        setImagePreview(null);
+        return;
+      }
+      // Compress image if needed
+      let compressedFile = file;
+      if (file.type === 'image/jpeg' || file.type === 'image/jpg' || file.type === 'image/webp') {
+        try {
+          const blob = await compressImage(file);
+          compressedFile = new File([blob], file.name, { type: blob.type });
+        } catch (err) {
+          toast.error(isRtl ? 'فشل ضغط الصورة' : 'Image compression failed');
+        }
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => setImagePreview(reader.result as string);
+      reader.readAsDataURL(compressedFile);
+      setImageFile(compressedFile);
+      toast.success(isRtl ? 'تم اختيار الصورة بنجاح' : 'Image selected successfully');
+    } else {
+      setImageFile(null);
+      setImagePreview(null);
+    }
+  };
+
   // Create notification mutation
   const createNotificationMutation = useMutation({
     mutationFn: async (data: { 
@@ -166,11 +257,29 @@ export function NotificationsManagement() {
       user_id?: string;
       action_type?: string;
       action_link?: string;
+      image_file?: File | null;
     }) => {
       if (!data.title || !data.message) {
         throw new Error("Title and message are required");
       }
-      
+      let image_url = null;
+      if (imageFile) {
+        // Upload image to Supabase Storage (media bucket)
+        const ext = imageFile.name.split('.').pop();
+        const filePath = `notifications/${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${ext}`;
+        // Convert to ArrayBuffer for upload
+        const arrayBuffer = await imageFile.arrayBuffer();
+        const { error: uploadError } = await supabase.storage.from('media').upload(filePath, arrayBuffer, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: imageFile.type
+        });
+        if (uploadError) {
+          throw uploadError;
+        }
+        const { data: urlData } = supabase.storage.from('media').getPublicUrl(filePath);
+        image_url = urlData?.publicUrl || null;
+      }
       const notificationData = {
         title: data.title,
         message: data.message,
@@ -178,19 +287,17 @@ export function NotificationsManagement() {
         user_id: data.is_global ? null : data.user_id,
         action_type: data.action_type || null,
         action_link: data.action_link || null,
+        image_url,
         read: false,
         created_at: new Date().toISOString()
       };
-      
       const { error } = await supabase
         .from('notifications')
         .insert(notificationData);
-      
       if (error) {
         console.error("Error creating notification:", error);
         throw error;
       }
-      
       return { success: true };
     },
     onSuccess: () => {
@@ -203,6 +310,8 @@ export function NotificationsManagement() {
       setSelectedUserId("");
       setActionType("");
       setActionLink("");
+      setImageFile(null);
+      setImagePreview(null);
     },
     onError: (error) => {
       console.error("Error creating notification:", error);
@@ -234,21 +343,6 @@ export function NotificationsManagement() {
       toast.error(isRtl ? "حدث خطأ أثناء حذف الإشعار" : "Error deleting notification");
     }
   });
-
-  // Filter notifications based on selected tab
-  const filteredNotifications = selectedTab === "all"
-    ? notificationsList
-    : selectedTab === "global"
-    ? notificationsList.filter(n => n.is_global)
-    : notificationsList.filter(n => !n.is_global);
-  
-  // Filter notifications based on search term
-  const filteredNotificationsSearch = searchTerm && filteredNotifications 
-    ? filteredNotifications.filter(notification => 
-        notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        notification.message.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    : filteredNotifications;
 
   return (
     <Card>
@@ -389,6 +483,20 @@ export function NotificationsManagement() {
                     placeholder={isRtl ? "مثال: /profile/123" : "Example: /profile/123"}
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="image-upload">
+                    {isRtl ? "صورة (اختياري)" : "Image (Optional)"}
+                  </Label>
+                  <Input
+                    id="image-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                  />
+                  {imagePreview && (
+                    <img src={imagePreview} alt="Preview" className="mt-2 rounded w-full max-h-40 object-cover" />
+                  )}
+                </div>
               </div>
               
               <DialogFooter>
@@ -406,7 +514,8 @@ export function NotificationsManagement() {
                       is_global: isGlobal,
                       user_id: isGlobal ? undefined : selectedUserId,
                       action_type: actionType || undefined,
-                      action_link: actionLink || undefined
+                      action_link: actionLink || undefined,
+                      image_file: imageFile || undefined
                     };
                     createNotificationMutation.mutate(notificationData);
                   }}
@@ -420,7 +529,12 @@ export function NotificationsManagement() {
             </DialogContent>
           </Dialog>
         </div>
-        
+        {/* Explanatory note for admin */}
+        <div className="mb-4 text-sm text-muted-foreground">
+          {isRtl
+            ? "يتم عرض الإشعارات التي أنشأها المسؤول فقط. تم استبعاد الإشعارات النظامية أو التي أنشأها المستخدمون."
+            : "Only notifications created by admin are shown here. System and user-generated notifications are excluded."}
+        </div>
         <Tabs value={selectedTab} onValueChange={setSelectedTab}>
           <TabsList className="grid grid-cols-3">
             <TabsTrigger value="all">
@@ -448,6 +562,7 @@ export function NotificationsManagement() {
                   <TableHead>{isRtl ? "الرسالة" : "Message"}</TableHead>
                   <TableHead>{isRtl ? "النوع" : "Type"}</TableHead>
                   <TableHead>{isRtl ? "المستخدم" : "User"}</TableHead>
+                  <TableHead>{isRtl ? "أنشأها المسؤول" : "Admin Sender"}</TableHead>
                   <TableHead>{isRtl ? "الإجراء" : "Action"}</TableHead>
                   <TableHead>{isRtl ? "التاريخ" : "Date"}</TableHead>
                   <TableHead>{isRtl ? "الحالة" : "Status"}</TableHead>
@@ -499,6 +614,22 @@ export function NotificationsManagement() {
                           <span className="text-muted-foreground">
                             {isRtl ? "جميع المستخدمين" : "All Users"}
                           </span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {notification.sender ? (
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={notification.sender.avatar_url} alt={notification.sender.display_name} />
+                              <AvatarFallback>{notification.sender.display_name.substring(0, 2)}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium">{notification.sender.display_name}</p>
+                              <p className="text-xs text-muted-foreground">@{notification.sender.username}</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
                         )}
                       </TableCell>
                       <TableCell>

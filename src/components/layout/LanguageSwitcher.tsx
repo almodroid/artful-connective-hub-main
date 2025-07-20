@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useTranslation } from "@/hooks/use-translation";
+import { Check } from "lucide-react";
 
 export function LanguageSwitcher() {
   const { language, changeLanguage, t, isRtl } = useTranslation();
@@ -23,15 +24,19 @@ export function LanguageSwitcher() {
       <DropdownMenuContent align="end">
         <DropdownMenuItem
           onClick={() => changeLanguage("en")}
-          className={`${language === "en" ? "bg-accent" : ""} ${isRtl ? "direction-rtl" : ""}`}
+          className={`${language === "en" ? "bg-accent" : ""} ${isRtl ? "direction-rtl" : ""} flex justify-between items-center`}
+          dir={isRtl ? "rtl" : "ltr"}
         >
-          {t("English")}
+          <span>English</span>
+          {language === 'en' && <Check className="h-4 w-4 text-primary" />}
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => changeLanguage("ar")}
-          className={`${language === "ar" ? "bg-accent" : ""} ${isRtl ? "direction-rtl" : ""}`}
+          className={`${language === "ar" ? "bg-accent" : ""} ${isRtl ? "direction-rtl" : ""} flex justify-between items-center`}
+          dir={isRtl ? "rtl" : "ltr"}
         >
-          {t("العربية")}
+          <span>العربية</span>
+          {language === 'ar' && <Check className="h-4 w-4 text-primary" />}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

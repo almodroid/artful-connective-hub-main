@@ -17,6 +17,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { useTranslation } from "@/hooks/use-translation";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Globe, Mail, Bell, Zap, Settings as SettingsIcon, Eye, Hash, Link as LinkIcon, Database, Cpu, RefreshCcw } from "lucide-react";
+import { setAIEnabled, setAIUnlimited } from "@/services/admin.service";
 
 // Define the settings schema
 const settingsSchema = z.object({
@@ -56,6 +59,9 @@ const settingsSchema = z.object({
   enable_compression: z.boolean().default(true),
   enable_lazy_loading: z.boolean().default(true),
   max_upload_size: z.string().min(1, "Max upload size is required"),
+  // AI settings
+  ai_enabled: z.boolean().default(true),
+  ai_daily_limit: z.string().min(1, "AI daily limit is required"),
 });
 
 type SettingsFormValues = z.infer<typeof settingsSchema>;
@@ -65,6 +71,7 @@ export function SettingsManagement() {
   const [error, setError] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { isRtl } = useTranslation();
+  const [unlimitedAI, setUnlimitedAI] = useState(false);
   
   // Initialize form with default values
   const form = useForm<SettingsFormValues>({
@@ -95,6 +102,8 @@ export function SettingsManagement() {
       enable_compression: true,
       enable_lazy_loading: true,
       max_upload_size: "5",
+      ai_enabled: true,
+      ai_daily_limit: "20",
     },
   });
   
@@ -145,6 +154,8 @@ export function SettingsManagement() {
             { key: 'enable_compression', value: 'true', description: 'Enable compression', category: 'optimization' },
             { key: 'enable_lazy_loading', value: 'true', description: 'Enable lazy loading', category: 'optimization' },
             { key: 'max_upload_size', value: '5', description: 'Maximum upload size in MB', category: 'optimization' },
+            { key: 'ai_enabled', value: 'true', description: 'Enable Space AI', category: 'ai' },
+            { key: 'ai_daily_limit', value: '20', description: 'Daily AI Request Limit', category: 'ai' },
           ];
           
           const { error: insertError } = await supabase
@@ -240,6 +251,8 @@ export function SettingsManagement() {
   // Set form values when settings are loaded
   useEffect(() => {
     if (settings && !isLoading) {
+      const isUnlimited = settings.ai_daily_limit === 'unlimited';
+      setUnlimitedAI(isUnlimited);
       form.reset({
         site_name: settings.site_name || "",
         site_description: settings.site_description || "",
@@ -266,19 +279,73 @@ export function SettingsManagement() {
         enable_compression: settings.enable_compression === "true",
         enable_lazy_loading: settings.enable_lazy_loading === "true",
         max_upload_size: settings.max_upload_size || "5",
+        ai_enabled: settings.ai_enabled === "true",
+        ai_daily_limit: isUnlimited ? "100" : settings.ai_daily_limit || "20",
       });
     }
   }, [settings, isLoading, form]);
   
   // Handle form submission
   const onSubmit = (values: SettingsFormValues) => {
-    updateSettingsMutation.mutate(values);
+    const submitValues = { ...values };
+    if (unlimitedAI) {
+      submitValues.ai_daily_limit = 'unlimited';
+    }
+    updateSettingsMutation.mutate(submitValues);
+  };
+  
+  // Default values for reset
+  const defaultSectionValues = {
+    site: {
+      site_name: "",
+      site_description: "",
+      site_logo: "",
+      site_favicon: "",
+    },
+    seo: {
+      meta_title: "",
+      meta_description: "",
+      meta_keywords: "",
+      google_analytics_id: "",
+    },
+    social: {
+      facebook_url: "",
+      twitter_url: "",
+      instagram_url: "",
+      linkedin_url: "",
+    },
+    smtp: {
+      smtp_host: "",
+      smtp_port: "",
+      smtp_user: "",
+      smtp_password: "",
+      smtp_from_email: "",
+      smtp_from_name: "",
+    },
+    notifications: {
+      enable_email_notifications: true,
+      enable_push_notifications: true,
+      notification_frequency: "immediate" as "immediate" | "daily" | "weekly",
+    },
+    optimization: {
+      enable_caching: true,
+      enable_compression: true,
+      enable_lazy_loading: true,
+      max_upload_size: "5",
+    },
+    ai: {
+      ai_enabled: true,
+      ai_daily_limit: "20",
+    },
   };
   
   return (
           <Card>
             <CardHeader>
-        <CardTitle>{isRtl ? "إعدادات النظام" : "System Settings"}</CardTitle>
+        <CardTitle className="flex items-center gap-2 text-xl">
+          <SettingsIcon className="h-6 w-6" />
+          {isRtl ? "إعدادات النظام" : "System Settings"}
+        </CardTitle>
               <CardDescription>
           {isRtl 
             ? "تكوين إعدادات الموقع وإعدادات البريد الإلكتروني وإعدادات الإشعارات" 
@@ -300,32 +367,48 @@ export function SettingsManagement() {
               {isRtl ? "إعادة المحاولة" : "Retry"}
             </Button>
           </div>
-        ) : (
+        ) :
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid grid-cols-3 md:grid-cols-6">
+                <TabsList className="grid grid-cols-4 md:grid-cols-7 mb-4">
                   <TabsTrigger value="site">
+                    <Globe className="h-4 w-4 mr-1 inline" />
                     {isRtl ? "إعدادات الموقع" : "Site Settings"}
                   </TabsTrigger>
                   <TabsTrigger value="seo">
+                    <Eye className="h-4 w-4 mr-1 inline" />
                     {isRtl ? "إعدادات SEO" : "SEO Settings"}
                   </TabsTrigger>
                   <TabsTrigger value="social">
+                    <Hash className="h-4 w-4 mr-1 inline" />
                     {isRtl ? "وسائل التواصل الاجتماعي" : "Social Media"}
                   </TabsTrigger>
                   <TabsTrigger value="smtp">
+                    <Mail className="h-4 w-4 mr-1 inline" />
                     {isRtl ? "إعدادات البريد الإلكتروني" : "Email Settings"}
                   </TabsTrigger>
                   <TabsTrigger value="notifications">
+                    <Bell className="h-4 w-4 mr-1 inline" />
                     {isRtl ? "إعدادات الإشعارات" : "Notification Settings"}
                   </TabsTrigger>
                   <TabsTrigger value="optimization">
+                    <Zap className="h-4 w-4 mr-1 inline" />
                     {isRtl ? "تحسين الأداء" : "Optimization"}
                   </TabsTrigger>
+                  <TabsTrigger value="ai">
+                    <Cpu className="h-4 w-4 mr-1 inline" />
+                    {isRtl ? "إعدادات الذكاء الاصطناعي" : "AI Settings"}
+                  </TabsTrigger>
                 </TabsList>
-                
-                <TabsContent value="site" className="space-y-4 pt-4">
+                {/* Site Settings Section */}
+                <TabsContent value="site" className="space-y-6 pt-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Globe className="h-5 w-5 text-primary" />
+                    <h2 className="text-lg font-bold">{isRtl ? "إعدادات الموقع" : "Site Settings"}</h2>
+                    <Button type="button" size="icon" variant="ghost" className="ml-2" onClick={() => form.reset({ ...form.getValues(), ...defaultSectionValues.site })} title={isRtl ? "إعادة الافتراضي" : "Reset to default"}><RefreshCcw className="h-4 w-4" /></Button>
+                  </div>
+                  <Separator />
                   <FormField
                     control={form.control}
                     name="site_name"
@@ -394,8 +477,14 @@ export function SettingsManagement() {
                     )}
                   />
                 </TabsContent>
-                
-                <TabsContent value="seo" className="space-y-4 pt-4">
+                {/* SEO Section */}
+                <TabsContent value="seo" className="space-y-6 pt-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Eye className="h-5 w-5 text-primary" />
+                    <h2 className="text-lg font-bold">{isRtl ? "إعدادات SEO" : "SEO Settings"}</h2>
+                    <Button type="button" size="icon" variant="ghost" className="ml-2" onClick={() => form.reset({ ...form.getValues(), ...defaultSectionValues.seo })} title={isRtl ? "إعادة الافتراضي" : "Reset to default"}><RefreshCcw className="h-4 w-4" /></Button>
+                  </div>
+                  <Separator />
                   <FormField
                     control={form.control}
                     name="meta_title"
@@ -464,8 +553,14 @@ export function SettingsManagement() {
                     )}
                   />
                 </TabsContent>
-                
-                <TabsContent value="social" className="space-y-4 pt-4">
+                {/* Social Section */}
+                <TabsContent value="social" className="space-y-6 pt-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Hash className="h-5 w-5 text-primary" />
+                    <h2 className="text-lg font-bold">{isRtl ? "وسائل التواصل الاجتماعي" : "Social Media"}</h2>
+                    <Button type="button" size="icon" variant="ghost" className="ml-2" onClick={() => form.reset({ ...form.getValues(), ...defaultSectionValues.social })} title={isRtl ? "إعادة الافتراضي" : "Reset to default"}><RefreshCcw className="h-4 w-4" /></Button>
+                  </div>
+                  <Separator />
                   <FormField
                     control={form.control}
                     name="facebook_url"
@@ -534,8 +629,14 @@ export function SettingsManagement() {
                     )}
                   />
                 </TabsContent>
-                
-                <TabsContent value="smtp" className="space-y-4 pt-4">
+                {/* SMTP Section */}
+                <TabsContent value="smtp" className="space-y-6 pt-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Mail className="h-5 w-5 text-primary" />
+                    <h2 className="text-lg font-bold">{isRtl ? "إعدادات البريد الإلكتروني" : "Email Settings"}</h2>
+                    <Button type="button" size="icon" variant="ghost" className="ml-2" onClick={() => form.reset({ ...form.getValues(), ...defaultSectionValues.smtp })} title={isRtl ? "إعادة الافتراضي" : "Reset to default"}><RefreshCcw className="h-4 w-4" /></Button>
+                  </div>
+                  <Separator />
                   <FormField
                     control={form.control}
                     name="smtp_host"
@@ -638,8 +739,14 @@ export function SettingsManagement() {
                     )}
                   />
                 </TabsContent>
-                
-                <TabsContent value="notifications" className="space-y-4 pt-4">
+                {/* Notifications Section */}
+                <TabsContent value="notifications" className="space-y-6 pt-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Bell className="h-5 w-5 text-primary" />
+                    <h2 className="text-lg font-bold">{isRtl ? "إعدادات الإشعارات" : "Notification Settings"}</h2>
+                    <Button type="button" size="icon" variant="ghost" className="ml-2" onClick={() => form.reset({ ...form.getValues(), ...defaultSectionValues.notifications })} title={isRtl ? "إعادة الافتراضي" : "Reset to default"}><RefreshCcw className="h-4 w-4" /></Button>
+                  </div>
+                  <Separator />
                   <FormField
                     control={form.control}
                     name="enable_email_notifications"
@@ -654,11 +761,9 @@ export function SettingsManagement() {
                             </FormDescription>
                           </div>
                           <FormControl>
-                          <input
-                            type="checkbox"
+                          <Switch
                               checked={field.value}
-                            onChange={(e) => field.onChange(e.target.checked)}
-                            className="h-4 w-4 rounded border-gray-300"
+                            onCheckedChange={field.onChange}
                             />
                           </FormControl>
                         </FormItem>
@@ -679,11 +784,9 @@ export function SettingsManagement() {
                             </FormDescription>
                           </div>
                           <FormControl>
-                          <input
-                            type="checkbox"
+                          <Switch
                               checked={field.value}
-                            onChange={(e) => field.onChange(e.target.checked)}
-                            className="h-4 w-4 rounded border-gray-300"
+                            onCheckedChange={field.onChange}
                             />
                           </FormControl>
                         </FormItem>
@@ -719,8 +822,14 @@ export function SettingsManagement() {
                       )}
                     />
                 </TabsContent>
-                    
-                <TabsContent value="optimization" className="space-y-4 pt-4">
+                {/* Optimization Section */}
+                <TabsContent value="optimization" className="space-y-6 pt-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Zap className="h-5 w-5 text-primary" />
+                    <h2 className="text-lg font-bold">{isRtl ? "تحسين الأداء" : "Optimization"}</h2>
+                    <Button type="button" size="icon" variant="ghost" className="ml-2" onClick={() => form.reset({ ...form.getValues(), ...defaultSectionValues.optimization })} title={isRtl ? "إعادة الافتراضي" : "Reset to default"}><RefreshCcw className="h-4 w-4" /></Button>
+                  </div>
+                  <Separator />
                     <FormField
                     control={form.control}
                     name="enable_caching"
@@ -735,11 +844,9 @@ export function SettingsManagement() {
                           </FormDescription>
                         </div>
                           <FormControl>
-                          <input
-                            type="checkbox"
+                          <Switch
                             checked={field.value}
-                            onChange={(e) => field.onChange(e.target.checked)}
-                            className="h-4 w-4 rounded border-gray-300"
+                            onCheckedChange={field.onChange}
                           />
                           </FormControl>
                         </FormItem>
@@ -760,11 +867,9 @@ export function SettingsManagement() {
                           </FormDescription>
                         </div>
                           <FormControl>
-                          <input
-                            type="checkbox"
+                          <Switch
                             checked={field.value}
-                            onChange={(e) => field.onChange(e.target.checked)}
-                            className="h-4 w-4 rounded border-gray-300"
+                            onCheckedChange={field.onChange}
                           />
                           </FormControl>
                         </FormItem>
@@ -785,11 +890,9 @@ export function SettingsManagement() {
                           </FormDescription>
                         </div>
                           <FormControl>
-                          <input
-                            type="checkbox"
+                          <Switch
                             checked={field.value}
-                            onChange={(e) => field.onChange(e.target.checked)}
-                            className="h-4 w-4 rounded border-gray-300"
+                            onCheckedChange={field.onChange}
                           />
                           </FormControl>
                         </FormItem>
@@ -813,12 +916,89 @@ export function SettingsManagement() {
                       )}
                     />
                 </TabsContent>
-              </Tabs>
-              
+                {/* AI Section */}
+                <TabsContent value="ai" className="space-y-6 pt-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Cpu className="h-5 w-5 text-primary" />
+                    <h2 className="text-lg font-bold">{isRtl ? "إعدادات الذكاء الاصطناعي" : "AI Settings"}</h2>
+                    <Button type="button" size="icon" variant="ghost" className="ml-2" onClick={() => form.reset({ ...form.getValues(), ...defaultSectionValues.ai })} title={isRtl ? "إعادة الافتراضي" : "Reset to default"}><RefreshCcw className="h-4 w-4" /></Button>
+                  </div>
               <Separator />
-              
-              <div className="flex justify-end">
-                <Button type="submit" disabled={updateSettingsMutation.isPending}>
+                  <FormField
+                    control={form.control}
+                    name="ai_enabled"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">
+                            {isRtl ? "تفعيل Space AI" : "Enable Space AI"}
+                          </FormLabel>
+                          <FormDescription>
+                            {isRtl ? "تمكين أو تعطيل ميزة الذكاء الاصطناعي للمستخدمين" : "Enable or disable the Space AI feature for users"}
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={async (checked) => {
+                              field.onChange(checked);
+                              try {
+                                await setAIEnabled(checked);
+                                toast.success(isRtl ? "تم تحديث حالة الذكاء الاصطناعي" : "AI feature status updated");
+                              } catch (err) {
+                                toast.error(isRtl ? "حدث خطأ أثناء تحديث حالة الذكاء الاصطناعي" : "Error updating AI feature status");
+                              }
+                            }}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">
+                        {isRtl ? "طلبات غير محدودة" : "Unlimited AI Requests"}
+                      </FormLabel>
+                      <FormDescription>
+                        {isRtl ? "تعطيل الحد اليومي لطلبات الذكاء الاصطناعي" : "Disable daily AI request limit for all users"}
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={unlimitedAI}
+                        onCheckedChange={async (checked) => {
+                          setUnlimitedAI(checked);
+                          try {
+                            await setAIUnlimited(checked, Number(form.getValues().ai_daily_limit) || 20);
+                            toast.success(isRtl ? "تم تحديث حد الذكاء الاصطناعي" : "AI limit updated");
+                          } catch (err) {
+                            toast.error(isRtl ? "حدث خطأ أثناء تحديث حد الذكاء الاصطناعي" : "Error updating AI limit");
+                          }
+                        }}
+                      />
+                    </FormControl>
+                  </FormItem>
+                  <FormField
+                    control={form.control}
+                    name="ai_daily_limit"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{isRtl ? "الحد اليومي لطلبات الذكاء الاصطناعي" : "Daily AI Request Limit"}</FormLabel>
+                        <FormControl>
+                          <Input type="number" min="1" max="1000" {...field} disabled={unlimitedAI} />
+                        </FormControl>
+                        <FormDescription>
+                          {isRtl ? "عدد الطلبات المسموح بها لكل مستخدم يومياً" : "Number of AI requests allowed per user per day"}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </TabsContent>
+              </Tabs>
+              {/* Sticky Save Bar */}
+              <div className="sticky bottom-0 left-0 w-full bg-background/80 py-4 px-2 flex justify-end border-t z-10">
+                <Button type="submit" disabled={updateSettingsMutation.isPending} className="w-40">
                   {updateSettingsMutation.isPending
                     ? (isRtl ? "جاري الحفظ..." : "Saving...")
                     : (isRtl ? "حفظ الإعدادات" : "Save Settings")}
@@ -826,7 +1006,7 @@ export function SettingsManagement() {
               </div>
                 </form>
               </Form>
-        )}
+        }
             </CardContent>
           </Card>
   );

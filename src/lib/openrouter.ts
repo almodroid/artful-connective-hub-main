@@ -22,7 +22,7 @@ const logApiCall = (type: 'request' | 'response' | 'error', data: any) => {
 
 export async function sendToOpenRouter(
   messages: OpenRouterMessage[],
-  model: string = "opengvlab/internvl3-14b:free"
+  model: string = "mistralai/mistral-small-3.2-24b-instruct:free"
 ) {
   if (!OPENROUTER_API_KEY) {
     const error = "OpenRouter API key is not configured";

@@ -430,13 +430,20 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-48">
                       {isOwner ? (
-                        <DropdownMenuItem className="text-destructive" onClick={() => setIsDeleteDialogOpen(true)}>
-                          <Trash className="h-4 w-4 mr-2" />
+                        <DropdownMenuItem 
+                          className="text-destructive" 
+                          onClick={() => setIsDeleteDialogOpen(true)}
+                          dir={isRtl ? "rtl" : "ltr"}
+                        >
+                          <Trash className={`h-4 w-4 ${isRtl ? 'ml-2' : 'mr-2'}`} />
                           {isRtl ? "حذف الريل" : "Delete Reel"}
                         </DropdownMenuItem>
                       ) : (
-                        <DropdownMenuItem onClick={() => setIsReportDialogOpen(true)}>
-                          <Flag className="h-4 w-4 mr-2" />
+                        <DropdownMenuItem 
+                          onClick={() => setIsReportDialogOpen(true)}
+                          dir={isRtl ? "rtl" : "ltr"}
+                        >
+                          <Flag className={`h-4 w-4 ${isRtl ? 'ml-2' : 'mr-2'}`} />
                           {isRtl ? "الإبلاغ عن الريل" : "Report Reel"}
                         </DropdownMenuItem>
                       )}

@@ -197,6 +197,56 @@ export function useProjects() {
     }
   });
   
+  // Report a project
+  const reportProject = async (projectId: string, reason: string): Promise<boolean> => {
+    if (!user) {
+      toast.error(isRtl ? "يجب تسجيل الدخول للإبلاغ عن مشروع" : "You must be logged in to report a project");
+      return false;
+    }
+    if (!reason.trim()) {
+      toast.error(isRtl ? "يرجى تقديم سبب للإبلاغ" : "Please provide a reason for reporting");
+      return false;
+    }
+    try {
+      // Check if the user has already reported this project
+      const { data: existingReport, error: checkError } = await supabase
+        .from("project_reports")
+        .select()
+        .eq("project_id", projectId)
+        .eq("reporter_id", user.id)
+        .maybeSingle();
+      if (checkError) {
+        console.error("Error checking existing report:", checkError);
+        toast.error(isRtl ? "تعذر التحقق من حالة البلاغ" : "Could not check report status");
+        return false;
+      }
+      if (existingReport) {
+        toast.info(isRtl ? "لقد أبلغت بالفعل عن هذا المشروع" : "You have already reported this project");
+        return false;
+      }
+      // Create a report
+      const { error: reportError } = await supabase
+        .from("project_reports")
+        .insert({
+          project_id: projectId,
+          reporter_id: user.id,
+          reason: reason.trim(),
+          status: "pending"
+        });
+      if (reportError) {
+        console.error("Error reporting project:", reportError);
+        toast.error(isRtl ? "فشل الإبلاغ عن المشروع" : "Failed to report project");
+        return false;
+      }
+      toast.success(isRtl ? "تم الإبلاغ عن المشروع بنجاح. سيقوم فريقنا بمراجعته." : "Project reported successfully. Our team will review it.");
+      return true;
+    } catch (error) {
+      console.error("Error in reportProject:", error);
+      toast.error(isRtl ? "حدث خطأ ما. يرجى المحاولة مرة أخرى." : "Something went wrong. Please try again.");
+      return false;
+    }
+  };
+  
   return {
     projects: projects || [],
     isLoading,
@@ -206,5 +256,6 @@ export function useProjects() {
     incrementViews: incrementViewsMutation.mutate,
     likeProject: likeProjectMutation.mutate,
     unlikeProject: unlikeProjectMutation.mutate,
+    reportProject,
   };
 }

@@ -30,6 +30,19 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Add a helper to check for auth/session errors
+function isAuthSessionError(error: any) {
+  if (!error) return false;
+  const msg = error.message || error.error_description || '';
+  return (
+    msg.includes('JWT expired') ||
+    msg.includes('Invalid token') ||
+    msg.includes('Auth session missing') ||
+    msg.includes('401') ||
+    msg.includes('403')
+  );
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(() => {
     // Try to get user from localStorage first
@@ -87,7 +100,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toast.success('Avatar updated successfully');
     } catch (error) {
       console.error('Error updating avatar:', error);
-      toast.error('Failed to update avatar');
+      if (isAuthSessionError(error)) {
+        toast.error("انتهت الجلسة، يرجى تسجيل الدخول مرة أخرى");
+        await logout();
+      } else {
+        toast.error('Failed to update avatar');
+      }
       throw error;
     }
   };
@@ -252,7 +270,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (error) {
       console.error("Login error:", error);
-      toast.error("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+      if (isAuthSessionError(error)) {
+        toast.error("انتهت الجلسة، يرجى تسجيل الدخول مرة أخرى");
+        await logout();
+      } else {
+        toast.error("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+      }
       throw new Error("Invalid credentials");
     } finally {
       setLoading(false);
@@ -301,7 +324,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (error: any) {
       console.error("Registration error:", error);
-      toast.error(error.message || "حدث خطأ أثناء التسجيل");
+      if (isAuthSessionError(error)) {
+        toast.error("انتهت الجلسة، يرجى تسجيل الدخول مرة أخرى");
+        await logout();
+      } else {
+        toast.error(error.message || "حدث خطأ أثناء التسجيل");
+      }
       throw error;
     } finally {
       setLoading(false);

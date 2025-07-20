@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { PostCard, Post } from "@/components/ui-custom/PostCard";
@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/AuthContext";
-import { Edit, Film, Image, Link2, MapPin, MessageSquare, Plus, Users, Eye, Link as LinkIcon } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Edit, Film, Image, Link2, MapPin, MessageSquare, Plus, Users, Eye, Link as LinkIcon, FileText, FolderPlus, X } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { CreateReelDialog } from "@/components/ui-custom/CreateReelDialog";
@@ -19,6 +19,12 @@ import { FollowListModal } from "@/components/ui-custom/FollowListModal";
 import { fetchProjectsByUserId, ProjectWithUser } from "@/services/project.service";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { CreatePostForm } from "@/components/ui-custom/CreatePostForm";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { TagInput } from "@/components/ui-custom/TagInput";
+import { useProjects } from "@/hooks/use-projects";
 
 
 interface UserProfile {
@@ -38,6 +44,147 @@ interface UserProfile {
   allow_messages?: boolean;
 }
 
+function CreatePostDialog({ open, onOpenChange }: { open: boolean, onOpenChange: (open: boolean) => void }) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>إنشاء منشور جديد / Create New Post</DialogTitle>
+        </DialogHeader>
+        <div className="py-2">
+          <CreatePostForm onPostCreated={() => onOpenChange(false)} />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CreateProjectDialog({ open, onOpenChange }: { open: boolean, onOpenChange: (open: boolean) => void }) {
+  const { createProject, isCreatingProject } = useProjects();
+  const { t, isRtl } = useTranslation();
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [externalLink, setExternalLink] = useState("");
+  const [coverImage, setCoverImage] = useState<File | null>(null);
+  const [galleryImages, setGalleryImages] = useState<File[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
+
+  const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setCoverImage(file);
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setImagePreview(reader.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      setImagePreview(null);
+    }
+  };
+
+  const handleGalleryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setGalleryImages(prev => [...prev, ...files]);
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onloadend = () => setGalleryPreviews(prev => [...prev, reader.result as string]);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeGalleryImage = (index: number) => {
+    setGalleryImages(prev => prev.filter((_, i) => i !== index));
+    setGalleryPreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) {
+      toast.error(t("enterProjectTitle") || "Please enter a project title");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await createProject({
+        title,
+        description,
+        tags,
+        external_link: externalLink,
+        cover_image: coverImage,
+        gallery_images: galleryImages
+      });
+      setTitle("");
+      setDescription("");
+      setTags([]);
+      setExternalLink("");
+      setCoverImage(null);
+      setGalleryImages([]);
+      setImagePreview(null);
+      setGalleryPreviews([]);
+      onOpenChange(false);
+    } catch (error) {
+      toast.error(t("errorCreatingProject") || "Error creating project");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{t("createProject") || "Create New Project"}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block mb-1 font-medium">{t("title") || "Title"}</label>
+            <Input value={title} onChange={e => setTitle(e.target.value)} required disabled={isSubmitting || isCreatingProject} />
+          </div>
+          <div>
+            <label className="block mb-1 font-medium">{t("description") || "Description"}</label>
+            <Textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} disabled={isSubmitting || isCreatingProject} />
+          </div>
+          <div>
+            <label className="block mb-1 font-medium">{t("tags") || "Tags"}</label>
+            <TagInput value={tags} onChange={setTags} maxTags={5} />
+          </div>
+          <div>
+            <label className="block mb-1 font-medium">{t("externalLink") || "External Link"}</label>
+            <Input value={externalLink} onChange={e => setExternalLink(e.target.value)} disabled={isSubmitting || isCreatingProject} />
+          </div>
+          <div>
+            <label className="block mb-1 font-medium">{t("coverImage") || "Cover Image"}</label>
+            <Input type="file" accept="image/*" onChange={handleCoverChange} disabled={isSubmitting || isCreatingProject} />
+            {imagePreview && <img src={imagePreview} alt={t("coverImage") || "Preview"} className="mt-2 rounded w-full max-h-40 object-cover" />}
+          </div>
+          <div>
+            <label className="block mb-1 font-medium">{t("galleryImages") || "Gallery Images"}</label>
+            <Input type="file" accept="image/*" multiple onChange={handleGalleryChange} disabled={isSubmitting || isCreatingProject} />
+            <div className="flex flex-wrap gap-2 mt-2">
+              {galleryPreviews.map((src, i) => (
+                <div key={i} className="relative">
+                  <img src={src} alt={t("galleryImages") || "Gallery Preview"} className="w-20 h-20 object-cover rounded" />
+                  <Button type="button" size="icon" variant="destructive" className="absolute -top-2 -right-2" onClick={() => removeGalleryImage(i)}><X className="h-4 w-4" /></Button>
+                </div>
+              ))}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="submit" disabled={isSubmitting || isCreatingProject}>
+              {isSubmitting || isCreatingProject ? t("uploading") || "Uploading..." : t("createProject") || "Create Project"}
+            </Button>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">{t("cancel") || "Cancel"}</Button>
+            </DialogClose>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 const Profile = () => {
   const { username } = useParams<{ username: string }>();
   const { user, isAuthenticated } = useAuth();
@@ -55,12 +202,17 @@ const Profile = () => {
   const [isCreateReelOpen, setIsCreateReelOpen] = useState(false);
   const { t, isRtl } = useTranslation();
   const { reels, isLoading: reelsLoading, viewReel, likeReel } = useReels();
+  const [fabOpen, setFabOpen] = useState(false);
+  const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
+  const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
+  const navigate = useNavigate();
   
   const isOwnProfile = isAuthenticated && user?.username === username;
   
-  useEffect(() => {
+  const postsListRef = useRef<HTMLDivElement>(null);
+
     const loadProfile = async () => {
-      setLoading(true);``
+    setLoading(true);
       try {
         // Fetch profile from Supabase
         const { data: profileData, error: profileError } = await supabase
@@ -173,7 +325,7 @@ const Profile = () => {
             return {
               id: post.id,
               content: post.content,
-              image: Array.isArray(post.media_urls) ? post.media_urls[0] : post.media_urls,
+            images: Array.isArray(post.media_urls) ? post.media_urls : (post.media_urls ? [post.media_urls] : []),
               createdAt: new Date(post.created_at),
               likes: post.likes_count || 0,
               comments: post.comments_count || 0,
@@ -198,6 +350,7 @@ const Profile = () => {
       }
     };
     
+  useEffect(() => {
     if (username) {
       loadProfile();
     }
@@ -320,7 +473,6 @@ const Profile = () => {
                 content,
                 media_urls,
                 created_at,
-                likes_count,
                 comments_count,
                 user_id,
                 profiles:user_id (
@@ -330,7 +482,7 @@ const Profile = () => {
                 )
               )
             `)
-            .eq("user_id", profileUser.id)
+            .eq("user_id", isOwnProfile ? user.id : profileUser.id)
             .order("created_at", { ascending: false });
             
           if (likedPostsError) {
@@ -340,7 +492,7 @@ const Profile = () => {
           }
           
           // Transform the liked posts data
-          const transformedLikedPosts = likedPostsData
+          let transformedLikedPosts = likedPostsData
             .filter(item => item.posts) // Filter out any null posts
             .map(item => {
               const post = item.posts as any;
@@ -348,9 +500,9 @@ const Profile = () => {
               return {
                 id: post.id,
                 content: post.content,
-                image: Array.isArray(post.media_urls) ? post.media_urls[0] : post.media_urls,
+                images: Array.isArray(post.media_urls) ? post.media_urls : (post.media_urls ? [post.media_urls] : []),
                 createdAt: new Date(post.created_at),
-                likes: post.likes_count || 0,
+                likes: 0, // Will be updated dynamically
                 comments: post.comments_count || 0,
                 isLiked: true,
                 user: {
@@ -361,7 +513,14 @@ const Profile = () => {
                 }
               };
             });
-            
+          // Fetch likes count for each post
+          transformedLikedPosts = await Promise.all(transformedLikedPosts.map(async (post) => {
+            const { count, error } = await supabase
+              .from("post_likes")
+              .select("*", { count: "exact", head: true })
+              .eq("post_id", post.id);
+            return { ...post, likes: count || 0 };
+          }));
           setUserLikedPosts(transformedLikedPosts);
           break;
           
@@ -387,6 +546,13 @@ const Profile = () => {
   useEffect(() => {
     loadTabData(activeTab);
   }, [activeTab, profileUser]);
+
+  const reloadPostsAndScrollTop = async () => {
+    await loadProfile();
+    if (postsListRef.current) {
+      postsListRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   if (loading) {
     return (
@@ -784,6 +950,14 @@ const Profile = () => {
           </TabsList>
           
           <TabsContent value="posts" className="mt-0">
+            {isOwnProfile && (
+              <div className="flex justify-end mb-4">
+                <Button onClick={() => setIsCreatePostOpen(true)} variant="default" className="gap-2">
+                  <FileText className="h-4 w-4" />
+                  {t('createPost') || 'Create Post'}
+                </Button>
+              </div>
+            )}
             {loadingTab ? (
               <div className="space-y-6">
                 {Array(3).fill(0).map((_, i) => (
@@ -810,19 +984,27 @@ const Profile = () => {
                 </p>
               </div>
             ) : (
-              <div className="space-y-6">
+              <div ref={postsListRef} className="space-y-6">
                 {userPosts.map((post) => (
-                  <Link to={`/post/${post.id}`} key={post.id}>
                     <PostCard 
                       post={post} 
+                    key={post.id}
+                    onDelete={reloadPostsAndScrollTop}
                     />
-                  </Link>
                 ))}
               </div>
             )}
           </TabsContent>
           
           <TabsContent value="reels" className="mt-0" dir={isRtl ? 'rtl' : 'ltr'}>
+            {isOwnProfile && (
+              <div className="flex justify-end mb-4">
+                <Button onClick={() => setIsCreateReelOpen(true)} variant="default" className="gap-2">
+                  <Film className="h-4 w-4" />
+                  {t('createReel') || 'Create Reel'}
+                </Button>
+              </div>
+            )}
             {loadingTab ? (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {Array(8).fill(0).map((_, i) => (
@@ -969,11 +1151,11 @@ const Profile = () => {
               ) : (
                 <div className="space-y-6">
                   {userLikedPosts.map((post) => (
-                    <Link to={`/post/${post.id}`} key={post.id}>
                       <PostCard 
                         post={post} 
+                      key={post.id}
+                      onDelete={reloadPostsAndScrollTop}
                       />
-                    </Link>
                   ))}
                 </div>
               )}
@@ -981,6 +1163,14 @@ const Profile = () => {
           )}
           
           <TabsContent value="projects" className="mt-0">
+            {isOwnProfile && (
+              <div className="flex justify-end mb-4">
+                <Button onClick={() => setIsCreateProjectOpen(true)} variant="default" className="gap-2">
+                  <FolderPlus className="h-4 w-4" />
+                  {t('createProject') || 'Create Project'}
+                </Button>
+              </div>
+            )}
             {loadingProjects ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {[1, 2, 3].map((i) => (
@@ -1064,12 +1254,63 @@ const Profile = () => {
         </Tabs>
       </div>
       
-      {/* Create Reel Dialog */}
-      <CreateReelDialog 
-        open={isCreateReelOpen} 
-        onOpenChange={setIsCreateReelOpen} 
-        onReelCreated={() => setIsCreateReelOpen(false)}
-      />
+      {/* Floating Action Button for owner */}
+      {isOwnProfile && (
+        <div className="fixed bottom-8 right-8 z-50">
+          {/* Overlay for closing FAB when open */}
+          {fabOpen && (
+            <div
+              className="fixed inset-0 z-40 bg-black/10"
+              onClick={() => setFabOpen(false)}
+            />
+          )}
+          <div className="relative z-50">
+            {/* Bubble buttons */}
+            <div className={`flex flex-col items-end gap-4 transition-all duration-300 ${fabOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'} mb-2`}>
+              <button
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-white shadow-lg hover:bg-primary/90 transition-all"
+                style={{ transform: fabOpen ? 'translateY(0)' : 'translateY(20px)', transition: 'transform 0.3s, opacity 0.3s', opacity: fabOpen ? 1 : 0 }}
+                onClick={() => { setIsCreatePostOpen(true); setFabOpen(false); }}
+              >
+                <FileText className="h-5 w-5" />
+                {t('createPost') || 'Create Post'}
+              </button>
+              <button
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-white shadow-lg hover:bg-primary/90 transition-all"
+                style={{ transform: fabOpen ? 'translateY(0)' : 'translateY(20px)', transition: 'transform 0.3s, opacity 0.3s', opacity: fabOpen ? 1 : 0 }}
+                onClick={() => { setIsCreateProjectOpen(true); setFabOpen(false); }}
+              >
+                <FolderPlus className="h-5 w-5" />
+                {t('createProject') || 'Create Project'}
+              </button>
+              <button
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-white shadow-lg hover:bg-primary/90 transition-all"
+                style={{ transform: fabOpen ? 'translateY(0)' : 'translateY(20px)', transition: 'transform 0.3s, opacity 0.3s', opacity: fabOpen ? 1 : 0 }}
+                onClick={() => { setIsCreateReelOpen(true); setFabOpen(false); }}
+              >
+                <Film className="h-5 w-5" />
+                {t('createReel') || 'Create Reel'}
+              </button>
+            </div>
+            {/* Main FAB */}
+            <button
+              className="flex items-center justify-center w-16 h-16 rounded-full bg-primary text-white shadow-xl hover:bg-primary/90 transition-all text-3xl"
+              onClick={() => setFabOpen(fab => !fab)}
+              aria-label="Open create menu"
+            >
+              <Plus className={`transition-transform duration-300 ${fabOpen ? 'rotate-45' : ''}`} />
+            </button>
+          </div>
+          {/* Create dialogs (placeholders, implement as needed) */}
+          {isOwnProfile && (
+            <>
+              <CreatePostDialog open={isCreatePostOpen} onOpenChange={setIsCreatePostOpen} />
+              <CreateProjectDialog open={isCreateProjectOpen} onOpenChange={setIsCreateProjectOpen} />
+              <CreateReelDialog open={isCreateReelOpen} onOpenChange={setIsCreateReelOpen} />
+            </>
+          )}
+        </div>
+      )}
     </Layout>
   );
 };

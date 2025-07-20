@@ -11,6 +11,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import NotificationItem from "./NotificationItem";
 import { useNotificationsApi } from "@/hooks/use-notifications-api";
 import { useTranslation } from "@/hooks/use-translation";
+import { useMutation } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const NotificationsDropdown = () => {
   const { t, isRtl } = useTranslation();
@@ -21,6 +23,16 @@ const NotificationsDropdown = () => {
     unreadCount,
     refetch
   } = useNotificationsApi();
+  const { mutate: deleteNotification } = useMutation({
+    mutationFn: async (notificationId: string) => {
+      // Only delete personal notification (not admin/global)
+      await supabase.from('notifications').delete().eq('id', notificationId);
+    },
+    onSuccess: () => {
+      // Refetch notifications but do not close the dropdown
+      refetch();
+    },
+  });
   const [open, setOpen] = useState(false);
 
   const handleTriggerClick = () => {
@@ -68,6 +80,8 @@ const NotificationsDropdown = () => {
                   key={notification.id}
                   notification={notification}
                   onRead={markAsRead}
+                  onDismiss={id => deleteNotification(id)}
+                  isRtl={isRtl}
                 />
               ))}
             </div>

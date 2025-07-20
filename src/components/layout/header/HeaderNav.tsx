@@ -4,6 +4,7 @@ import { Home, Search, PlusSquare, Wand, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/hooks/use-translation";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface NavItem {
   label: string;
@@ -15,6 +16,7 @@ interface NavItem {
 export function HeaderNav() {
   const { t, isRtl } = useTranslation();
   const isMobile = useIsMobile();
+  const { isAuthenticated } = useAuth();
   
   const navItems: NavItem[] = [
     {
@@ -32,11 +34,12 @@ export function HeaderNav() {
       href: "/projects",
       icon: <PlusSquare className="h-5 w-5 mx-2" />
     },
-    {
+    // Only show messages if logged in
+    ...(isAuthenticated ? [{
       label: t("messages"),
       href: "/messages",
       icon: <MessageSquare className="h-5 w-5 mx-2" />
-    },
+    }] : []),
     {
       label: "Space Ai",
       href: "/space-ai",

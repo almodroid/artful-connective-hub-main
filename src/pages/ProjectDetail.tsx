@@ -410,13 +410,17 @@ const ProjectDetail = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)}>
+                  <DropdownMenuItem 
+                    onClick={() => setIsEditDialogOpen(true)}
+                    dir={isRtl ? "rtl" : "ltr"}
+                  >
                     <Edit className="h-4 w-4 mr-2" />
                     {t("editProject")}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => setIsDeleteDialogOpen(true)}
                     className="text-destructive focus:text-destructive"
+                    dir={isRtl ? "rtl" : "ltr"}
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
                     {t("deleteProject")}

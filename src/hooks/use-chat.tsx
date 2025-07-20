@@ -1,8 +1,10 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "@/hooks/use-translation";
 import { toast } from "sonner";
 import { sendToOpenRouter, convertToOpenRouterMessages } from "@/lib/openrouter";
+import { supabase } from "@/integrations/supabase/client";
+import { Database } from "@/integrations/supabase/types";
 
 export interface ChatMessage {
   id: string;
@@ -17,8 +19,53 @@ export function useChat() {
   const { user } = useAuth();
   const { t, isRtl } = useTranslation();
 
+  // AI settings state
+  const [aiEnabled, setAiEnabled] = useState(true);
+  const [aiLimit, setAiLimit] = useState(20);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+
+  useEffect(() => {
+    // Fetch AI settings from the settings table
+    async function fetchSettings() {
+      const { data, error } = await supabase
+        .from('settings')
+        .select('key, value')
+        .in('key', ['ai_enabled', 'ai_daily_limit']);
+      const settingsData = data as { key: string, value: string }[] | null;
+      if (!error && settingsData) {
+        const settingsObj = Object.fromEntries(settingsData.map((s) => [s.key, s.value]));
+        setAiEnabled(settingsObj.ai_enabled !== 'false');
+        if (settingsObj.ai_daily_limit === 'unlimited') {
+          setAiLimit(Infinity);
+        } else {
+          setAiLimit(Number(settingsObj.ai_daily_limit) || 20);
+        }
+      }
+      setSettingsLoaded(true);
+    }
+    fetchSettings();
+  }, []);
+
+  const userId = user?.id || "guest";
+  const today = new Date().toISOString().slice(0, 10);
+  const storageKey = `openrouter_usage_${userId}_${today}`;
+  const used = Number(localStorage.getItem(storageKey) || 0);
+  const canSend = aiEnabled && (aiLimit === Infinity || used < aiLimit);
+
+  const incrementUsage = () => {
+    localStorage.setItem(storageKey, String(used + 1));
+  };
+
   const sendMessage = useCallback(async (content: string) => {
     if (!content.trim()) return;
+    if (!canSend) {
+      if (!aiEnabled) {
+        toast.error(isRtl ? "تم تعطيل ميزة الذكاء الاصطناعي من قبل الإدارة." : "The AI feature has been disabled by the admin.");
+      } else {
+        toast.error(isRtl ? "لقد وصلت إلى الحد اليومي لطلبات الذكاء الاصطناعي. اشترِ رصيدًا إضافيًا للاستمرار." : "You have reached your daily AI request limit. Please buy more credits to continue.");
+      }
+      return;
+    }
 
     // Generate a unique ID for the message
     const userMessageId = `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
@@ -67,13 +114,14 @@ Keep these mentions natural and relevant to the conversation, and vary the compl
       };
       
       setMessages((prev) => [...prev, assistantMessage]);
+      incrementUsage();
     } catch (error) {
       console.error('Error sending message:', error);
       toast.error(isRtl ? "حدث خطأ أثناء التواصل مع Space AI" : "Error communicating with Space AI");
     } finally {
       setIsLoading(false);
     }
-  }, [messages, user, isRtl, t]);
+  }, [messages, user, isRtl, t, canSend, used, aiEnabled]);
 
   const clearChat = useCallback(() => {
     setMessages([]);
@@ -84,6 +132,7 @@ Keep these mentions natural and relevant to the conversation, and vary the compl
     isLoading,
     sendMessage,
     clearChat,
-    setMessages
+    setMessages,
+    usage: { used, limit: aiLimit, canSend, aiEnabled, settingsLoaded, unlimited: aiLimit === Infinity },
   };
 }

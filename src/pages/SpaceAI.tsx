@@ -27,8 +27,8 @@ const SpaceAIPage = () => {
 
   return (
     <SpaceAIErrorBoundary>
-    <Layout>
-      <div className="max-w-3xl mx-auto h-[calc(100vh-16rem)] flex flex-col">
+      <Layout>
+        <div className="max-w-3xl mx-auto h-[calc(100vh-16rem)] flex flex-col">
           {/* AI settings loading and disabled state */}
           {!usage.settingsLoaded ? (
             <div className="flex flex-col items-center justify-center py-16">
@@ -42,61 +42,60 @@ const SpaceAIPage = () => {
             </div>
           ) : (
             <>
-              {/* Usage Progress Bar or Unlimited */}
-              {usage.unlimited ? (
-                <div className="w-full mb-4 flex items-center gap-2 text-green-600 font-semibold">
-                  <Gift className="h-5 w-5 text-green-600" />
-                  <span>{t('unlimitedAIRequests') || 'Unlimited AI Requests'}</span>
-                </div>
-              ) : (
-                <div className="w-full mb-4">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium">
-                      {t('aiUsage')}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {usage.used} / {usage.limit} {t('requests')}
-                    </span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-2.5 mb-2">
-                    <div
-                      className="bg-primary h-2.5 rounded-full transition-all duration-300"
-                      style={{ width: `${(usage.used / usage.limit) * 100}%` }}
-                    />
-                  </div>
-                  {!usage.canSend && (
-                    <div className="flex items-center gap-2 mt-2 text-destructive text-sm">
-                      <span>{t('aiLimitReached')}</span>
-                      <a href="/buy-credits" className="ml-2 px-3 py-1 rounded bg-primary text-white hover:bg-primary/80 transition">{t('buyCredits')}</a>
-                    </div>
-                  )}
-                </div>
-              )}
-        <div className="flex items-center justify-between mb-4">
-          <div className="hidden sm:flex text-center align-center items-center">
+              <div className="flex items-center justify-between mb-4">
+                <div className="hidden sm:flex text-center align-center items-center">
                   <Logo className="w-30 h-20 mb-4" />
                   <span className="font-display text-2xl font-bold mx-4">
                     {t('meetSpaceAI') || 'Meet Space AI, your smart assistant for art and design'}
                   </span>
-          </div>
-                <Button variant="ghost" onClick={clearChat} className="ml-auto">
-                  {t('clearChat') || 'Clear chat'}
-            </Button>
-        </div>
-          <ChatContainer 
-            messages={messages} 
-            isLoading={isLoading} 
-            onSendMessage={sendMessage}
-            onClearChat={clearChat}
-            onLoadMessages={setMessages}
-          />
-          <div className="p-4 border-t">
-                <ChatInput onSendMessage={usage.canSend ? sendMessage : () => {}} isLoading={isLoading} />
-          </div>
+                </div>
+                {messages.length > 0 && (
+                  <Button variant="ghost" onClick={clearChat} className="ml-auto">
+                    {t('clearChat') || 'Clear chat'}
+                  </Button>
+                )}
+              </div>
+              <ChatContainer
+                messages={messages}
+                isLoading={isLoading}
+                onSendMessage={sendMessage}
+                onClearChat={clearChat}
+                onLoadMessages={setMessages}
+              />
+              {/* Usage Progress Bar or Unlimited and Chat Input - sticky on mobile */}
+              <div className="sm:static sm:mt-0 fixed bottom-16 left-0 right-0 z-40 bg-background/95 px-2 pt-2 pb-3 border-t sm:border-none flex flex-col gap-2" style={{boxShadow: '0 -2px 8px rgba(0,0,0,0.03)'}}>
+                {usage.unlimited ? (
+                  <div className="w-full flex items-center gap-2 text-green-600 font-semibold">
+                    <Gift className="h-5 w-5 text-green-600" />
+                    <span>{t('unlimitedAIRequests') || 'Unlimited AI Requests'}</span>
+                  </div>
+                ) : (
+                  <div className="w-full">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-muted-foreground">
+                        {usage.used} / {usage.limit} {t('requests')}
+                      </span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2.5 mb-2">
+                      <div
+                        className="bg-primary h-2.5 rounded-full transition-all duration-300"
+                        style={{ width: `${(usage.used / usage.limit) * 100}%` }}
+                      />
+                    </div>
+                    {!usage.canSend && (
+                      <div className="flex items-center gap-2 mt-2 text-destructive text-sm">
+                        <span>{t('aiLimitReached')}</span>
+                        <a href="/buy-credits" className="ml-2 px-3 py-1 rounded bg-primary text-white hover:bg-primary/80 transition">{t('buyCredits')}</a>
+                      </div>
+                    )}
+                  </div>
+                )}
+                <ChatInput onSendMessage={usage.canSend ? sendMessage : () => { }} isLoading={isLoading} />
+              </div>
             </>
           )}
-      </div>
-    </Layout>
+        </div>
+      </Layout>
     </SpaceAIErrorBoundary>
   );
 };

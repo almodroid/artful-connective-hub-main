@@ -16,7 +16,7 @@ import NotificationsDropdown from "../../notifications/NotificationsDropdown";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export function UserMenu() {
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, logout, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
   const { t, isRtl } = useTranslation();
   const isMobile = useIsMobile();
@@ -25,6 +25,11 @@ export function UserMenu() {
     await logout();
     navigate("/login");
   };
+  
+  if (loading) {
+    // Optionally, show a spinner here instead of null
+    return null;
+  }
   
   if (!isAuthenticated && !isMobile) {
     return (
@@ -43,7 +48,7 @@ export function UserMenu() {
     return (
       <>
       <Link to="/login">
-        <User className="rounded-full bg-gray-900 p-2 w-10 h-10 mx-2"/>
+        <User className="rounded-full bg-gray-900 p-2 w-8 h-8 mx-2 text-white dark:text-white"/>
         </Link>
       </>
     );
@@ -57,7 +62,7 @@ export function UserMenu() {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" className="rounded-full mt-1 mr-2">
-            <Avatar className="h-10 w-10 border overflow-hidden">
+            <Avatar className="h-8 w-8 border overflow-hidden">
               <AvatarImage 
                 src={user?.avatar} 
                 alt={user?.displayName}

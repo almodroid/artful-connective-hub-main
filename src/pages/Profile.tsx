@@ -320,14 +320,14 @@ const Profile = () => {
           setUserPosts([]);
         } else {
           // Transform the posts data to match our Post interface
-          const transformedPosts = postsData.map(post => {
+          let transformedPosts = postsData.map(post => {
             const profile = post.profiles || {};
             return {
               id: post.id,
               content: post.content,
-            images: Array.isArray(post.media_urls) ? post.media_urls : (post.media_urls ? [post.media_urls] : []),
+              images: Array.isArray(post.media_urls) ? post.media_urls : (post.media_urls ? [post.media_urls] : []),
               createdAt: new Date(post.created_at),
-              likes: post.likes_count || 0,
+              likes: 0, // Will be set after fetching like counts
               comments: post.comments_count || 0,
               isLiked: false,
               user: {
@@ -338,7 +338,31 @@ const Profile = () => {
               }
             };
           });
-          
+
+          // Fetch like counts for all posts in batch
+          const postIds = transformedPosts.map(post => post.id);
+          let likedPostIds = [];
+          if (postIds.length > 0) {
+            const { data: likeCounts, error: likeCountsError } = await supabase
+              .from('post_likes')
+              .select('post_id, user_id', { count: 'exact', head: false })
+              .in('post_id', postIds);
+            if (!likeCountsError && likeCounts) {
+              const likeCountMap = new Map();
+              likeCounts.forEach(item => {
+                likeCountMap.set(item.post_id, (likeCountMap.get(item.post_id) || 0) + 1);
+              });
+              // Find which posts are liked by the current user
+              if (isAuthenticated && user) {
+                likedPostIds = likeCounts.filter(like => like.user_id === user.id).map(like => like.post_id);
+              }
+              transformedPosts = transformedPosts.map(post => ({
+                ...post,
+                likes: likeCountMap.get(post.id) || 0,
+                isLiked: likedPostIds.includes(post.id)
+              }));
+            }
+          }
           setUserPosts(transformedPosts);
         }
       } catch (error) {
@@ -918,7 +942,7 @@ const Profile = () => {
         
         {/* Profile Content */}
         <Tabs defaultValue="posts" onValueChange={setActiveTab}>
-          <TabsList className={`w-full mb-8 ${isRtl ? 'flex-row-reverse' : ''} overflow-x-auto scrollbar-none flex-nowrap sm:flex-wrap`} style={{ WebkitOverflowScrolling: 'touch' }}>
+          <TabsList className={`w-full mb-8 ${isRtl ? 'justify-end flex-row-reverse' : 'justify-start'} overflow-x-auto scrollbar-none flex-nowrap sm:flex-wrap`} style={{ WebkitOverflowScrolling: 'touch' }}>
             <TabsTrigger value="posts" className={`group flex-1 min-w-[48px] sm:min-w-[100px] gap-2 ${isRtl ? 'flex-row-reverse' : ''} sm:flex-1 transition-all duration-300 data-[state=active]:min-w-[100px]`}>
               <MessageSquare className="h-5 w-5 flex-shrink-0" />
               <span className="hidden group-data-[state=active]:block sm:inline transition-all duration-300">{isRtl ? "المنشورات" : "Posts"}</span>
@@ -949,7 +973,7 @@ const Profile = () => {
             )}
           </TabsList>
           
-          <TabsContent value="posts" className="mt-0">
+          <TabsContent value="posts" className="mt-0" dir={isRtl ? 'rtl' : 'ltr'}>
             {isOwnProfile && (
               <div className="flex justify-end mb-4">
                 <Button onClick={() => setIsCreatePostOpen(true)} variant="default" className="gap-2">
@@ -1076,7 +1100,7 @@ const Profile = () => {
             )}
           </TabsContent>
           
-          <TabsContent value="media" className="mt-0">
+          <TabsContent value="media" className="mt-0" dir={isRtl ? 'rtl' : 'ltr'}>
             {loadingTab ? (
               <div dir={isRtl ? 'rtl' : 'ltr'} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {Array(6).fill(0).map((_, i) => (
@@ -1122,7 +1146,7 @@ const Profile = () => {
           </TabsContent>
           
           {isOwnProfile && (
-            <TabsContent value="likes" className="mt-0">
+            <TabsContent value="likes" className="mt-0" dir={isRtl ? 'rtl' : 'ltr'}>
               {loadingTab ? (
                 <div className="space-y-6">
                   {Array(3).fill(0).map((_, i) => (
@@ -1162,7 +1186,7 @@ const Profile = () => {
             </TabsContent>
           )}
           
-          <TabsContent value="projects" className="mt-0">
+          <TabsContent value="projects" className="mt-0" dir={isRtl ? 'rtl' : 'ltr'}>
             {isOwnProfile && (
               <div className="flex justify-end mb-4">
                 <Button onClick={() => setIsCreateProjectOpen(true)} variant="default" className="gap-2">

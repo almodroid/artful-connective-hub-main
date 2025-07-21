@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Ban, CheckCircle, Search, ShieldAlert, Trash, UserCog } from "lucide-react";
 import { useTranslation } from "@/hooks/use-translation";
+import { useEffect } from 'react';
+const EDGE_FUNCTION_URL = 'https://zmcauzefkluwavznptlh.supabase.co/functions/v1/get-user-email';
 
 export function UsersManagement() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -33,6 +35,7 @@ export function UsersManagement() {
             display_name, 
             avatar_url, 
             is_admin,
+            is_banned,
             created_at
           `);
         
@@ -41,18 +44,51 @@ export function UsersManagement() {
           toast.error(isRtl ? "حدث خطأ أثناء جلب بيانات الملفات الشخصية" : "Error fetching profiles");
           throw profilesError;
         }
-        
+
+        // Defensive: always return an array
+        if (!profilesData || !Array.isArray(profilesData)) return [];
+
+        // Fetch emails for each user from the edge function
+        const fetchEmail = async (uid: string) => {
+          try {
+            // Get the current user's access token, or use the anon key if not logged in
+            const { data: { session } } = await supabase.auth.getSession();
+            const accessToken = session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY;
+            const res = await fetch(EDGE_FUNCTION_URL, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${accessToken}`,
+              },
+              body: JSON.stringify({ uid })
+            });
+            if (!res.ok) return { email: null, lastSignInAt: null };
+            const data = await res.json();
+            return {
+              email: data.email || null,
+              lastSignInAt: data.lastSignInAt || null
+            };
+          } catch {
+            return { email: null, lastSignInAt: null };
+          }
+        };
+
+        // Fetch all emails and last login in parallel
+        const emailResults = await Promise.all(
+          profilesData.map(profile => fetchEmail(profile.id))
+        );
+
         // Transform the data to match our expected format
-        return profilesData.map(profile => ({
+        return profilesData.map((profile, i) => ({
           id: profile.id,
-          email: profile.username + '@example.com', // Placeholder since we don't have email
+          email: emailResults[i].email || '—',
+          lastSignIn: emailResults[i].lastSignInAt ? new Date(emailResults[i].lastSignInAt) : null,
           username: profile.username || 'user',
           displayName: profile.display_name || 'User',
           avatar: profile.avatar_url || `https://i.pravatar.cc/150?u=${profile.id}`,
           isAdmin: profile.is_admin || false,
           createdAt: new Date(profile.created_at),
-          lastSignIn: null, // We don't have this information without admin access
-          isBanned: false // We don't have this information without admin access
+          isBanned: profile.is_banned === true
         }));
       } catch (error) {
         console.error("Error in users query:", error);
@@ -62,55 +98,65 @@ export function UsersManagement() {
     }
   });
   
-  // Ban/unban user mutation
+  // Edge Function endpoint
+  const ADMIN_ACTION_URL = 'https://zmcauzefkluwavznptlh.supabase.co/functions/v1/admin-user-action';
+
+  // Ban/unban user mutation using Edge Function
   const toggleBanMutation = useMutation({
     mutationFn: async ({ userId, isBanned }: { userId: string, isBanned: boolean }) => {
-      // Since we don't have admin access, we'll just update the profile
-      const { data, error } = await supabase
-        .from('profiles')
-        .update({ is_admin: isBanned }) // Using is_admin as a placeholder for banned status
-        .eq('id', userId);
-      
-      if (error) {
-        console.error(`Error ${isBanned ? 'banning' : 'unbanning'} user:`, error);
-        throw error;
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const res = await fetch(ADMIN_ACTION_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ uid: userId, action: isBanned ? 'ban' : 'unban' })
+      });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.error || 'Failed to update user');
       }
-      
       return { success: true };
     },
     onSuccess: (_, variables) => {
-      const { userId, isBanned } = variables;
+      const { isBanned } = variables;
       toast.success(
         isRtl 
           ? `تم ${isBanned ? 'حظر' : 'إلغاء حظر'} المستخدم بنجاح` 
           : `User ${isBanned ? 'banned' : 'unbanned'} successfully`
       );
-      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      }, 100);
     },
-    onError: (error) => {
-      console.error("Error updating user:", error);
+    onError: (error: any) => {
       toast.error(
         isRtl 
           ? "حدث خطأ أثناء تحديث المستخدم" 
-          : "Error updating user"
+          : `Error updating user: ${error.message}`
       );
     }
   });
-  
-  // Delete user mutation
+
+  // Delete user mutation using Edge Function
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: string) => {
-      // Since we don't have admin access, we'll just delete the profile
-      const { error } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', userId);
-      
-      if (error) {
-        console.error("Error deleting user:", error);
-        throw error;
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const res = await fetch(ADMIN_ACTION_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ uid: userId, action: 'delete' })
+      });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.error || 'Failed to delete user');
       }
-      
       return { success: true };
     },
     onSuccess: () => {
@@ -119,14 +165,15 @@ export function UsersManagement() {
           ? "تم حذف المستخدم بنجاح" 
           : "User deleted successfully"
       );
-      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      }, 100);
     },
-    onError: (error) => {
-      console.error("Error deleting user:", error);
+    onError: (error: any) => {
       toast.error(
         isRtl 
           ? "حدث خطأ أثناء حذف المستخدم" 
-          : "Error deleting user"
+          : `Error deleting user: ${error.message}`
       );
     }
   });
@@ -183,23 +230,23 @@ export function UsersManagement() {
               </TableHeader>
               <TableBody>
                 {filteredUsers?.map(user => (
-                  <TableRow key={user.id}>
+                  <TableRow key={user.id || Math.random()}>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar>
-                          <AvatarImage src={user.avatar} alt={user.displayName} />
-                          <AvatarFallback>{user.displayName.substring(0, 2)}</AvatarFallback>
+                          <AvatarImage src={user.avatar || ''} alt={user.displayName || 'U'} />
+                          <AvatarFallback>{(user.displayName || 'U').substring(0, 2)}</AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="font-medium">{user.displayName}</p>
-                          <p className="text-sm text-muted-foreground">@{user.username}</p>
+                          <p className="font-medium">{user.displayName || 'User'}</p>
+                          <p className="text-sm text-muted-foreground">@{user.username || 'user'}</p>
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>{user.createdAt.toLocaleDateString()}</TableCell>
+                    <TableCell>{user.email || '—'}</TableCell>
+                    <TableCell>{user.createdAt ? user.createdAt.toLocaleDateString() : '—'}</TableCell>
                     <TableCell>
-                      {user.lastSignIn ? user.lastSignIn.toLocaleDateString() : '-'}
+                      {user.lastSignIn ? user.lastSignIn.toLocaleString() : '—'}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">

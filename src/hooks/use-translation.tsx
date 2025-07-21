@@ -152,6 +152,8 @@ const translations = {
     chooseImage: "Choose Image",
     removeImage: "Remove Image",
     createWithoutImage: "Create Without Image",
+    coverImage: "Cover Image",
+    galleryImages: "Gallery Images",
     
     // Misc
     error: "An error occurred",
@@ -276,6 +278,7 @@ const translations = {
     reporting: "Reporting...",
     reportSuccess: "Reported successfully. Our team will review it.",
     alreadyReported: "You have already reported this content",
+    loginRequired: "You must be logged in to view this page",
 
   },
   ar: {
@@ -435,6 +438,8 @@ const translations = {
     chooseImage: "اختر صورة",
     removeImage: "إزالة الصورة",
     createWithoutImage: "إنشاء بدون صورة",
+    coverImage: "صورة الغلاف",
+    galleryImages: "صور المعرض",
     
     // Misc
     error: "حدث خطأ",
@@ -561,6 +566,7 @@ const translations = {
     reporting: "جارٍ الإبلاغ...",
     reportSuccess: "تم الإبلاغ بنجاح. سيقوم فريقنا بمراجعته.",
     alreadyReported: "لقد أبلغت بالفعل عن هذا المحتوى",
+    loginRequired: "يجب تسجيل الدخول لعرض هذه الصفحة",
 
   }
 };

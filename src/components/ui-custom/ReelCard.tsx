@@ -35,6 +35,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
 import { ShareModal } from "./ShareModal";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import type { TablesInsert } from '@/integrations/supabase/types';
 
 // Define an interface for animated hearts
 interface AnimatedHeart {
@@ -78,7 +79,7 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const { sendInteractionNotification } = useNotificationsApi();
-  const { deleteReel, reportReel } = useReels();
+  const { deleteReel } = useReels();
   
   const navigate = useNavigate();
   const isMobile = useMediaQuery("(max-width: 768px)");
@@ -281,18 +282,57 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
     }
   };
 
-  const handleReportReel = async () => {
-    if (!isAuthenticated) return;
-    
-    setIsSubmitting(true);
+  // Unified report function for reels
+  const reportReelUnified = async (reelId: string, reason: string): Promise<boolean> => {
+    if (!isAuthenticated || !user) {
+      toast.error(t('report') + ': ' + (isRtl ? "يجب تسجيل الدخول للإبلاغ عن ريل" : "You must be logged in to report a reel"));
+      return false;
+    }
+    if (!reason.trim()) {
+      toast.error(t('report') + ': ' + t('reportReason'));
+      return false;
+    }
     try {
-      const success = await reportReel(reel.id, reportReason);
-      if (success) {
-        setReportReason("");
-        setIsReportDialogOpen(false);
+      // Check if the user has already reported this reel
+      const { data: existingReport, error: checkError } = await supabase
+        .from("reports")
+        .select()
+        .eq("content_type", "reel")
+        .eq("content_id", reelId)
+        .eq("reporter_id", user.id)
+        .maybeSingle();
+      if (checkError) {
+        console.error("Error checking existing report:", checkError);
+        toast.error(t('report') + ': ' + (isRtl ? "تعذر التحقق من حالة البلاغ" : "Could not check report status"));
+        return false;
       }
-    } finally {
-      setIsSubmitting(false);
+      if (existingReport) {
+        toast.info(t('alreadyReported'));
+        return false;
+      }
+      // Create a report
+      const reportPayload: TablesInsert<'reports'> = {
+        reporter_id: user.id,
+        reported_id: reel.user.id,
+        content_type: "reel",
+        content_id: reelId,
+        reason: reason.trim(),
+        status: "pending"
+      };
+      const { error: reportError } = await supabase
+        .from("reports")
+        .insert(reportPayload);
+      if (reportError) {
+        console.error("Error reporting reel:", reportError);
+        toast.error(t('report') + ': ' + (isRtl ? "فشل الإبلاغ عن الريل" : "Failed to report reel"));
+        return false;
+      }
+      toast.success(t('reportSuccess'));
+      return true;
+    } catch (error) {
+      console.error("Error in reportReel:", error);
+      toast.error(t('report') + ': ' + (isRtl ? "حدث خطأ ما. يرجى المحاولة مرة أخرى." : "Something went wrong. Please try again."));
+      return false;
     }
   };
   
@@ -615,12 +655,27 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
               </DialogDescription>
             </DialogHeader>
             <div className="mt-4">
-              <Textarea
-                placeholder={isRtl ? "سبب الإبلاغ..." : "Reason for reporting..."}
+              <select
+                className="w-full border rounded p-2 mb-2 dark:bg-muted dark:text-foreground dark:border-muted"
                 value={reportReason}
-                onChange={(e) => setReportReason(e.target.value)}
-                className="min-h-[100px]"
-              />
+                onChange={e => setReportReason(e.target.value)}
+                disabled={isSubmitting}
+              >
+                <option value="">{isRtl ? "اختر سبب الإبلاغ..." : "Select a reason for reporting..."}</option>
+                <option value="spam">Spam</option>
+                <option value="inappropriate">Inappropriate Content</option>
+                <option value="harassment">Harassment</option>
+                <option value="other">{isRtl ? "آخر" : "Other"}</option>
+              </select>
+              {reportReason === "other" && (
+                <textarea
+                  className="w-full border rounded p-2 mb-2 dark:bg-muted dark:text-foreground dark:border-muted"
+                  placeholder={isRtl ? "يرجى توضيح السبب..." : "Please specify..."}
+                  value={reportReason === "other" ? reportReason : ""}
+                  onChange={e => setReportReason(e.target.value)}
+                  disabled={isSubmitting}
+                />
+              )}
             </div>
             <DialogFooter className="mt-4">
               <DialogClose asChild>

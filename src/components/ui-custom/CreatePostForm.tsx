@@ -275,11 +275,11 @@ export function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
   };
   
   return (
-    <Card className="border-border/40 bg-card/30 mb-8">
+    <Card className="border-border/40 bg-card/30 w-full mt-4">
       <CardContent className="p-4">
         <form onSubmit={handleSubmit}>
           <div className={`flex gap-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
-            <Avatar className="h-10 w-10 border">
+            <Avatar className="h-10 w-10 border hidden sm:block">
               <AvatarImage src={user.avatar} alt={user.displayName} />
               <AvatarFallback>{user.displayName.charAt(0)}</AvatarFallback>
             </Avatar>

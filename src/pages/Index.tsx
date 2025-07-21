@@ -33,49 +33,37 @@ const Index = () => {
   
   const likePost = async (postId: string) => {
     if (!isAuthenticated || !user) return;
-    
     try {
       const post = displayPosts.find(p => p.id === postId);
       if (!post) return;
-      
       const wasLiked = post.isLiked;
       post.isLiked = !wasLiked;
       post.likes = wasLiked ? Math.max(0, post.likes - 1) : post.likes + 1;
-      
       if (wasLiked) {
         const { error } = await supabase
           .from('post_likes')
           .delete()
           .eq('post_id', postId)
           .eq('user_id', user.id);
-          
-        if (error) throw error;
+        if (error) return toast.error(isRtl ? 'حدث خطأ أثناء تحديث الإعجاب' : 'Error updating like status');
         toast.success(isRtl ? 'تم إزالة الإعجاب بنجاح' : 'Successfully unliked');
       } else {
         const { error } = await supabase
           .from('post_likes')
           .upsert(
-            { 
-              post_id: postId, 
-              user_id: user.id,
-              created_at: new Date().toISOString()
-            },
+            { post_id: postId, user_id: user.id, created_at: new Date().toISOString() },
             { onConflict: 'post_id,user_id' }
           );
-          
-        if (error) throw error;
+        if (error) return toast.error(isRtl ? 'حدث خطأ أثناء تحديث الإعجاب' : 'Error updating like status');
         toast.success(isRtl ? 'تم تسجيل الإعجاب بنجاح' : 'Successfully liked');
       }
-      
       // Refresh like count after update
       const { data: likeData } = await supabase
         .from('post_likes')
         .select('*', { count: 'exact', head: true })
         .eq('post_id', postId);
-      
       post.likes = likeData?.length || 0;
-    } catch (error) {
-      console.error('Error toggling like:', error);
+    } catch {
       toast.error(isRtl ? 'حدث خطأ أثناء تحديث الإعجاب' : 'Error updating like status');
     }
   };
@@ -90,58 +78,29 @@ const Index = () => {
   useEffect(() => {
     const fetchCommentCounts = async () => {
       if (posts.length === 0) return;
-      
       setLoadingComments(true);
       try {
-        // Get all post IDs
         const postIds = posts.map(post => post.id);
-        
-        // Fetch comment counts for all posts
-        const { data, error } = await supabase
-          .from('post_comments')
-          .select('post_id')
-          .in('post_id', postIds);
-          
-        if (error) {
-          console.error("Error fetching comment counts:", error);
-          return;
-        }
-        
-        // Create a map of post_id to comment count
+        const [{ data: commentData }, { data: likeCounts }] = await Promise.all([
+          supabase.from('post_comments').select('post_id').in('post_id', postIds),
+          supabase.from('post_likes').select('post_id', { count: 'exact', head: false }).in('post_id', postIds)
+        ]);
         const commentCounts: Record<string, number> = {};
-        postIds.forEach(id => {
-          commentCounts[id] = 0;
-        });
-        
-        // Update the map with actual counts
-        if (data) {
-          data.forEach((item: any) => {
+        postIds.forEach(id => { commentCounts[id] = 0; });
+        if (commentData) {
+          commentData.forEach((item: any) => {
             commentCounts[item.post_id] = (commentCounts[item.post_id] || 0) + 1;
           });
         }
-        
-        // Fetch like counts for all posts
-        const { data: likeCounts } = await supabase
-          .from('post_likes')
-          .select('post_id', { count: 'exact', head: false })
-          .in('post_id', posts.map(p => p.id));
-          
         const likeCountMap = new Map<string, number>();
         likeCounts?.forEach(item => {
           likeCountMap.set(item.post_id, (likeCountMap.get(item.post_id) || 0) + 1);
         });
-        
         const updatedPosts = posts.map(async post => {
-          // Fetch tags for this post
           const { data: postTags } = await supabase
             .from('posts_tags')
-            .select(`
-              tags (
-                name
-              )
-            `)
+            .select('tags ( name )')
             .eq('post_id', post.id);
-
           return {
             id: post.id,
             content: post.content,
@@ -160,16 +119,11 @@ const Index = () => {
             comments: commentCounts[post.id] || 0
           };
         });
-        
-        const transformedPosts = await Promise.all(updatedPosts);
-        setPostsWithComments(transformedPosts);
-      } catch (error) {
-        console.error("Error in fetchCommentCounts:", error);
+        setPostsWithComments(await Promise.all(updatedPosts));
       } finally {
         setLoadingComments(false);
       }
     };
-    
     if (!isLoading && posts.length > 0) {
       fetchCommentCounts();
     }
@@ -293,7 +247,7 @@ const Index = () => {
 
   return (
     <Layout>
-      <div className={`max-w-4xl mx-auto ${isRtl ? 'rtl text-right' : 'ltr text-left'}`}>
+      <div className={`max-w-4xl mx-auto px-2 sm:px-4  ${isRtl ? 'rtl text-right' : 'ltr text-left'}`}>
 
         
         <Tabs defaultValue="for-you" className="w-full mb-8" onValueChange={setActiveTab}>
@@ -303,7 +257,11 @@ const Index = () => {
             <TabsTrigger value="trending" className="flex-1">{t('trending')}</TabsTrigger>
           </TabsList>
           <TabsContent value="for-you" className="mt-0">
-            {isAuthenticated && <CreatePostForm onPostCreated={handlePostCreated} />}
+            {isAuthenticated && <>
+              <CreatePostForm onPostCreated={handlePostCreated} />
+              <div className="mb-4" />
+            </>}
+            {!isAuthenticated && <div className="mb-4" />}
             
             {(isLoading || loadingComments) ? (
               <div className="space-y-4">
@@ -324,6 +282,11 @@ const Index = () => {
                     <Skeleton className="h-48 w-full rounded-md" />
                   </div>
                 ))}
+              </div>
+            ) : displayPosts.length === 0 ? (
+              <div className={`py-12 ${isRtl ? 'text-right' : 'text-center'}`}>
+                <h3 className="text-lg font-medium mb-2">{t('noPosts')}</h3>
+                <p className="text-muted-foreground">{t('beFirstToAdd')}</p>
               </div>
             ) : (
               <div className="space-y-6">

@@ -225,7 +225,7 @@ const Explore = () => {
 
   return (
     <Layout>
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-2xl mx-auto px-2 sm:px-4">
         <div className="mb-6">
           {/* Search Bar */}
           <div className="relative mb-4">

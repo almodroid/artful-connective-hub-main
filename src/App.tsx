@@ -6,6 +6,7 @@ import { TranslationProvider } from "./hooks/use-translation";
 import { Toaster } from "./components/ui/sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import TagPage from "@/pages/TagPage";
+import React from 'react';
 
 // Pages
 import Index from "./pages/Index";
@@ -35,50 +36,80 @@ import TermsAndConditions from "@/pages/TermsAndConditions";
 // Create a new query client instance
 const queryClient = new QueryClient();
 
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true };
+  }
+  componentDidCatch(error: any, info: any) {
+    // Optionally log error
+  }
+  handleReload = () => {
+    window.location.reload();
+  };
+  render() {
+    if (this.state.hasError) {
+      setTimeout(this.handleReload, 2000);
+      return (
+        <div className="flex flex-col items-center justify-center h-screen">
+          <h1>Something went wrong.</h1>
+          <button onClick={this.handleReload} className="btn btn-primary mt-4">Reload</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <TranslationProvider>
-          <AuthProvider>
-            <Router>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/explore" element={<Explore />} />
-                <Route path="/explore/tag/:tag" element={<TagPage />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/profile/:username" element={<Profile />} />
-                <Route path="/edit-profile" element={<EditProfile />} />
-                <Route path="/projects" element={<Projects />} />
-                <Route path="/projects/:id" element={<ProjectDetail />} />
-                <Route path="/space-ai" element={<SpaceAI />} />
-                <Route path="/post/:postId" element={<Post />} />
-                <Route path="/reel/:id" element={<Reel />} />
-                <Route path="/reels/:reelId" element={<Reel />} />
-                <Route path="/create" element={<CreatePost />} />
-                <Route path="/messages" element={<Messages />} />
-                <Route path="/messages/:conversationId" element={<Messages />} />
-                <Route path="/messages/user/:userId" element={<Messages />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-                <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
-                
-                {/* Admin Routes */}
-                <Route path="/admin" element={<Admin />} />
-                <Route path="/admin/users" element={<AdminUsers />} />
-                <Route path="/admin/reports" element={<AdminReports />} />
-                <Route path="/admin/settings" element={<AdminSettings />} />
-                <Route path="/admin/notifications" element={<AdminNotifications />} />
-                
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-              <Toaster />
-            </Router>
-          </AuthProvider>
-        </TranslationProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <TranslationProvider>
+            <AuthProvider>
+              <Router>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/explore" element={<Explore />} />
+                  <Route path="/explore/tag/:tag" element={<TagPage />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/register" element={<Register />} />
+                  <Route path="/profile/:username" element={<Profile />} />
+                  <Route path="/edit-profile" element={<EditProfile />} />
+                  <Route path="/projects" element={<Projects />} />
+                  <Route path="/projects/:id" element={<ProjectDetail />} />
+                  <Route path="/space-ai" element={<SpaceAI />} />
+                  <Route path="/post/:postId" element={<Post />} />
+                  <Route path="/reel/:id" element={<Reel />} />
+                  <Route path="/reels/:reelId" element={<Reel />} />
+                  <Route path="/create" element={<CreatePost />} />
+                  <Route path="/messages" element={<Messages />} />
+                  <Route path="/messages/:conversationId" element={<Messages />} />
+                  <Route path="/messages/user/:userId" element={<Messages />} />
+                  <Route path="/about" element={<About />} />
+                  <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                  <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+                  
+                  {/* Admin Routes */}
+                  <Route path="/admin" element={<Admin />} />
+                  <Route path="/admin/users" element={<AdminUsers />} />
+                  <Route path="/admin/reports" element={<AdminReports />} />
+                  <Route path="/admin/settings" element={<AdminSettings />} />
+                  <Route path="/admin/notifications" element={<AdminNotifications />} />
+                  
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+                <Toaster />
+              </Router>
+            </AuthProvider>
+          </TranslationProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

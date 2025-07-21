@@ -25,6 +25,7 @@ import { Footer } from "@/components/layout/Footer";
 import { BottomBar } from "@/components/layout/BottomBar";
 import { ar } from "date-fns/locale";
 import { compressFile } from '../utils/imageCompression';
+import type { TablesInsert } from '../integrations/supabase/types';
 
 const Messages = () => {
   const { t } = useTranslation();
@@ -891,15 +892,18 @@ const handleSendMessage = async (e: React.FormEvent) => {
                   variant="outline"
                   size="sm"
                   onClick={async () => {
+                    if (!user) return;
+                    const reportPayload: TablesInsert<'reports'> = {
+                      reporter_id: user.id,
+                      reported_id: otherParticipant.user_id,
+                      content_type: 'user',
+                      content_id: otherParticipant.user_id,
+                      reason: 'inappropriate_behavior',
+                      status: 'pending'
+                    };
                     const { error } = await supabase
                       .from('reports')
-                      .insert({
-                        reporter_id: user?.id,
-                        reported_id: otherParticipant.user_id,
-                        content_type: 'user',
-                        content_id: otherParticipant.user_id,
-                        reason: 'inappropriate_behavior'
-                      });
+                      .insert(reportPayload);
                     if (!error) {
                       toast({
                         title: t('User reported successfully'),

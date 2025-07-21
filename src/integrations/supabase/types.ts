@@ -373,6 +373,7 @@ export type Database = {
           allow_messages?: boolean
           deleted_at: string | null;
           deletion_deadline: string | null;
+          is_banned: boolean;
         }
         Insert: {
           avatar_url?: string | null
@@ -390,6 +391,7 @@ export type Database = {
           allow_messages?: boolean
           deleted_at?: string | null;
           deletion_deadline?: string | null;
+          is_banned?: boolean;
         }
         Update: {
           avatar_url?: string | null
@@ -407,6 +409,7 @@ export type Database = {
           allow_messages?: boolean
           deleted_at?: string | null;
           deletion_deadline?: string | null;
+          is_banned?: boolean;
         }
         Relationships: [
           {

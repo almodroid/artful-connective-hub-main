@@ -369,7 +369,7 @@ const Projects = () => {
                     
                     <div className="grid gap-2">
                       <label className="text-sm font-medium">
-                        {t("projectImage")}
+                        {t("coverImage") || "Cover Image"}
                       </label>
                       <div className="flex flex-col gap-2">
                         <input
@@ -436,7 +436,7 @@ const Projects = () => {
                     <div className="grid gap-2">
                       <div className="flex justify-between items-center">
                         <label className="text-sm font-medium">
-                          {t("projectGallery")}
+                          {t("galleryImages") || "Gallery Images"}
                         </label>
                         <GalleryLayoutSelector 
                           value={galleryLayout} 

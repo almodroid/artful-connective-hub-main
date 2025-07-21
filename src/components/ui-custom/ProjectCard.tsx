@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ShareModal } from "./ShareModal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { useProjects } from "@/hooks/use-projects";
+import type { TablesInsert } from '@/integrations/supabase/types';
 
 export interface Project {
   id: string;
@@ -69,6 +70,60 @@ export function ProjectCard({ project, onLike, onComment }: ProjectCardProps) {
       return;
     }
     navigate(`/projects/${project.id}`);
+  };
+
+  // Unified report function for projects
+  const reportProjectUnified = async (projectId: string, reason: string): Promise<boolean> => {
+    if (!isAuthenticated || !user) {
+      toast.error(t('report') + ': ' + (isRtl ? "يجب تسجيل الدخول للإبلاغ عن مشروع" : "You must be logged in to report a project"));
+      return false;
+    }
+    if (!reason.trim()) {
+      toast.error(t('report') + ': ' + t('reportReason'));
+      return false;
+    }
+    try {
+      // Check if the user has already reported this project
+      const { data: existingReport, error: checkError } = await supabase
+        .from("reports")
+        .select()
+        .eq("content_type", "project")
+        .eq("content_id", projectId)
+        .eq("reporter_id", user.id)
+        .maybeSingle();
+      if (checkError) {
+        console.error("Error checking existing report:", checkError);
+        toast.error(t('report') + ': ' + (isRtl ? "تعذر التحقق من حالة البلاغ" : "Could not check report status"));
+        return false;
+      }
+      if (existingReport) {
+        toast.info(t('alreadyReported'));
+        return false;
+      }
+      // Create a report
+      const reportPayload: TablesInsert<'reports'> = {
+        reporter_id: user.id,
+        reported_id: project.user.id,
+        content_type: "project",
+        content_id: projectId,
+        reason: reason.trim(),
+        status: "pending"
+      };
+      const { error: reportError } = await supabase
+        .from("reports")
+        .insert(reportPayload);
+      if (reportError) {
+        console.error("Error reporting project:", reportError);
+        toast.error(t('report') + ': ' + (isRtl ? "فشل الإبلاغ عن المشروع" : "Failed to report project"));
+        return false;
+      }
+      toast.success(t('reportSuccess'));
+      return true;
+    } catch (error) {
+      console.error("Error in reportProject:", error);
+      toast.error(t('report') + ': ' + (isRtl ? "حدث خطأ ما. يرجى المحاولة مرة أخرى." : "Something went wrong. Please try again."));
+      return false;
+    }
   };
 
   return (
@@ -275,7 +330,7 @@ export function ProjectCard({ project, onLike, onComment }: ProjectCardProps) {
           </DialogHeader>
           <div className="mt-4">
             <select
-              className="w-full border rounded p-2 mb-2"
+              className="w-full border rounded p-2 mb-2 dark:bg-muted dark:text-foreground dark:border-muted"
               value={reportReason}
               onChange={e => setReportReason(e.target.value)}
               disabled={isSubmittingReport}
@@ -287,7 +342,7 @@ export function ProjectCard({ project, onLike, onComment }: ProjectCardProps) {
             </select>
             {reportReason === "other" && (
               <textarea
-                className="w-full border rounded p-2 mb-2"
+                className="w-full border rounded p-2 mb-2 dark:bg-muted dark:text-foreground dark:border-muted"
                 placeholder={isRtl ? "يرجى توضيح السبب..." : "Please specify..."}
                 value={reportReason === "other" ? reportReason : ""}
                 onChange={e => setReportReason(e.target.value)}
@@ -301,7 +356,7 @@ export function ProjectCard({ project, onLike, onComment }: ProjectCardProps) {
             </DialogClose>
             <Button variant="destructive" onClick={async () => {
               setIsSubmittingReport(true);
-              await reportProject(project.id, reportReason);
+              await reportProjectUnified(project.id, reportReason);
               setIsSubmittingReport(false);
               setIsReportDialogOpen(false);
             }} disabled={isSubmittingReport || !reportReason}>

@@ -54,6 +54,9 @@ interface CreatePostInput {
   tags?: string[];
 }
 
+// Simple in-memory cache for top tags
+const topTagsCache: { [key: string]: { data: any; expires: number } } = {};
+
 export function usePosts() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -381,22 +384,38 @@ export function usePosts() {
 
   // Add these functions to usePosts hook
   const getTopTags = async (limit = 10) => {
+    const cacheKey = `topTags_${limit}`;
+    const now = Date.now();
+    // Return cached if not expired
+    if (topTagsCache[cacheKey] && topTagsCache[cacheKey].expires > now) {
+      return topTagsCache[cacheKey].data;
+    }
+    // Fetch tags and count of related posts_tags
     const { data, error } = await supabase
       .from("tags")
       .select(`
         name,
-        posts_tags (count)
+        posts_tags (post_id)
       `)
-      .eq("type", "post")
-      .order("posts_tags.count", { ascending: false })
-      .limit(limit);
+      .eq("type", "post");
 
     if (error) {
+      // On error, delete cache for this key
+      delete topTagsCache[cacheKey];
       console.error("Error fetching top tags:", error);
       return [];
     }
 
-    return data;
+    // Calculate tag counts and sort by usage
+    const tagCounts = (data || []).map(tag => ({
+      name: tag.name,
+      count: tag.posts_tags?.length || 0
+    })).sort((a, b) => b.count - a.count);
+
+    const result = tagCounts.slice(0, limit);
+    // Cache for 10 minutes
+    topTagsCache[cacheKey] = { data: result, expires: now + 10 * 60 * 1000 };
+    return result;
   };
 
   const getPostsByTag = async (tagName: string) => {

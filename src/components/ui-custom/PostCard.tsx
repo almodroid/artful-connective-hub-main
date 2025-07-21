@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ShareModal } from "./ShareModal";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import type { TablesInsert } from '@/integrations/supabase/types';
 
 export interface Post {
   id: string;
@@ -264,9 +265,10 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
     try {
       // Check if the user has already reported this post
       const { data: existingReport, error: checkError } = await supabase
-        .from("post_reports")
+        .from("reports")
         .select()
-        .eq("post_id", postId)
+        .eq("content_type", "post")
+        .eq("content_id", postId)
         .eq("reporter_id", user.id)
         .maybeSingle();
       if (checkError) {
@@ -279,14 +281,17 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
         return false;
       }
       // Create a report
+      const reportPayload: TablesInsert<'reports'> = {
+        reporter_id: user.id,
+        reported_id: post.user.id,
+        content_type: "post",
+        content_id: postId,
+        reason: reason.trim(),
+        status: "pending"
+      };
       const { error: reportError } = await supabase
-        .from("post_reports")
-        .insert({
-          post_id: postId,
-          reporter_id: user.id,
-          reason: reason.trim(),
-          status: "pending"
-        });
+        .from("reports")
+        .insert(reportPayload);
       if (reportError) {
         console.error("Error reporting post:", reportError);
         toast.error(t('report') + ': ' + (isRtl ? "فشل الإبلاغ عن المنشور" : "Failed to report post"));
@@ -302,7 +307,7 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
   };
 
   return (
-    <div className={`bg-card rounded-lg border p-4 space-y-5 m-5 ${isRtl ? 'direction-rtl' : ''}`}>
+    <div className={`bg-card rounded-lg border p-4 space-y-5 w-full ${isRtl ? 'direction-rtl' : ''}`}>
       
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
@@ -658,7 +663,7 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
           </DialogHeader>
           <div className="mt-4">
             <select
-              className="w-full border rounded p-2 mb-2"
+              className="w-full border rounded p-2 mb-2 dark:bg-muted dark:text-foreground dark:border-muted"
               value={reportReason}
               onChange={e => setReportReason(e.target.value)}
               disabled={isSubmittingReport}
@@ -670,7 +675,7 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
             </select>
             {reportReason === "other" && (
               <textarea
-                className="w-full border rounded p-2 mb-2"
+                className="w-full border rounded p-2 mb-2 dark:bg-muted dark:text-foreground dark:border-muted"
                 placeholder={isRtl ? "يرجى توضيح السبب..." : "Please specify..."}
                 value={reportReason === "other" ? reportReason : ""}
                 onChange={e => setReportReason(e.target.value)}

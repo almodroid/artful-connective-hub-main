@@ -57,7 +57,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     return null;
   });
-  const [loading, setLoading] = useState(true);
+  // Optimistic: loading is false if we have a cached user
+  const [loading, setLoading] = useState(() => {
+    const savedUser = localStorage.getItem('artspace_user');
+    return savedUser ? false : true;
+  });
   const [isInitialized, setIsInitialized] = useState(false);
 
   const updateAvatar = async (file: File) => {
@@ -148,30 +152,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Initialize auth state
   useEffect(() => {
-    const initAuth = async () => {
+    // Optimistic: show cached user immediately, update in background
+    const updateUser = async () => {
       try {
-        // Check for existing session
         const { data: { session } } = await supabase.auth.getSession();
-        
         if (session?.user) {
           const mappedUser = await mapSupabaseUser(session.user);
           setUser(mappedUser);
           localStorage.setItem('artspace_user', JSON.stringify(mappedUser));
         } else {
-          // Clear user if no session
           setUser(null);
           localStorage.removeItem('artspace_user');
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
-        // On error, keep the current user state
       } finally {
         setLoading(false);
         setIsInitialized(true);
       }
     };
-    
-    initAuth();
+    updateUser();
     
     // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(

@@ -51,8 +51,8 @@ export function BottomBar() {
             <span className="text-xs">{item.name}</span>
           </Link>
         ))}
-        
-        
+        {/* Hide add post bubble in SpaceAI */}
+        {!location.pathname.startsWith('/space-ai') && (
           <Link
             to={isAuthenticated ? "/create" : "/login"}
             className="fixed right-4 bottom-20 z-50"
@@ -61,6 +61,7 @@ export function BottomBar() {
               <Plus className="h-6 w-6" />
             </Button>
           </Link>
+        )}
       </div>
       )}
     </nav>
@@ -84,6 +85,8 @@ export function BottomBar() {
             <span className="text-xs">{item.name}</span>
           </Link>
         ))}
+        {/* Hide add post bubble in SpaceAI */}
+        {!location.pathname.startsWith('/space-ai') && (
           <Link
             to={isAuthenticated ? "/create" : "/login"}
             className="fixed right-4 bottom-20 z-50"
@@ -92,6 +95,7 @@ export function BottomBar() {
               <Plus className="h-6 w-6" />
             </Button>
           </Link>
+        )}
       </div>
       )}
     </nav>

@@ -22,7 +22,7 @@ export function Header() {
     
     return (
       <>
-      <div className={`flex items-center justify-between`}>
+      <div className={`flex items-center justify-between relative`}>
         <div className="flex">
         {!isHome && (
           <button 
@@ -39,7 +39,7 @@ export function Header() {
         )}
         <UserMenu />
         </div>
-        <div className={`flex items-center m-auto`}>
+        <div className="absolute left-1/2 -translate-x-1/2 flex items-center">
           <Logo /> <Link to="/" className={` sm:block ${isRtl ? 'ml-1' : 'mr-1'}`}></Link>
         </div>
         <div className="flex items-center justify-center">

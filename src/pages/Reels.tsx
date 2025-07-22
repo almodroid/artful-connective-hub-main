@@ -11,6 +11,8 @@ import { ReelWithUser } from "@/hooks/use-reels";
 import { ReelUploadGuidelines } from "@/components/ui-custom/ReelUploadGuidelines";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
+import { GoogleAd } from '@/components/ui-custom/GoogleAd';
+import { useSettings } from '@/hooks/use-settings';
 
 const Reels = () => {
   const { t, isRtl } = useTranslation();
@@ -20,6 +22,7 @@ const Reels = () => {
   const [isGuidelinesOpen, setIsGuidelinesOpen] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [likedReels, setLikedReels] = useState<Record<string, boolean>>({});
+  const { adsSettings, loading: adsLoading } = useSettings();
 
   useEffect(() => {
     // Check which reels are liked by the current user
@@ -73,7 +76,7 @@ const Reels = () => {
           </div>
         </div>
 
-        {isLoading ? (
+        {isLoading || adsLoading ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {Array(8).fill(0).map((_, i) => (
               <div key={i} className="aspect-[9/16] rounded-md bg-muted animate-pulse" />
@@ -95,53 +98,74 @@ const Reels = () => {
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {reels.map((reel) => {
-              // Convert to ReelWithUser format
-              const reelWithUser: ReelWithUser = {
-                ...reel,
-                createdAt: new Date(reel.created_at),
-                likes: reel.likes_count || 0,
-                comments: reel.comments_count || 0,
-                views: reel.views_count || 0,
-                isLiked: likedReels[reel.id] || false,
-                user: {
-                  id: reel.user_id,
-                  username: reel.user?.username || "unknown",
-                  displayName: reel.user?.display_name || "Unknown User",
-                  avatar: reel.user?.avatar_url || ""
+            {(() => {
+              const reelsWithAds = [...reels];
+              if (adsSettings?.ads_enabled && adsSettings.adsense_publisher_id && adsSettings.adsense_reel_slot) {
+                for (let i = 6; i < reelsWithAds.length; i += 7) {
+                  reelsWithAds.splice(i, 0, { isAd: true, adIndex: i } as any);
                 }
-              };
+              }
+              return reelsWithAds.map((item, idx) => {
+                if ((item as any).isAd) {
+                  return (
+                    <div key={`ad-reel-${idx}`} className="aspect-[9/16] flex items-center justify-center">
+                      <GoogleAd
+                        slot={adsSettings.adsense_reel_slot}
+                        publisherId={adsSettings.adsense_publisher_id}
+                        adFormat="video"
+                        customScript={adsSettings.adsense_script}
+                        style={{ width: '100%', height: 315 }}
+                      />
+                    </div>
+                  );
+                }
+                // Convert to ReelWithUser format
+                const reelWithUser: ReelWithUser = {
+                  ...item,
+                  createdAt: new Date(item.created_at),
+                  likes: item.likes_count || 0,
+                  comments: item.comments_count || 0,
+                  views: item.views_count || 0,
+                  isLiked: likedReels[item.id] || false,
+                  user: {
+                    id: item.user_id,
+                    username: item.user?.username || "unknown",
+                    displayName: item.user?.display_name || "Unknown User",
+                    avatar: item.user?.avatar_url || ""
+                  }
+                };
 
-              return (
-                <div key={reel.id} className="aspect-[9/16]">
-                  <ReelCard 
-                    reel={reelWithUser} 
-                    isActive={true}
-                    onLike={likeReel}
-                    onView={(reelId) => {
-                      // Navigate to reel detail page when clicking outside video controls
-                      const handleCardClick = (e: React.MouseEvent) => {
-                        const target = e.target as HTMLElement;
-                        if (!target.closest('.video-controls') && !target.closest('.reel-link')) {
-                          window.location.href = `/reel/${reelId}`;
-                        }
-                      };
-                      
-                      return (
-                        <div onClick={handleCardClick}>
-                          <ReelCard 
-                            reel={reelWithUser} 
-                            isActive={true}
-                            onLike={likeReel}
-                            onView={viewReel}
-                          />
-                        </div>
-                      );
-                    }}
-                  />
-                </div>
-              );
-            })}
+                return (
+                  <div key={item.id} className="aspect-[9/16]">
+                    <ReelCard 
+                      reel={reelWithUser} 
+                      isActive={true}
+                      onLike={likeReel}
+                      onView={(reelId) => {
+                        // Navigate to reel detail page when clicking outside video controls
+                        const handleCardClick = (e: React.MouseEvent) => {
+                          const target = e.target as HTMLElement;
+                          if (!target.closest('.video-controls') && !target.closest('.reel-link')) {
+                            window.location.href = `/reel/${reelId}`;
+                          }
+                        };
+                        
+                        return (
+                          <div onClick={handleCardClick}>
+                            <ReelCard 
+                              reel={reelWithUser} 
+                              isActive={true}
+                              onLike={likeReel}
+                              onView={viewReel}
+                            />
+                          </div>
+                        );
+                      }}
+                    />
+                  </div>
+                );
+              });
+            })()}
           </div>
         )}
 

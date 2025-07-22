@@ -43,6 +43,8 @@ import {
 import { ShareModal } from "@/components/ui-custom/ShareModal";
 import { supabase } from "@/integrations/supabase/client";
 import { motion, AnimatePresence } from 'framer-motion';
+import { GoogleAd } from '@/components/ui-custom/GoogleAd';
+import { useSettings } from '@/hooks/use-settings';
 
 const GalleryLayoutSelector = ({ value, onChange, disabled }: {
   value: 'grid-2' | 'grid-3' | 'grid-4' | 'rows',
@@ -134,6 +136,7 @@ const ProjectDetail = () => {
 
   // Share modal state
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const { adsSettings, loading: adsLoading } = useSettings();
 
   // Check if the current user is the owner of the project
   const isOwner = user && project && user.id === project.user_id;
@@ -565,21 +568,44 @@ const ProjectDetail = () => {
             <div className="prose max-w-none mb-8">
               <p className={`text-lg ${isRtl ? "text-right" : "text-left"} text-muted-foreground`}>{project.description}</p>
             </div>
-            {/* Content blocks */}
-            {(project.content_blocks as any[])?.map((block, index) => (
-              <div key={index} className="mb-8">
-                {block.type === "image" && (
-                  <img
-                    src={block.url}
-                    alt={`${t("projectContent")} ${index + 1}`}
-                    className="rounded-lg w-full"
-                  />
-                )}
-                {block.type === "text" && (
-                  <p className="text-muted-foreground">{block.content}</p>
-                )}
-              </div>
-            ))}
+            {/* Content blocks with ads */}
+            {(() => {
+              const blocks = (project.content_blocks as any[]) || [];
+              const blocksWithAds = [...blocks];
+              if (adsSettings?.ads_enabled && adsSettings.adsense_publisher_id && adsSettings.adsense_project_slot) {
+                for (let i = 2; i < blocksWithAds.length; i += 3) {
+                  blocksWithAds.splice(i, 0, { isAd: true, adIndex: i });
+                }
+              }
+              return blocksWithAds.map((block, idx) => {
+                if (block.isAd) {
+                  return (
+                    <div key={`ad-block-${idx}`} className="mb-8 flex justify-center">
+                      <GoogleAd
+                        slot={adsSettings.adsense_project_slot}
+                        publisherId={adsSettings.adsense_publisher_id}
+                        adFormat="rectangle"
+                        customScript={adsSettings.adsense_script}
+                      />
+                    </div>
+                  );
+                }
+                return (
+                  <div key={idx} className="mb-8">
+                    {block.type === "image" && (
+                      <img
+                        src={block.url}
+                        alt={`${t("projectContent")} ${idx + 1}`}
+                        className="rounded-lg w-full"
+                      />
+                    )}
+                    {block.type === "text" && (
+                      <p className="text-muted-foreground">{block.content}</p>
+                    )}
+                  </div>
+                );
+              });
+            })()}
           </div>
 
           {/* Actions */}

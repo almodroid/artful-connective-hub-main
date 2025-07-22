@@ -55,7 +55,14 @@ VALUES
     ('enable_caching', 'true', 'Enable data caching', 'optimization'),
     ('enable_compression', 'true', 'Enable data compression', 'optimization'),
     ('enable_lazy_loading', 'true', 'Enable lazy loading of images', 'optimization'),
-    ('max_upload_size', '5', 'Maximum file upload size in MB', 'optimization')
+    ('max_upload_size', '5', 'Maximum file upload size in MB', 'optimization'),
+    -- Google Ads settings
+    ('ads_enabled', 'false', 'Enable or disable Google Ads', 'ads'),
+    ('adsense_publisher_id', '', 'Google AdSense Publisher ID (ca-pub-...)', 'ads'),
+    ('adsense_post_slot', '', 'AdSense Slot ID for Post', 'ads'),
+    ('adsense_reel_slot', '', 'AdSense Slot ID for Reel', 'ads'),
+    ('adsense_project_slot', '', 'AdSense Slot ID for Project Details', 'ads'),
+    ('adsense_script', '', 'Custom AdSense script (optional)', 'ads')
 ON CONFLICT (key) DO UPDATE SET
     value = EXCLUDED.value,
     description = EXCLUDED.description,

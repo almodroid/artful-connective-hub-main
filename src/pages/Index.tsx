@@ -12,6 +12,8 @@ import { useTranslation } from "@/hooks/use-translation";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Database } from "@/integrations/supabase/types";
+import { GoogleAd } from '@/components/ui-custom/GoogleAd';
+import { useSettings } from '@/hooks/use-settings';
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type SupabasePost = Database["public"]["Tables"]["posts"]["Row"] & {
@@ -30,6 +32,7 @@ const Index = () => {
   const [filteredPosts, setFilteredPosts] = useState<DatabasePost[]>([]);
   const [followingPosts, setFollowingPosts] = useState<PostCardType[]>([]);
   const [loadingFollowing, setLoadingFollowing] = useState(false);
+  const { adsSettings, loading: adsLoading } = useSettings();
   
   const likePost = async (postId: string) => {
     if (!isAuthenticated || !user) return;
@@ -263,7 +266,7 @@ const Index = () => {
             </>}
             {!isAuthenticated && <div className="mb-4" />}
             
-            {(isLoading || loadingComments) ? (
+            {(isLoading || loadingComments || adsLoading) ? (
               <div className="space-y-4">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="border rounded-lg p-4 space-y-3" dir={isRtl ? "rtl" : "ltr"}>
@@ -291,16 +294,26 @@ const Index = () => {
             ) : (
               <div className="space-y-6">
                 {(() => {
-                  const postsWithReels = [...displayPosts];
-                  const reelFrequency = 3; // Show reels after every 3 posts
-                  let reelSectionCount = 0;
-                  
-                  // Insert reels at regular intervals
-                  for (let i = reelFrequency; i < postsWithReels.length; i += reelFrequency + 1) {
-                    postsWithReels.splice(i, 0, { isReel: true, sectionIndex: reelSectionCount++ });
+                  const postsWithAds = [...displayPosts];
+                  if (adsSettings?.ads_enabled && adsSettings.adsense_publisher_id && adsSettings.adsense_post_slot) {
+                    // Insert ad after every 4 posts
+                    for (let i = 4; i < postsWithAds.length; i += 5) {
+                      postsWithAds.splice(i, 0, { isAd: true, adIndex: i });
+                    }
                   }
-                  
-                  return postsWithReels.map((item, index) => {
+                  return postsWithAds.map((item, index) => {
+                    if (item.isAd) {
+                      return (
+                        <div key={`ad-${index}`} className="mb-6">
+                          <GoogleAd
+                            slot={adsSettings.adsense_post_slot}
+                            publisherId={adsSettings.adsense_publisher_id}
+                            adFormat="rectangle"
+                            customScript={adsSettings.adsense_script}
+                          />
+                        </div>
+                      );
+                    }
                     if (item.isReel) {
                       return (
                         <div key={`reel-${index}`} className="mb-6">

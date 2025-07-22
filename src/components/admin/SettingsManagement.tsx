@@ -62,6 +62,13 @@ const settingsSchema = z.object({
   // AI settings
   ai_enabled: z.boolean().default(true),
   ai_daily_limit: z.string().min(1, "AI daily limit is required"),
+  // Google Ads settings
+  ads_enabled: z.boolean().default(false),
+  adsense_publisher_id: z.string().optional(),
+  adsense_post_slot: z.string().optional(),
+  adsense_reel_slot: z.string().optional(),
+  adsense_project_slot: z.string().optional(),
+  adsense_script: z.string().optional(),
 });
 
 type SettingsFormValues = z.infer<typeof settingsSchema>;
@@ -104,6 +111,13 @@ export function SettingsManagement() {
       max_upload_size: "5",
       ai_enabled: true,
       ai_daily_limit: "20",
+      // Google Ads
+      ads_enabled: false,
+      adsense_publisher_id: "",
+      adsense_post_slot: "",
+      adsense_reel_slot: "",
+      adsense_project_slot: "",
+      adsense_script: "",
     },
   });
   
@@ -156,6 +170,12 @@ export function SettingsManagement() {
             { key: 'max_upload_size', value: '5', description: 'Maximum upload size in MB', category: 'optimization' },
             { key: 'ai_enabled', value: 'true', description: 'Enable Space AI', category: 'ai' },
             { key: 'ai_daily_limit', value: '20', description: 'Daily AI Request Limit', category: 'ai' },
+            { key: 'ads_enabled', value: 'false', description: 'Enable Google Ads', category: 'ads' },
+            { key: 'adsense_publisher_id', value: '', description: 'AdSense Publisher ID', category: 'ads' },
+            { key: 'adsense_post_slot', value: '', description: 'Ad Slot ID for Posts', category: 'ads' },
+            { key: 'adsense_reel_slot', value: '', description: 'Ad Slot ID for Reels', category: 'ads' },
+            { key: 'adsense_project_slot', value: '', description: 'Ad Slot ID for Project Details', category: 'ads' },
+            { key: 'adsense_script', value: '', description: 'Custom AdSense Script', category: 'ads' },
           ];
           
           const { error: insertError } = await supabase
@@ -281,6 +301,13 @@ export function SettingsManagement() {
         max_upload_size: settings.max_upload_size || "5",
         ai_enabled: settings.ai_enabled === "true",
         ai_daily_limit: isUnlimited ? "100" : settings.ai_daily_limit || "20",
+        // Google Ads
+        ads_enabled: settings.ads_enabled === "true",
+        adsense_publisher_id: settings.adsense_publisher_id || "",
+        adsense_post_slot: settings.adsense_post_slot || "",
+        adsense_reel_slot: settings.adsense_reel_slot || "",
+        adsense_project_slot: settings.adsense_project_slot || "",
+        adsense_script: settings.adsense_script || "",
       });
     }
   }, [settings, isLoading, form]);
@@ -336,6 +363,14 @@ export function SettingsManagement() {
     ai: {
       ai_enabled: true,
       ai_daily_limit: "20",
+    },
+    ads: {
+      ads_enabled: false,
+      adsense_publisher_id: "",
+      adsense_post_slot: "",
+      adsense_reel_slot: "",
+      adsense_project_slot: "",
+      adsense_script: "",
     },
   };
   
@@ -399,6 +434,10 @@ export function SettingsManagement() {
                   <TabsTrigger value="ai">
                     <Cpu className="h-4 w-4 mr-1 inline" />
                     {isRtl ? "إعدادات الذكاء الاصطناعي" : "AI Settings"}
+                  </TabsTrigger>
+                  <TabsTrigger value="ads">
+                    <SettingsIcon className="h-4 w-4 mr-1 inline" />
+                    {isRtl ? "إعلانات Google" : "Google Ads"}
                   </TabsTrigger>
                 </TabsList>
                 {/* Site Settings Section */}
@@ -990,6 +1029,100 @@ export function SettingsManagement() {
                         <FormDescription>
                           {isRtl ? "عدد الطلبات المسموح بها لكل مستخدم يومياً" : "Number of AI requests allowed per user per day"}
                         </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </TabsContent>
+                {/* Ads Section */}
+                <TabsContent value="ads" className="space-y-6 pt-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <SettingsIcon className="h-5 w-5 text-primary" />
+                    <h2 className="text-lg font-bold">{isRtl ? "إعلانات Google" : "Google Ads Settings"}</h2>
+                    <Button type="button" size="icon" variant="ghost" className="ml-2" onClick={() => form.reset({ ...form.getValues(), ...defaultSectionValues.ads })} title={isRtl ? "إعادة الافتراضي" : "Reset to default"}><RefreshCcw className="h-4 w-4" /></Button>
+                  </div>
+                  <Separator />
+                  <FormField
+                    control={form.control}
+                    name="ads_enabled"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">{isRtl ? "تفعيل الإعلانات" : "Enable Google Ads"}</FormLabel>
+                          <FormDescription>{isRtl ? "تفعيل أو تعطيل إعلانات Google AdSense في التطبيق" : "Enable or disable Google AdSense ads in the app"}</FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="adsense_publisher_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{isRtl ? "معرف الناشر (Publisher ID)" : "AdSense Publisher ID"}</FormLabel>
+                        <FormControl>
+                          <Input placeholder="ca-pub-xxxxxxxxxxxxxxxx" {...field} />
+                        </FormControl>
+                        <FormDescription>{isRtl ? "معرف الناشر الخاص بحساب AdSense (مثال: ca-pub-xxxxxxxxxxxxxxxx)" : "Your AdSense publisher ID (e.g., ca-pub-xxxxxxxxxxxxxxxx)"}</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="adsense_post_slot"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{isRtl ? "معرف الوحدة الإعلانية للمنشورات" : "Ad Slot ID for Posts"}</FormLabel>
+                        <FormControl>
+                          <Input placeholder="xxxxxxxxxx" {...field} />
+                        </FormControl>
+                        <FormDescription>{isRtl ? "معرف الوحدة الإعلانية لعرض الإعلانات في صفحة المنشورات" : "Ad slot ID for displaying ads in post pages"}</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="adsense_reel_slot"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{isRtl ? "معرف الوحدة الإعلانية للريلز" : "Ad Slot ID for Reels"}</FormLabel>
+                        <FormControl>
+                          <Input placeholder="xxxxxxxxxx" {...field} />
+                        </FormControl>
+                        <FormDescription>{isRtl ? "معرف الوحدة الإعلانية لعرض الإعلانات في الريلز (الفيديوهات)" : "Ad slot ID for displaying ads in reels (videos)"}</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="adsense_project_slot"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{isRtl ? "معرف الوحدة الإعلانية لصفحة المشروع" : "Ad Slot ID for Project Details"}</FormLabel>
+                        <FormControl>
+                          <Input placeholder="xxxxxxxxxx" {...field} />
+                        </FormControl>
+                        <FormDescription>{isRtl ? "معرف الوحدة الإعلانية لعرض الإعلانات في صفحة تفاصيل المشروع" : "Ad slot ID for displaying ads in project details page"}</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="adsense_script"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{isRtl ? "سكريبت مخصص (اختياري)" : "Custom AdSense Script (optional)"}</FormLabel>
+                        <FormControl>
+                          <Input placeholder="<script>...</script>" {...field} />
+                        </FormControl>
+                        <FormDescription>{isRtl ? "يمكنك إضافة سكريبت AdSense مخصص إذا لزم الأمر" : "You can add a custom AdSense script if needed"}</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}

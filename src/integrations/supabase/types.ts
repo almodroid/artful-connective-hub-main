@@ -933,6 +933,67 @@ export type Database = {
         };
         Relationships: [];
       },
+      ai_usage: {
+        Row: {
+          id: string;
+          user_id: string;
+          usage_date: string;
+          usage_count: number;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          usage_date: string;
+          usage_count?: number;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          usage_date?: string;
+          usage_count?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_user_id_fkey",
+            columns: ["user_id"],
+            isOneToOne: false,
+            referencedRelation: "profiles",
+            referencedColumns: ["id"]
+          }
+        ];
+      };
+      chat_history: {
+        Row: {
+          id: string;
+          user_id: string;
+          messages: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          messages: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          messages?: Json;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "chat_history_user_id_fkey",
+            columns: ["user_id"],
+            isOneToOne: false,
+            referencedRelation: "profiles",
+            referencedColumns: ["id"]
+          }
+        ];
+      };
     }
     Views: {
       [_ in never]: never
@@ -962,6 +1023,13 @@ export type Database = {
           reel_id: string
         }
         Returns: void
+      }
+      increment_ai_usage: {
+        Args: {
+          user_id_param: string;
+          usage_date_param: string;
+        };
+        Returns: void;
       }
     }
     Enums: {

@@ -36,37 +36,8 @@ import TermsAndConditions from "@/pages/TermsAndConditions";
 // Create a new query client instance
 const queryClient = new QueryClient();
 
-class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
-  constructor(props: { children: React.ReactNode }) {
-    super(props);
-    this.state = { hasError: false };
-  }
-  static getDerivedStateFromError(error: any) {
-    return { hasError: true };
-  }
-  componentDidCatch(error: any, info: any) {
-    // Optionally log error
-  }
-  handleReload = () => {
-    window.location.reload();
-  };
-  render() {
-    if (this.state.hasError) {
-      setTimeout(this.handleReload, 2000);
-      return (
-        <div className="flex flex-col items-center justify-center h-screen">
-          <h1>Something went wrong.</h1>
-          <button onClick={this.handleReload} className="btn btn-primary mt-4">Reload</button>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-
 function App() {
   return (
-    <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <TranslationProvider>
@@ -109,7 +80,6 @@ function App() {
           </TranslationProvider>
         </ThemeProvider>
       </QueryClientProvider>
-    </ErrorBoundary>
   );
 }
 

@@ -11,6 +11,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { Json } from "@/types/supabase";
 
 interface SavedConversation {
   id: string;
@@ -44,10 +47,8 @@ export function ChatContainer({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const { t, isRtl } = useTranslation();
-  const [savedConversations, setSavedConversations] = useState<SavedConversation[]>(() => {
-    const saved = localStorage.getItem('savedConversations');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const { user } = useAuth();
+  const [savedConversations, setSavedConversations] = useState<SavedConversation[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
@@ -96,21 +97,54 @@ export function ChatContainer({
     return `${days} ${t("daysAgo")}`;
   };
 
-  // Save current conversation
-  const saveConversation = () => {
-    if (messages.length === 0) return;
-    
-    const newConversation: SavedConversation = {
-      id: Date.now().toString(),
-      title: messages[0].content.slice(0, 30) + '...',
-      messages: [...messages],
-      timestamp: Date.now(),
-      tags: []
+  // Fetch chat history from Supabase on mount
+  useEffect(() => {
+    const fetchChatHistory = async () => {
+      if (!user) return;
+      const { data, error } = await supabase
+        .from('chat_history')
+        .select('id, messages, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      if (!error && data) {
+        // Convert Supabase rows to SavedConversation[]
+        const conversations = data.map((row: any) => ({
+          id: row.id,
+          title: row.messages?.[0]?.content?.slice(0, 30) + '...' || 'Conversation',
+          messages: row.messages || [],
+          timestamp: new Date(row.created_at).getTime(),
+          tags: [] // You can extend schema to support tags if needed
+        }));
+        setSavedConversations(conversations);
+      }
     };
-    
-    const updated = [newConversation, ...savedConversations];
-    setSavedConversations(updated);
-    localStorage.setItem('savedConversations', JSON.stringify(updated));
+    fetchChatHistory();
+  }, [user]);
+
+  // Save current conversation to Supabase
+  const saveConversation = async () => {
+    if (messages.length === 0 || !user) return;
+    const newConversation = {
+      user_id: user.id,
+      messages: messages as unknown as Json,
+      created_at: new Date().toISOString()
+    };
+    // Insert new chat history
+    const { data, error } = await supabase
+      .from('chat_history')
+      .insert([newConversation]) as { data: { id: string; created_at: string }[], error: any };
+    if (!error && data) {
+      setSavedConversations(prev => [
+        {
+          id: data[0].id,
+          title: messages[0].content.slice(0, 30) + '...',
+          messages: messages,
+          timestamp: new Date(data[0].created_at).getTime(),
+          tags: []
+        },
+        ...prev
+      ]);
+    }
   };
 
   // Add tag to conversation
@@ -123,7 +157,7 @@ export function ChatContainer({
       return conv;
     });
     setSavedConversations(updated);
-    localStorage.setItem('savedConversations', JSON.stringify(updated));
+    // Update Supabase if you want to persist tags
   };
 
   // Remove tag from conversation
@@ -136,7 +170,7 @@ export function ChatContainer({
       return conv;
     });
     setSavedConversations(updated);
-    localStorage.setItem('savedConversations', JSON.stringify(updated));
+    // Update Supabase if you want to persist tags
   };
 
   // Load a saved conversation
@@ -181,7 +215,7 @@ export function ChatContainer({
   const deleteConversation = (id: string) => {
     const updated = savedConversations.filter(conv => conv.id !== id);
     setSavedConversations(updated);
-    localStorage.setItem('savedConversations', JSON.stringify(updated));
+    // Update Supabase if you want to persist tags
   };
 
   // Suggestions for new users

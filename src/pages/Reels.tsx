@@ -119,51 +119,51 @@ const Reels = () => {
                     </div>
                   );
                 }
-                // Convert to ReelWithUser format
-                const reelWithUser: ReelWithUser = {
+              // Convert to ReelWithUser format
+              const reelWithUser: ReelWithUser = {
                   ...item,
                   createdAt: new Date(item.created_at),
                   likes: item.likes_count || 0,
                   comments: item.comments_count || 0,
                   views: item.views_count || 0,
                   isLiked: likedReels[item.id] || false,
-                  user: {
+                user: {
                     id: item.user_id,
                     username: item.user?.username || "unknown",
                     displayName: item.user?.display_name || "Unknown User",
                     avatar: item.user?.avatar_url || ""
-                  }
-                };
+                }
+              };
 
-                return (
+              return (
                   <div key={item.id} className="aspect-[9/16]">
-                    <ReelCard 
-                      reel={reelWithUser} 
-                      isActive={true}
-                      onLike={likeReel}
-                      onView={(reelId) => {
-                        // Navigate to reel detail page when clicking outside video controls
-                        const handleCardClick = (e: React.MouseEvent) => {
-                          const target = e.target as HTMLElement;
-                          if (!target.closest('.video-controls') && !target.closest('.reel-link')) {
-                            window.location.href = `/reel/${reelId}`;
-                          }
-                        };
-                        
-                        return (
-                          <div onClick={handleCardClick}>
-                            <ReelCard 
-                              reel={reelWithUser} 
-                              isActive={true}
-                              onLike={likeReel}
-                              onView={viewReel}
-                            />
-                          </div>
-                        );
-                      }}
-                    />
-                  </div>
-                );
+                  <ReelCard 
+                    reel={reelWithUser} 
+                    isActive={true}
+                    onLike={likeReel}
+                    onView={(reelId) => {
+                      // Navigate to reel detail page when clicking outside video controls
+                      const handleCardClick = (e: React.MouseEvent) => {
+                        const target = e.target as HTMLElement;
+                        if (!target.closest('.video-controls') && !target.closest('.reel-link')) {
+                          window.location.href = `/reel/${reelId}`;
+                        }
+                      };
+                      
+                      return (
+                        <div onClick={handleCardClick}>
+                          <ReelCard 
+                            reel={reelWithUser} 
+                            isActive={true}
+                            onLike={likeReel}
+                            onView={viewReel}
+                          />
+                        </div>
+                      );
+                    }}
+                  />
+                </div>
+              );
               });
             })()}
           </div>

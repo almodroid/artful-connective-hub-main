@@ -13,10 +13,4 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
       'Content-Type': 'application/json'
     },
   },
-  auth: {
-    storage: localStorage,
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true,
-  },
 });

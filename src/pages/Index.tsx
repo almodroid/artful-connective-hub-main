@@ -207,7 +207,7 @@ const Index = () => {
           // Get comment count
           const { count: commentCount } = await supabase
             .from('post_comments')
-            .select('*', { count: 'exact', head: false })
+            .select('*', { count: 'exact', head: true })
             .eq('post_id', post.id);
 
           // Get like count and check if current user liked

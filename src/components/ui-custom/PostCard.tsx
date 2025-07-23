@@ -71,7 +71,7 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
         // Check if the post exists first
         const { count, error: checkError } = await supabase
           .from("posts")
-          .select("*", { count: "exact", head: false })
+          .select("*", { count: "exact", head: true })
           .eq("id", post.id);
           
         if (checkError) {

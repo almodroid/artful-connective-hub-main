@@ -7,28 +7,28 @@ export async function fetchSystemStats() {
     // Get users count
     const { count: userCount, error: userError } = await supabase
       .from('profiles')
-      .select('*', { count: 'exact', head: false });
+      .select('*', { count: 'exact', head: true });
     
     if (userError) throw userError;
 
     // Get posts count
     const { count: postsCount, error: postsError } = await supabase
       .from('posts')
-      .select('*', { count: 'exact', head: false });
+      .select('*', { count: 'exact', head: true });
     
     if (postsError) throw postsError;
 
     // Get projects count
     const { count: projectsCount, error: projectsError } = await supabase
       .from('projects')
-      .select('*', { count: 'exact', head: false });
+      .select('*', { count: 'exact', head: true });
     
     if (projectsError) throw projectsError;
 
     // Get reports count
     const { count: reportsCount, error: reportsError } = await supabase
       .from('notifications')
-      .select('*', { count: 'exact', head: false })
+      .select('*', { count: 'exact', head: true })
       .eq('action_type', 'report');
     
     if (reportsError) throw reportsError;
@@ -39,7 +39,7 @@ export async function fetchSystemStats() {
     
     const { count: activeUsers, error: activeUsersError } = await supabase
       .from('profiles')
-      .select('*', { count: 'exact', head: false })
+      .select('*', { count: 'exact', head: true })
       .gte('created_at', oneDayAgo.toISOString());
     
     if (activeUsersError) throw activeUsersError;
@@ -47,7 +47,7 @@ export async function fetchSystemStats() {
     // Get new posts today
     const { count: postsToday, error: postsTodayError } = await supabase
       .from('posts')
-      .select('*', { count: 'exact', head: false })
+      .select('*', { count: 'exact', head: true })
       .gte('created_at', oneDayAgo.toISOString());
     
     if (postsTodayError) throw postsTodayError;

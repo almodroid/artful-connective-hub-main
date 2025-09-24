@@ -1,19 +1,31 @@
 
 import { useState } from "react";
+import { useTheme } from "@/contexts/ThemeContext";
+import { supabase } from "@/integrations/supabase/client";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export function LoginForm() {
   const { login, loading } = useAuth();
   const navigate = useNavigate();
+  const { theme } = useTheme();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isEmail, setIsEmail] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetMessage, setResetMessage] = useState("");
+  const [resetError, setResetError] = useState("");
+  const [showResetDialog, setShowResetDialog] = useState(false);
+  const [dialogEmail, setDialogEmail] = useState("");
+  const [dialogLoading, setDialogLoading] = useState(false);
+  const [dialogError, setDialogError] = useState("");
+  const [dialogMessage, setDialogMessage] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,9 +53,54 @@ export function LoginForm() {
     }
   };
 
+  const handleResetPassword = async () => {
+    setResetMessage("");
+    setResetError("");
+    if (!identifier || !identifier.includes('@')) {
+      setDialogEmail(identifier || "");
+      setShowResetDialog(true);
+      return;
+    }
+    try {
+      setResetLoading(true);
+      const redirectTo = `${window.location.origin}/login`;
+      const { error: resetErr } = await supabase.auth.resetPasswordForEmail(identifier, { redirectTo });
+      if (resetErr) throw resetErr;
+      setResetMessage("تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني");
+    } catch (e) {
+      setResetError("تعذر إرسال رابط الاستعادة. حاول مرة أخرى لاحقًا");
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const handleDialogReset = async () => {
+    setDialogError("");
+    setDialogMessage("");
+    if (!dialogEmail || !dialogEmail.includes('@')) {
+      setDialogError("يرجى إدخال بريد إلكتروني صالح");
+      return;
+    }
+    try {
+      setDialogLoading(true);
+      const redirectTo = `${window.location.origin}/login`;
+      const { error: resetErr } = await supabase.auth.resetPasswordForEmail(dialogEmail, { redirectTo });
+      if (resetErr) throw resetErr;
+      setDialogMessage("تم إرسال رابط إعادة تعيين كلمة المرور");
+    } catch (e) {
+      setDialogError("حدث خطأ أثناء الإرسال. حاول لاحقًا");
+    } finally {
+      setDialogLoading(false);
+    }
+  };
+
   return (
-    <Card className="w-full max-w-md mx-auto shadow-md border-border/40 bg-card/30">
-      <CardHeader className="space-y-1">
+    <>
+    <Card className="w-full max-w-md mx-auto py-16 border border-border/40 bg-[rgba(217,217,217,0.01)] backdrop-blur-[20px] rounded-[24px] shadow-[inset_0px_10px_20px_rgba(115,71,146,0.25),_inset_0px_-5px_15px_rgba(0,0,0,0.4)]">
+      <CardHeader className="space-y-3">
+        <div className="w-full flex justify-center mb-1">
+          <img src={theme === 'dark' ? '/assets/logo.png' : '/assets/logolight.png'} alt="Art Space" className="h-10" />
+        </div>
         <CardTitle className="text-2xl font-display text-center">تسجيل الدخول</CardTitle>
         <CardDescription className="text-center">
           أدخل بيانات حسابك للوصول لمنصة آرت سبيس
@@ -62,12 +119,7 @@ export function LoginForm() {
             />
           </div>
           <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <Label htmlFor="password">كلمة المرور</Label>
-              <Link to="/forgot-password" className="text-sm text-primary hover:underline">
-                نسيت كلمة المرور؟
-              </Link>
-            </div>
+            <Label htmlFor="password">كلمة المرور</Label>
             <Input
               id="password"
               type="password"
@@ -76,6 +128,23 @@ export function LoginForm() {
               onChange={(e) => setPassword(e.target.value)}
               required
             />
+            <div className="text-sm flex items-center gap-2">
+              <span className="text-muted-foreground">هل نسيت كلمة المرور؟</span>
+              <button
+                type="button"
+                onClick={handleResetPassword}
+                disabled={resetLoading}
+                className="text-primary hover:underline dark:text-white disabled:opacity-50"
+              >
+                {resetLoading ? "جاري الإرسال..." : "أرسل رابط الاستعادة"}
+              </button>
+            </div>
+            {resetMessage && (
+              <div className="text-xs text-emerald-500">{resetMessage}</div>
+            )}
+            {resetError && (
+              <div className="text-xs text-destructive">{resetError}</div>
+            )}
           </div>
           
           {error && (
@@ -118,5 +187,30 @@ export function LoginForm() {
         </div>
       </CardFooter>
     </Card>
+    <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+      <DialogContent className="rounded-[24px] border border-border/40 bg-[rgba(217,217,217,0.06)] backdrop-blur-[20px] shadow-[inset_0px_10px_20px_rgba(115,71,146,0.25),_inset_0px_-5px_15px_rgba(0,0,0,0.4)]">
+        <DialogHeader>
+          <DialogTitle>إعادة تعيين كلمة المرور</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">أدخل بريدك الإلكتروني لإرسال رابط الاستعادة.</p>
+          <Input
+            type="email"
+            placeholder="example@email.com"
+            value={dialogEmail}
+            onChange={(e) => setDialogEmail(e.target.value)}
+          />
+          {dialogError && <div className="text-xs text-destructive">{dialogError}</div>}
+          {dialogMessage && <div className="text-xs text-emerald-500">{dialogMessage}</div>}
+          <div className="flex gap-2 justify-end pt-2">
+            <Button variant="outline" onClick={() => setShowResetDialog(false)}>إلغاء</Button>
+            <Button onClick={handleDialogReset} disabled={dialogLoading}>
+              {dialogLoading ? "جاري الإرسال..." : "إرسال الرابط"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

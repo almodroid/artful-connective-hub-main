@@ -9,9 +9,10 @@ import { useTranslation } from "@/hooks/use-translation";
 interface LayoutProps {
   children: React.ReactNode;
   hideFooter?: boolean;
+  fullBleed?: boolean;
 }
 
-export function Layout({ children, hideFooter = false }: LayoutProps) {
+export function Layout({ children, hideFooter = false, fullBleed = false }: LayoutProps) {
   const location = useLocation();
   const { isRtl } = useTranslation();
   
@@ -35,7 +36,7 @@ export function Layout({ children, hideFooter = false }: LayoutProps) {
       <div className=" md:block md:mb-12 ">
         <Header />
       </div>
-      <main className="flex-1 container px-4 md:px-8 py-6 pb-24 md:py-12">
+      <main className={fullBleed ? "flex-1" : "flex-1 container px-4 md:px-8 py-6 pb-24 md:py-12"}>
         {children}
       </main>
       {/* Only show Footer on md and up */}

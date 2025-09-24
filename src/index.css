@@ -79,6 +79,18 @@
     font-feature-settings: "ss01", "ss02", "cv01", "cv02", "cv03";
   }
 
+  /* Global link colors: light -> #230A36, dark -> white */
+  a {
+    @apply no-underline;
+    color: #230A36;
+  }
+  a:hover {
+    @apply underline;
+  }
+  .dark a {
+    color: #ffffff;
+  }
+
   /* Remove the fixed direction */
   html {
     @apply scroll-smooth;

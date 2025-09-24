@@ -44,34 +44,121 @@ function isAuthSessionError(error: any) {
 }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(() => {
-    // Try to get user from localStorage first
-    const savedUser = localStorage.getItem('artspace_user');
-    if (savedUser) {
-      try {
-        return JSON.parse(savedUser);
-      } catch (e) {
-        console.error('Failed to parse saved user', e);
-        localStorage.removeItem('artspace_user');
-      }
-    }
-    return null;
-  });
-  // Optimistic: loading is false if we have a cached user
-  const [loading, setLoading] = useState(() => {
-    const savedUser = localStorage.getItem('artspace_user');
-    if (savedUser) {
-      try {
-        JSON.parse(savedUser);
-        return false;
-      } catch (e) {
-        localStorage.removeItem('artspace_user');
-        return true;
-      }
-    }
-    return true;
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
+
+  // Initialize auth state
+  useEffect(() => {
+    let mounted = true;
+
+    const initializeAuth = async () => {
+      try {
+        // Get the current session from Supabase
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error getting session:', error);
+          if (mounted) {
+            setUser(null);
+            setLoading(false);
+            setIsInitialized(true);
+          }
+          return;
+        }
+
+        if (session?.user && mounted) {
+          try {
+            const mappedUser = await mapSupabaseUser(session.user);
+            setUser(mappedUser);
+            // Store in localStorage as backup
+            localStorage.setItem('artspace_user', JSON.stringify(mappedUser));
+          } catch (error) {
+            console.error('Error mapping user:', error);
+            if (mounted) {
+              setUser(null);
+              localStorage.removeItem('artspace_user');
+            }
+          }
+        } else if (mounted) {
+          setUser(null);
+          localStorage.removeItem('artspace_user');
+        }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+        if (mounted) {
+          setUser(null);
+          localStorage.removeItem('artspace_user');
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+          setIsInitialized(true);
+        }
+      }
+    };
+
+    initializeAuth();
+
+    // Set up auth state change listener with debouncing
+    let authChangeTimeout: NodeJS.Timeout;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!mounted) return;
+
+        // Clear any pending timeout
+        clearTimeout(authChangeTimeout);
+
+        // Debounce auth state changes to prevent rapid re-renders
+        authChangeTimeout = setTimeout(async () => {
+          if (!mounted) return;
+
+          console.log('Auth state changed:', event, session?.user?.id);
+
+          // Only update if the user state actually changed
+          const currentUserId = user?.id;
+          const newUserId = session?.user?.id;
+
+          if (event === 'SIGNED_IN' && session && currentUserId !== newUserId) {
+            try {
+              const mappedUser = await mapSupabaseUser(session.user);
+              setUser(mappedUser);
+              localStorage.setItem('artspace_user', JSON.stringify(mappedUser));
+            } catch (error) {
+              console.error('Error mapping user on sign in:', error);
+            }
+          } else if (event === 'SIGNED_OUT' && currentUserId) {
+            setUser(null);
+            localStorage.removeItem('artspace_user');
+          } else if (event === 'TOKEN_REFRESHED' && session && currentUserId === newUserId) {
+            // Only update if it's the same user (token refresh)
+            try {
+              const mappedUser = await mapSupabaseUser(session.user);
+              setUser(mappedUser);
+              localStorage.setItem('artspace_user', JSON.stringify(mappedUser));
+            } catch (error) {
+              console.error('Error mapping user on token refresh:', error);
+            }
+          } else if (event === 'USER_UPDATED' && session && currentUserId === newUserId) {
+            // Only update if it's the same user (user update)
+            try {
+              const mappedUser = await mapSupabaseUser(session.user);
+              setUser(mappedUser);
+              localStorage.setItem('artspace_user', JSON.stringify(mappedUser));
+            } catch (error) {
+              console.error('Error mapping user on update:', error);
+            }
+          }
+        }, 100); // 100ms debounce
+      }
+    );
+
+    return () => {
+      mounted = false;
+      clearTimeout(authChangeTimeout);
+      subscription.unsubscribe();
+    };
+  }, []); // Empty dependency array to prevent loops
 
   const updateAvatar = async (file: File) => {
     if (!user) return;
@@ -104,11 +191,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (updateError) throw updateError;
       
-      // Update local state
+      // Update local state and clear cache
       setUser(prev => prev ? {
         ...prev,
         avatar: publicUrl
       } : null);
+      
+      // Clear cache for this user to ensure fresh data
+      userProfileCache.delete(user.id);
       
       toast.success('Avatar updated successfully');
     } catch (error) {
@@ -123,8 +213,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Cache for user profiles to prevent unnecessary database calls
+  const userProfileCache = new Map<string, User>();
+
   // Convert Supabase user to our app's User interface
   const mapSupabaseUser = async (supabaseUser: SupabaseUser): Promise<User> => {
+    // Check cache first
+    const cachedUser = userProfileCache.get(supabaseUser.id);
+    if (cachedUser) {
+      return cachedUser;
+    }
+
     // Fetch the corresponding profile from profiles table
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
@@ -132,10 +231,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .eq('id', supabaseUser.id)
       .single();
     
+    let mappedUser: User;
+    
     if (profileError) {
       console.error('Failed to fetch profile for user:', profileError);
       // Fall back to creating a user object from auth data only
-      return {
+      mappedUser = {
         id: supabaseUser.id,
         username: supabaseUser.email?.split('@')[0] || 'user',
         displayName: supabaseUser.user_metadata?.display_name || supabaseUser.email?.split('@')[0] || 'User',
@@ -143,75 +244,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAdmin: supabaseUser.email === 'admin@example.com',
         email: supabaseUser.email || '',
       };
+    } else {
+      // Create user object with combined data from auth and profiles
+      mappedUser = {
+        id: supabaseUser.id,
+        username: profileData.username || supabaseUser.email?.split('@')[0] || 'user',
+        displayName: profileData.display_name || supabaseUser.user_metadata?.display_name || 'User',
+        avatar: profileData.avatar_url || supabaseUser.user_metadata?.avatar_url || `https://i.pravatar.cc/150?u=${supabaseUser.id}`,
+        isAdmin: profileData.is_admin || supabaseUser.email === 'admin@example.com',
+        email: supabaseUser.email || '',
+        bio: profileData.bio || '',
+        website: profileData.website || '',
+        location: profileData.location || '',
+      };
     }
-    
-    // Create user object with combined data from auth and profiles
-    return {
-      id: supabaseUser.id,
-      username: profileData.username || supabaseUser.email?.split('@')[0] || 'user',
-      displayName: profileData.display_name || supabaseUser.user_metadata?.display_name || 'User',
-      avatar: profileData.avatar_url || supabaseUser.user_metadata?.avatar_url || `https://i.pravatar.cc/150?u=${supabaseUser.id}`,
-      isAdmin: profileData.is_admin || supabaseUser.email === 'admin@example.com',
-      email: supabaseUser.email || '',
-      bio: profileData.bio || '',
-      website: profileData.website || '',
-      location: profileData.location || '',
-    };
-  };
 
-  // Initialize auth state
-  useEffect(() => {
-    // Optimistic: show cached user immediately, update in background
-    const updateUser = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          const mappedUser = await mapSupabaseUser(session.user);
-          setUser(mappedUser);
-          localStorage.setItem('artspace_user', JSON.stringify(mappedUser));
-        } else {
-          setUser(null);
-          localStorage.removeItem('artspace_user');
-        }
-      } catch (error) {
-        console.error('Error initializing auth:', error);
-      } finally {
-        setLoading(false);
-        setIsInitialized(true);
-      }
-    };
-    updateUser();
-    
-    // Set up auth state change listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_IN' && session) {
-          try {
-            const mappedUser = await mapSupabaseUser(session.user);
-            setUser(mappedUser);
-            localStorage.setItem('artspace_user', JSON.stringify(mappedUser));
-          } catch (error) {
-            console.error('Error mapping user on sign in:', error);
-          }
-        } else if (event === 'SIGNED_OUT') {
-          setUser(null);
-          localStorage.removeItem('artspace_user');
-        } else if (event === 'USER_UPDATED' && session) {
-          try {
-            const mappedUser = await mapSupabaseUser(session.user);
-            setUser(mappedUser);
-            localStorage.setItem('artspace_user', JSON.stringify(mappedUser));
-          } catch (error) {
-            console.error('Error mapping user on update:', error);
-          }
-        }
-      }
-    );
-    
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
+    // Cache the result
+    userProfileCache.set(supabaseUser.id, mappedUser);
+    return mappedUser;
+  };
 
   const login = async (email: string, password: string) => {
     setLoading(true);
@@ -271,6 +322,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           const mappedUser = await mapSupabaseUser(data.user);
           setUser(mappedUser);
+          localStorage.setItem('artspace_user', JSON.stringify(mappedUser));
           toast.success("تم تسجيل الدخول بنجاح");
         } catch (error) {
           console.error('Error mapping user after login:', error);
@@ -349,9 +401,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Sign out from Supabase
     await supabase.auth.signOut();
     
-    // Clear local state
+    // Clear local state and cache
     setUser(null);
     localStorage.removeItem('artspace_user');
+    userProfileCache.clear(); // Clear the user profile cache
     toast.success("تم تسجيل الخروج بنجاح");
   };
 

@@ -2,11 +2,39 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+// Validate environment variables
+if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+  console.error('Missing Supabase environment variables:', {
+    VITE_SUPABASE_URL: SUPABASE_URL ? 'Set' : 'Missing',
+    VITE_SUPABASE_ANON_KEY: SUPABASE_PUBLISHABLE_KEY ? 'Set' : 'Missing'
+  });
+  
+  // Log all environment variables for debugging (only in development)
+  if (import.meta.env.DEV) {
+    console.log('All environment variables:', import.meta.env);
+  }
+}
+
+// Fallback for production if environment variables are missing
+const fallbackUrl = 'https://zmcauzefkluwavznptlh.supabase.co';
+const finalUrl = SUPABASE_URL || fallbackUrl;
+
+export const supabase = createClient<Database>(finalUrl, SUPABASE_PUBLISHABLE_KEY || '', {
+  auth: {
+    // Enable automatic session refresh
+    autoRefreshToken: true,
+    // Persist session in localStorage
+    persistSession: true,
+    // Detect session in URL (for OAuth flows)
+    detectSessionInUrl: true,
+    // Storage key for session
+    storageKey: 'artspace-auth-token',
+    // Storage interface (defaults to localStorage)
+    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+  },
   global: {
     headers: {
       'Accept': 'application/json',
@@ -14,3 +42,41 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     },
   },
 });
+
+// Debug function to check auth state
+export const debugAuthState = async () => {
+  try {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    console.log('Current auth state:', { 
+      session: !!session, 
+      error, 
+      userId: session?.user?.id,
+      env: {
+        url: SUPABASE_URL ? 'Set' : 'Missing',
+        key: SUPABASE_PUBLISHABLE_KEY ? 'Set' : 'Missing'
+      },
+      timestamp: new Date().toISOString()
+    });
+    return { session, error };
+  } catch (error) {
+    console.error('Error checking auth state:', error);
+    return { session: null, error };
+  }
+};
+
+// Function to track auth state changes
+export const trackAuthChanges = () => {
+  let changeCount = 0;
+  const startTime = Date.now();
+  
+  return supabase.auth.onAuthStateChange((event, session) => {
+    changeCount++;
+    const elapsed = Date.now() - startTime;
+    console.log(`Auth change #${changeCount} after ${elapsed}ms:`, event, session?.user?.id);
+    
+    // Warn if too many changes in a short time
+    if (changeCount > 5 && elapsed < 5000) {
+      console.warn('⚠️ Too many auth state changes detected - possible loop!');
+    }
+  });
+};

@@ -6,6 +6,8 @@ import { TranslationProvider } from "./hooks/use-translation";
 import { Toaster } from "./components/ui/sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import TagPage from "@/pages/TagPage";
+import { AuthDebugger } from "./components/ui-custom/AuthDebugger";
+import { ProductionDebugger } from "./components/ui-custom/ProductionDebugger";
 import React from 'react';
 
 // Pages
@@ -75,6 +77,8 @@ function App() {
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 <Toaster />
+                {import.meta.env.DEV && <AuthDebugger />}
+                <ProductionDebugger />
               </Router>
             </AuthProvider>
           </TranslationProvider>

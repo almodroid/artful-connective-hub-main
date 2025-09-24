@@ -525,9 +525,9 @@ export function ChatContainer({
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {messages.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center gap-6 px-4 py-8 text-center overflow-y-auto">
+        <div className="flex-1 flex flex-col items-center justify-center gap-6 px-4 py-8 text-center ">
           <div className="space-y-2">
-            <h2 className="text-2xl font-bold">{t("meetSpaceAI")}</h2>
+           
             <p className="text-muted-foreground max-w-md text-center">
               {t("spaceAIDescription")}
             </p>

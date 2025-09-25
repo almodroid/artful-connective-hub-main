@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { translations as importedTranslations } from "./translations";
 
 type Language = "en" | "ar";
 type TranslationKey = string;
@@ -599,7 +600,7 @@ export const TranslationProvider: React.FC<{ children: React.ReactNode }> = ({ c
   };
 
   const t = (key: TranslationKey): string => {
-    return translations[language][key] || key;
+    return (importedTranslations?.[language]?.[key] ?? translations[language][key] ?? key) as string;
   };
 
   const value = {

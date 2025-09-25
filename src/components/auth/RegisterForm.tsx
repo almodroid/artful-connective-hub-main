@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 export function RegisterForm() {
   const { register, loading } = useAuth();
   const navigate = useNavigate();
-  const { isRtl } = useTranslation();
+  const { t, isRtl } = useTranslation();
   const { theme } = useTheme();
   const [step, setStep] = useState<1 | 2>(1);
   const [email, setEmail] = useState("");
@@ -32,22 +32,22 @@ export function RegisterForm() {
     setError("");
     
     if (!email.trim() || !displayName.trim() || !username.trim() || !password.trim() || !confirmPassword.trim()) {
-      setError("يرجى ملء جميع الحقول");
+      setError(t("errorFillAllFields"));
       return;
     }
     
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError("البريد الإلكتروني غير صالح");
+      setError(t("invalidEmail"));
       return;
     }
     
     if (password !== confirmPassword) {
-      setError("كلمة المرور وتأكيد كلمة المرور غير متطابقين");
+      setError(t("passwordsNotMatch"));
       return;
     }
     
     if (password.length < 6) {
-      setError("كلمة المرور يجب أن تكون 6 أحرف على الأقل");
+      setError(t("passwordTooShort"));
       return;
     }
     
@@ -56,7 +56,7 @@ export function RegisterForm() {
       // Move to profile completion step
       setStep(2);
     } catch (err) {
-      setError("فشل إنشاء الحساب، يرجى المحاولة مرة أخرى");
+      setError(t("registerFailed"));
       console.error("Registration error:", err);
     }
   };
@@ -69,7 +69,7 @@ export function RegisterForm() {
       const { data: auth } = await supabase.auth.getUser();
       const userId = auth.user?.id;
       if (!userId) {
-        setError("يجب تسجيل الدخول لإكمال الملف الشخصي");
+        setError(t("mustLoginToCompleteProfile"));
         return;
       }
 
@@ -122,16 +122,16 @@ export function RegisterForm() {
         </div>
         {step === 1 ? (
           <>
-            <CardTitle className={`text-2xl font-display text-center ${isRtl ? 'rtl' : ''}`}>إنشاء حساب جديد</CardTitle>
+            <CardTitle className={`text-2xl font-display text-center ${isRtl ? 'rtl' : ''}`}>{t("registerTitle")}</CardTitle>
             <CardDescription className={`text-center ${isRtl ? 'rtl' : ''}`}>
-              أنشئ حسابك للانضمام لمجتمع آرت سبيس
+              {t("registerDesc")}
             </CardDescription>
           </>
         ) : (
           <>
-            <CardTitle className={`text-2xl font-display text-center ${isRtl ? 'rtl' : ''}`}>لنُكمل ملفك الشخصي</CardTitle>
+            <CardTitle className={`text-2xl font-display text-center ${isRtl ? 'rtl' : ''}`}>{t("completeProfileTitle")}</CardTitle>
             <CardDescription className={`text-center ${isRtl ? 'rtl' : ''}`}>
-              أضف صورة الغلاف والصورة الشخصية ونبذة قصيرة
+              {t("completeProfileDesc")}
             </CardDescription>
           </>
         )}
@@ -141,20 +141,20 @@ export function RegisterForm() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="displayName">الاسم</Label>
+                <Label htmlFor="displayName">{t("nameLabel")}</Label>
                 <Input
                   id="displayName"
-                  placeholder="اسمك الكامل"
+                  placeholder={t("namePlaceholder")}
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="username">اسم المستخدم</Label>
+                <Label htmlFor="username">{t("usernameLabel")}</Label>
                 <Input
                   id="username"
-                  placeholder="اسم_المستخدم"
+                  placeholder={t("usernamePlaceholder")}
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required
@@ -163,11 +163,11 @@ export function RegisterForm() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">البريد الإلكتروني</Label>
+              <Label htmlFor="email">{t("registerEmailLabel")}</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="أدخل بريدك الإلكتروني"
+                placeholder={t("registerEmailPlaceholder")}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -176,22 +176,22 @@ export function RegisterForm() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="password">كلمة المرور</Label>
+                <Label htmlFor="password">{t("registerPasswordLabel")}</Label>
                 <Input
                   id="password"
                   type="password"
-                  placeholder="كلمة المرور، 6 أحرف على الأقل"
+                  placeholder={t("registerPasswordPlaceholder")}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">تأكيد كلمة المرور</Label>
+                <Label htmlFor="confirmPassword">{t("confirmPasswordLabel")}</Label>
                 <Input
                   id="confirmPassword"
                   type="password"
-                  placeholder="أعد كتابة كلمة المرور"
+                  placeholder={t("confirmPasswordPlaceholder")}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
@@ -204,45 +204,45 @@ export function RegisterForm() {
             )}
 
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "جاري إنشاء الحساب..." : "التالي"}
+              {loading ? t("creatingAccount") : t("next")}
             </Button>
           </form>
         ) : (
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>صورة الغلاف</Label>
+                <Label>{t("coverImage")}</Label>
                 <div className="rounded-[16px] border border-border/40 bg-[rgba(217,217,217,0.06)] backdrop-blur-[12px] p-3">
                   <input type="file" accept="image/*" onChange={(e) => setBannerFile(e.target.files?.[0] || null)} />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>الصورة الشخصية</Label>
+                <Label>{t("avatarImage")}</Label>
                 <div className="rounded-full border border-border/40 bg-[rgba(217,217,217,0.06)] backdrop-blur-[12px] p-3 w-full">
                   <input type="file" accept="image/*" onChange={(e) => setAvatarFile(e.target.files?.[0] || null)} />
                 </div>
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="bio">نبذة عنك</Label>
-              <Textarea id="bio" placeholder="اكتب نبذة قصيرة..." value={bio} onChange={(e) => setBio(e.target.value)} />
+              <Label htmlFor="bio">{t("aboutYou")}</Label>
+              <Textarea id="bio" placeholder={t("aboutPlaceholder")} value={bio} onChange={(e) => setBio(e.target.value)} />
             </div>
             {error && (
               <div className="text-sm text-destructive">{error}</div>
             )}
             <div className="flex gap-3">
-              <Button variant="outline" onClick={() => setStep(1)} className="w-1/3">رجوع</Button>
+              <Button variant="outline" onClick={() => setStep(1)} className="w-1/3">{t("back")}</Button>
               <Button onClick={handleCompleteProfile} disabled={saving} className="w-2/3">
-                {saving ? "جاري الحفظ..." : "إنشاء حسابك"}
+                {saving ? t("creating") : t("createYourAccount")}
               </Button>
             </div>
           </div>
         )}
 
         <div className={`text-center text-sm ${isRtl ? 'rtl' : ''}`}>
-          <span className="text-muted-foreground">لديك حساب بالفعل؟ </span>
+          <span className="text-muted-foreground">{t("haveAccountQuestion")}</span>
           <Link to="/login" className="text-primary hover:underline">
-            سجل دخول
+            {t("loginNow")}
           </Link>
         </div>
       </CardContent>
@@ -252,21 +252,21 @@ export function RegisterForm() {
             <div className="w-full border-t"></div>
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-card px-2 text-muted-foreground">أو</span>
+            <span className="bg-card px-2 text-muted-foreground">{t("or")}</span>
           </div>
         </div>
         
         <div className="grid grid-cols-2 gap-4">
           <Button variant="outline" disabled className="w-full">
-            فيسبوك
+            {t("facebook")}
           </Button>
           <Button variant="outline" disabled className="w-full">
-            جوجل
+            {t("google")}
           </Button>
         </div>
         
         <div className={`text-center text-xs text-muted-foreground ${isRtl ? 'rtl' : ''}`}>
-          بالتسجيل، أنت توافق على شروط الاستخدام وسياسة الخصوصية الخاصة بنا.
+          {t("agreeNote")}
         </div>
       </CardFooter>
     </Card>

@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "@/contexts/ThemeContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate, Link } from "react-router-dom";
@@ -14,6 +15,7 @@ export function LoginForm() {
   const { login, loading } = useAuth();
   const navigate = useNavigate();
   const { theme } = useTheme();
+  const { t, isRtl } = useTranslation();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -32,7 +34,7 @@ export function LoginForm() {
     setError("");
     
     if (!identifier.trim() || !password.trim()) {
-      setError("يرجى ملء جميع الحقول");
+      setError(t("fillAllFields"));
       return;
     }
     
@@ -49,7 +51,7 @@ export function LoginForm() {
         navigate("/");
       }
     } catch (err) {
-      setError("فشل تسجيل الدخول، يرجى التحقق من اسم المستخدم وكلمة المرور");
+      setError(t("loginFailed"));
     }
   };
 
@@ -66,9 +68,9 @@ export function LoginForm() {
       const redirectTo = `${window.location.origin}/login`;
       const { error: resetErr } = await supabase.auth.resetPasswordForEmail(identifier, { redirectTo });
       if (resetErr) throw resetErr;
-      setResetMessage("تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني");
+      setResetMessage(t("resetLinkSent"));
     } catch (e) {
-      setResetError("تعذر إرسال رابط الاستعادة. حاول مرة أخرى لاحقًا");
+      setResetError(t("resetLinkFailed"));
     } finally {
       setResetLoading(false);
     }
@@ -78,7 +80,7 @@ export function LoginForm() {
     setDialogError("");
     setDialogMessage("");
     if (!dialogEmail || !dialogEmail.includes('@')) {
-      setDialogError("يرجى إدخال بريد إلكتروني صالح");
+      setDialogError(t("invalidEmail"));
       return;
     }
     try {
@@ -86,9 +88,9 @@ export function LoginForm() {
       const redirectTo = `${window.location.origin}/login`;
       const { error: resetErr } = await supabase.auth.resetPasswordForEmail(dialogEmail, { redirectTo });
       if (resetErr) throw resetErr;
-      setDialogMessage("تم إرسال رابط إعادة تعيين كلمة المرور");
+      setDialogMessage(t("resetLinkSent"));
     } catch (e) {
-      setDialogError("حدث خطأ أثناء الإرسال. حاول لاحقًا");
+      setDialogError(t("resetLinkFailed"));
     } finally {
       setDialogLoading(false);
     }
@@ -96,47 +98,47 @@ export function LoginForm() {
 
   return (
     <>
-    <Card className="w-full max-w-md mx-auto py-16 border border-border/40 bg-[rgba(217,217,217,0.01)] backdrop-blur-[20px] rounded-[24px] shadow-[inset_0px_10px_20px_rgba(115,71,146,0.25),_inset_0px_-5px_15px_rgba(0,0,0,0.4)]">
+    <Card className="w-full max-w-2xl mx-auto py-8 border border-border/40 bg-[rgba(217,217,217,0.01)] backdrop-blur-[20px] rounded-[24px] shadow-[inset_0px_10px_20px_rgba(115,71,146,0.25),_inset_0px_-5px_15px_rgba(0,0,0,0.4)]">
       <CardHeader className="space-y-3">
         <div className="w-full flex justify-center mb-1">
-          <img src={theme === 'dark' ? '/assets/logo.png' : '/assets/logolight.png'} alt="Art Space" className="h-10" />
+          <img src={theme === 'dark' ? '/assets/logo.png' : '/assets/logolight.png'} alt="Art Space" className="h-16" />
         </div>
-        <CardTitle className="text-2xl font-display text-center">تسجيل الدخول</CardTitle>
-        <CardDescription className="text-center">
-          أدخل بيانات حسابك للوصول لمنصة آرت سبيس
+        <CardTitle className={`text-2xl font-display text-center ${isRtl ? 'rtl' : ''}`}>{t("loginTitle")}</CardTitle>
+        <CardDescription className={`text-center ${isRtl ? 'rtl' : ''}`}>
+          {t("loginDesc")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="identifier">البريد الإلكتروني أو اسم المستخدم</Label>
+            <Label htmlFor="identifier">{t("identifierLabel")}</Label>
             <Input
               id="identifier"
-              placeholder="أدخل البريد الإلكتروني أو اسم المستخدم"
+              placeholder={t("identifierPlaceholder")}
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               required
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">كلمة المرور</Label>
+            <Label htmlFor="password">{t("passwordLabel")}</Label>
             <Input
               id="password"
               type="password"
-              placeholder="أدخل كلمة المرور"
+              placeholder={t("passwordPlaceholder")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
             <div className="text-sm flex items-center gap-2">
-              <span className="text-muted-foreground">هل نسيت كلمة المرور؟</span>
+              <span className="text-muted-foreground">{t("forgotPassword")}</span>
               <button
                 type="button"
                 onClick={handleResetPassword}
                 disabled={resetLoading}
                 className="text-primary hover:underline dark:text-white disabled:opacity-50"
               >
-                {resetLoading ? "جاري الإرسال..." : "أرسل رابط الاستعادة"}
+                {resetLoading ? t("sending") : t("sendResetLink")}
               </button>
             </div>
             {resetMessage && (
@@ -156,14 +158,14 @@ export function LoginForm() {
             className="w-full"
             disabled={loading}
           >
-            {loading ? "جاري تسجيل الدخول..." : "تسجيل الدخول"}
+            {loading ? t("loggingIn") : t("loginButton")}
           </Button>
         </form>
         
         <div className="text-center text-sm">
-          <span className="text-muted-foreground">ليس لديك حساب؟ </span>
+          <span className="text-muted-foreground">{t("noAccountQuestion")}</span>
           <Link to="/register" className="text-primary hover:underline">
-            سجل الآن
+            {t("registerNow")}
           </Link>
         </div>
       </CardContent>
@@ -173,16 +175,16 @@ export function LoginForm() {
             <div className="w-full border-t"></div>
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-card px-2 text-muted-foreground">أو</span>
+            <span className="bg-card px-2 text-muted-foreground">{t("or")}</span>
           </div>
         </div>
         
         <div className="grid grid-cols-2 gap-4">
           <Button variant="outline" disabled className="w-full">
-            فيسبوك
+            {t("facebook")}
           </Button>
           <Button variant="outline" disabled className="w-full">
-            جوجل
+            {t("google")}
           </Button>
         </div>
       </CardFooter>
@@ -190,22 +192,22 @@ export function LoginForm() {
     <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
       <DialogContent className="rounded-[24px] border border-border/40 bg-[rgba(217,217,217,0.06)] backdrop-blur-[20px] shadow-[inset_0px_10px_20px_rgba(115,71,146,0.25),_inset_0px_-5px_15px_rgba(0,0,0,0.4)]">
         <DialogHeader>
-          <DialogTitle>إعادة تعيين كلمة المرور</DialogTitle>
+          <DialogTitle>{t("dialogTitleReset")}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">أدخل بريدك الإلكتروني لإرسال رابط الاستعادة.</p>
+          <p className="text-sm text-muted-foreground">{t("dialogInstructionReset")}</p>
           <Input
             type="email"
-            placeholder="example@email.com"
+            placeholder={t("emailPlaceholder")}
             value={dialogEmail}
             onChange={(e) => setDialogEmail(e.target.value)}
           />
           {dialogError && <div className="text-xs text-destructive">{dialogError}</div>}
           {dialogMessage && <div className="text-xs text-emerald-500">{dialogMessage}</div>}
           <div className="flex gap-2 justify-end pt-2">
-            <Button variant="outline" onClick={() => setShowResetDialog(false)}>إلغاء</Button>
+            <Button variant="outline" onClick={() => setShowResetDialog(false)}>{t("cancel")}</Button>
             <Button onClick={handleDialogReset} disabled={dialogLoading}>
-              {dialogLoading ? "جاري الإرسال..." : "إرسال الرابط"}
+              {dialogLoading ? t("sending") : t("sendLink")}
             </Button>
           </div>
         </div>

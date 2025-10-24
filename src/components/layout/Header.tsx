@@ -1,6 +1,5 @@
 import { MobileMenu } from "./header/MobileMenu";
 import { Logo } from "./header/Logo";
-import { HeaderNav } from "./header/HeaderNav";
 import { UserMenu } from "./header/UserMenu";
 import { DesktopActions } from "./header/DesktopActions";
 import { useTranslation } from "@/hooks/use-translation";
@@ -22,7 +21,7 @@ export function Header() {
     
     return (
       <>
-      <div className={`flex items-center justify-between relative`}>
+      <div className={`flex items-center justify-between`}>
         <div className="flex">
         {!isHome && (
           <button 
@@ -59,7 +58,6 @@ export function Header() {
         <div className={`flex items-center gap-2 ${isRtl ? 'ml-auto' : 'mr-auto'}`}>
           <Logo /> <Link to="/" className={`hidden sm:block ${isRtl ? 'ml-4' : 'mr-4'}`}>{t('spaceArt')}</Link>
         </div>
-          <HeaderNav />
         <div className="flex items-center gap-2">
           <DesktopActions />
           <UserMenu />

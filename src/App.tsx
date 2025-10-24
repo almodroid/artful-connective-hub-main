@@ -34,6 +34,8 @@ import SpaceAI from "./pages/SpaceAI";
 import About from "@/pages/About";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsAndConditions from "@/pages/TermsAndConditions";
+import Notifications from "@/pages/Notifications";
+import Bookmarks from "@/pages/Bookmarks";
 
 // Create a new query client instance
 const queryClient = new QueryClient();
@@ -66,6 +68,8 @@ function App() {
                   <Route path="/about" element={<About />} />
                   <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                   <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+                  <Route path="/notifications" element={<Notifications />} />
+                  <Route path="/bookmarks" element={<Bookmarks />} />
                   
                   {/* Admin Routes */}
                   <Route path="/admin" element={<Admin />} />

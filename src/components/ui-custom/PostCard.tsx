@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
-import { Heart, MessageCircle, Share2, UserPlus, UserMinus, MoreVertical, Edit, Trash2, Flag } from "lucide-react";
+import { Heart, MessageCircle, Share2, UserPlus, UserMinus, MoreVertical, Edit, Trash2, Flag, Bookmark } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,6 +15,7 @@ import { ShareModal } from "./ShareModal";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import type { TablesInsert } from '@/integrations/supabase/types';
+import { bookmarkService } from "@/services/bookmark.service";
 
 export interface Post {
   id: string;
@@ -60,8 +61,48 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [reportReason, setReportReason] = useState("");
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
   const isOwner = isAuthenticated && user?.id === post.user.id;
   const canEdit = isOwner && (Date.now() - new Date(post.createdAt).getTime() < 60000);
+
+  const handleBookmark = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!isAuthenticated || !user?.id) {
+      toast.error(t("loginToBookmark"));
+      return;
+    }
+
+    try {
+      if (isBookmarked) {
+        await bookmarkService.removeBookmark(user.id, post.id);
+        toast.success(t("bookmarkRemoved"));
+      } else {
+        await bookmarkService.addBookmark(user.id, post.id);
+        toast.success(t("bookmarkAdded"));
+      }
+      setIsBookmarked(!isBookmarked);
+    } catch (error) {
+      console.error("Error toggling bookmark:", error);
+      toast.error(t("bookmarkError"));
+    }
+  };
+
+  useEffect(() => {
+    const checkBookmarkStatus = async () => {
+      if (isAuthenticated && user?.id && post.id) {
+        try {
+          const bookmarked = await bookmarkService.isBookmarked(user.id, post.id);
+          setIsBookmarked(bookmarked);
+        } catch (error) {
+          console.error("Error checking bookmark status:", error);
+          toast.error(t("bookmarkError"));
+        }
+      }
+    };
+    checkBookmarkStatus();
+  }, [isAuthenticated, user?.id, post.id]);
 
   useEffect(() => {
     const checkLikeAndFollowStatus = async () => {
@@ -314,7 +355,7 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
           <Link to={`/profile/${post.user.username}`}>
             <Avatar className="h-10 w-10">
               <AvatarImage src={post.user.avatar} alt={post.user.displayName} />
-              <AvatarFallback>{post.user.displayName[0]}</AvatarFallback>
+              <AvatarFallback>{post.user.displayName?.[0] || ''}</AvatarFallback>
             </Avatar>
           </Link>
           <div>
@@ -507,7 +548,7 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
                   key={index}
                   src={image}
                   alt=""
-                  className={`w-full ${post.images?.length === 1 ? 'h-96' : 'h-64'} object-cover rounded-md`}
+                  className="w-full aspect-w-16 aspect-h-9 object-cover rounded-md"
                   onContextMenu={(e) => e.preventDefault()}
                   draggable={false}
                 />
@@ -612,6 +653,18 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
         >
           <Share2 className="h-4 w-4" />
         </Button>
+
+        {isAuthenticated && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-2"
+            onClick={handleBookmark}
+          >
+            <Bookmark className={`h-4 w-4 ${isBookmarked ? "fill-primary text-primary" : ""}`} />
+          </Button>
+        )}
+
         {post.tags && post.tags.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {post.tags.map((tag) => (

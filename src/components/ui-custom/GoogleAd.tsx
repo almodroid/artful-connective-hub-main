@@ -1,12 +1,13 @@
 import { useEffect, useRef } from 'react';
 
 interface GoogleAdProps {
-  slot: string;
+  slot?: string;
   publisherId: string;
   adFormat?: 'auto' | 'rectangle' | 'video';
   customScript?: string;
   style?: React.CSSProperties;
   className?: string;
+  adSlotId?: string;
 }
 
 export const GoogleAd: React.FC<GoogleAdProps> = ({
@@ -16,6 +17,7 @@ export const GoogleAd: React.FC<GoogleAdProps> = ({
   customScript,
   style,
   className,
+  adSlotId,
 }) => {
   const adRef = useRef<HTMLDivElement>(null);
 
@@ -30,7 +32,9 @@ export const GoogleAd: React.FC<GoogleAdProps> = ({
         script.innerHTML = customScript;
         document.body.appendChild(script);
       }
-    } else if (!document.querySelector('script[src*="pagead2.googlesyndication.com"]')) {
+    }
+    // The original block had an 'else if' here, but the instruction implies adding adSlotId to the props and changing data-ad-slot. The 'else if' condition for script injection should remain as is.
+    else if (!document.querySelector('script[src*="pagead2.googlesyndication.com"]')) {
       const script = document.createElement('script');
       script.async = true;
       script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${publisherId}`;
@@ -63,10 +67,10 @@ export const GoogleAd: React.FC<GoogleAdProps> = ({
         className="adsbygoogle"
         style={adStyle}
         data-ad-client={publisherId}
-        data-ad-slot={slot}
+        data-ad-slot={adSlotId || slot}
         data-ad-format={adFormat}
         data-ad-layout={adLayout}
       />
     </div>
   );
-}; 
+};

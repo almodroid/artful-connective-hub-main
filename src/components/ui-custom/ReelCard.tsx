@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useToast } from "@/components/ui/use-toast";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
@@ -68,8 +69,7 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
   const [isMuted, setIsMuted] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
-  const [reportReason, setReportReason] = useState("");
-  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+  
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Heart animation states
@@ -262,6 +262,27 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
     }
   };
   
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const { reportReel } = useReels();
+
+  const handleReportReel = async () => {
+    if (!reportReason.trim()) {
+      toast.error(t('reportReasonRequired'));
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const success = await reportReel(reel.id, reportReason);
+      if (success) {
+        setIsReportDialogOpen(false);
+        setReportReason("");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleDeleteReel = async () => {
     if (!isAuthenticated || !isOwner) return;
     

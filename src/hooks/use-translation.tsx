@@ -40,6 +40,8 @@ const translations = {
     noResults: "No results found",
     seeAll: "See all",
     spaceArt: "Art Space",
+    spaceAI: "Space AI",
+    bookmarks: "Bookmarks",
     markAllAsRead: "Mark all as read",
     Report: "Report",
     Block: "Block",
@@ -124,6 +126,10 @@ const translations = {
     createNewPost: "Create New Post",
     enterTitle: "Enter Post Title",
     enterDescription: "Enter Post Description",
+    loginToBookmark: "Please login to bookmark posts",
+    bookmarkRemoved: "Bookmark removed",
+    bookmarkAdded: "Bookmark added",
+    bookmarkError: "Error toggling bookmark",
     
     // Project details
     views: "Views",
@@ -310,6 +316,8 @@ const translations = {
     noResults: "لا توجد نتائج",
     seeAll: "عرض الكل",
     spaceArt: " اّرت سبيس",
+    spaceAI: " مساعد سبيس الذكي",
+    bookmarks: "الاشارات المرجعية",
     markAllAsRead: "تحديد الكل كمقروء",
     all: "الكل",
     new: "جديد",
@@ -411,6 +419,7 @@ const translations = {
     editProject: "تعديل المشروع",
     deleteProject: "حذف المشروع",
     
+    
     // Project details
     views: "مشاهدة",
     like: "إعجاب",
@@ -419,6 +428,10 @@ const translations = {
     visitProject: "زيارة المشروع",
     projectContent: "محتوى المشروع",
     backToProjects: "العودة إلى المشاريع",
+    loginToBookmark: "الرجاء تسجيل الدخول لوضع إشارة مرجعية على المشاركات",
+    bookmarkRemoved: "تمت إزالة الإشارة المرجعية",
+    bookmarkAdded: "تمت إضافة الإشارة المرجعية",
+    bookmarkError: "خطأ في تبديل الإشارة المرجعية",
     
     // Projects page
     projectsPage: "المشاريع",

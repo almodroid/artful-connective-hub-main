@@ -1,23 +1,34 @@
 
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import { Header } from "./Header";
 import { Footer } from "./Footer";
 import { BottomBar } from "./BottomBar";
 import { useTranslation } from "@/hooks/use-translation";
+import { LeftSidebar } from "./LeftSidebar";
+import { RightSidebar } from "./RightSidebar";
+import { Header } from "./Header";
+import { useTheme } from "@/contexts/ThemeContext";
+import { cn } from "@/lib/utils";
 
 interface LayoutProps {
   children: React.ReactNode;
   hideFooter?: boolean;
   fullBleed?: boolean;
+  hideSidebars?: boolean;
+  forceDarkMode?: boolean;
+  hideHeader?: boolean;
 }
 
-export function Layout({ children, hideFooter = false, fullBleed = false }: LayoutProps) {
+export function Layout({ children, hideFooter = false, fullBleed = false, hideSidebars = false, forceDarkMode = false, hideHeader = false }: LayoutProps) {
   const location = useLocation();
   const { isRtl } = useTranslation();
-  
-  // Scroll to top on route change
+  const { setTheme } = useTheme();
+
   useEffect(() => {
+    if (forceDarkMode) {
+      setTheme('dark');
+    }
+    // Scroll to top on route change
     window.scrollTo(0, 0);
     
     // Update the HTML dir attribute for global RTL/LTR
@@ -29,16 +40,18 @@ export function Layout({ children, hideFooter = false, fullBleed = false }: Layo
       document.documentElement.classList.add("ltr");
       document.documentElement.classList.remove("rtl");
     }
-  }, [location.pathname, isRtl]);
+  }, [location.pathname, isRtl, forceDarkMode, setTheme]);
 
   return (
     <div className="flex min-h-screen flex-col" dir={isRtl ? "rtl" : "ltr"}>
-      <div className=" md:block md:mb-12 ">
-        <Header />
+      {!hideHeader && <Header />}
+      <div className={cn("flex min-h-screen", !hideHeader && "mt-16")}>
+        {!hideSidebars && <LeftSidebar />}
+        <main className={cn("flex-1", (fullBleed && hideHeader) ? "py-16" : "", !fullBleed && !hideSidebars && "py-4 container max-w-screen-xl px-2 sm:px-3 lg:px-4")}>
+          {children}
+        </main>
+        {!hideSidebars && <RightSidebar />}
       </div>
-      <main className={fullBleed ? "flex-1" : "flex-1 container px-4 md:px-8 py-6 pb-24 md:py-12"}>
-        {children}
-      </main>
       {/* Only show Footer on md and up */}
       {!hideFooter && <div className="hidden md:block"><Footer /></div>}
       <BottomBar />

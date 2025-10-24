@@ -8,6 +8,7 @@ export interface GoogleAdsSettings {
   adsense_reel_slot: string;
   adsense_project_slot: string;
   adsense_script: string;
+  homepage_feed: string;
 }
 
 export function useSettings() {
@@ -30,6 +31,7 @@ export function useSettings() {
             'adsense_reel_slot',
             'adsense_project_slot',
             'adsense_script',
+            'homepage_feed',
           ]);
         if (error) throw error;
         const settingsObj = Object.fromEntries((data || []).map((s: any) => [s.key, s.value]));
@@ -40,6 +42,7 @@ export function useSettings() {
           adsense_reel_slot: settingsObj.adsense_reel_slot || '',
           adsense_project_slot: settingsObj.adsense_project_slot || '',
           adsense_script: settingsObj.adsense_script || '',
+          homepage_feed: settingsObj.homepage_feed || '',
         });
       } catch (err: any) {
         setError(err.message || 'Error fetching settings');
@@ -51,4 +54,4 @@ export function useSettings() {
   }, []);
 
   return { adsSettings, loading, error };
-} 
+}

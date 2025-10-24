@@ -69,6 +69,7 @@ const settingsSchema = z.object({
   adsense_reel_slot: z.string().optional(),
   adsense_project_slot: z.string().optional(),
   adsense_script: z.string().optional(),
+  homepage_feed: z.string().optional(),
 });
 
 type SettingsFormValues = z.infer<typeof settingsSchema>;
@@ -118,6 +119,7 @@ export function SettingsManagement() {
       adsense_reel_slot: "",
       adsense_project_slot: "",
       adsense_script: "",
+      homepage_feed: "",
     },
   });
   
@@ -176,6 +178,7 @@ export function SettingsManagement() {
             { key: 'adsense_reel_slot', value: '', description: 'Ad Slot ID for Reels', category: 'ads' },
             { key: 'adsense_project_slot', value: '', description: 'Ad Slot ID for Project Details', category: 'ads' },
             { key: 'adsense_script', value: '', description: 'Custom AdSense Script', category: 'ads' },
+            { key: 'homepage_feed', value: '', description: 'Ad Slot ID for Homepage Feed', category: 'ads' },
           ];
           
           const { error: insertError } = await supabase
@@ -308,6 +311,7 @@ export function SettingsManagement() {
         adsense_reel_slot: settings.adsense_reel_slot || "",
         adsense_project_slot: settings.adsense_project_slot || "",
         adsense_script: settings.adsense_script || "",
+        homepage_feed: settings.homepage_feed || "",
       });
     }
   }, [settings, isLoading, form]);

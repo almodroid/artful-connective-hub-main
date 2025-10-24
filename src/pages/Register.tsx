@@ -15,8 +15,8 @@ const Register = () => {
   }, [isAuthenticated, loading, navigate]);
 
   return (
-    <Layout hideFooter fullBleed>
-      <div className="min-h-screen w-full bg-[url('/assets/bg.png')] bg-cover bg-center flex items-center justify-center px-0 py-8">
+    <Layout hideFooter fullBleed hideSidebars forceDarkMode={true} hideHeader={true}>
+      <div className="min-h-screen w-full bg-[url('/assets/bg.png')] bg-cover bg-center flex items-center justify-center px-4 sm:px-6 lg:px-8 py-8">
         <div className="w-full max-w-md px-0 md:px-0">
           <RegisterForm />
         </div>

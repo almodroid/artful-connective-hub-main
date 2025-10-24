@@ -15,6 +15,11 @@ export interface Project {
   updated_at: string;
   likes_count?: number;
   is_liked_by_user?: boolean;
+  project_url?: string;
+  github_url?: string;
+  profiles?: { username: string; display_name?: string; avatar_url?: string };
+  avatar_url?: {avatar_url: string};
+  display_name?: {display_name: string};
 }
 
 export interface CreateProjectInput {
@@ -56,4 +61,15 @@ export interface ProjectLike {
   project_id: string;
   user_id: string;
   created_at: string;
+}
+
+export interface ProjectCardType extends Project {
+  comments: number;
+  likes: number;
+  user: {
+    id: string;
+    username: string;
+    displayName: string;
+    avatar: string;
+  };
 }

@@ -28,8 +28,8 @@ export function MobileMenu() {
       icon: <PlusSquare className="h-5 w-5 mr-2" />
     },
     {
-      label: "Arter AI",
-      href: "/arter",
+      label: t("spaceAI"),
+      href: "/space-ai",
       icon: <Wand className="h-5 w-5 mr-2" />
     }
   ];

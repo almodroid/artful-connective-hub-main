@@ -26,6 +26,7 @@ interface AuthContextType {
   logout: () => void;
   isAuthenticated: boolean;
   updateAvatar: (file: File) => Promise<void>;
+  signInWithProvider: (provider: 'google' | 'facebook' | 'adobe') => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -56,7 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         // Get the current session from Supabase
         const { data: { session }, error } = await supabase.auth.getSession();
-        
+
         if (error) {
           console.error('Error getting session:', error);
           if (mounted) {
@@ -162,12 +163,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateAvatar = async (file: File) => {
     if (!user) return;
-    
+
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}-avatar.${fileExt}`;
       const filePath = `avatars/${fileName}`;
-      
+
       // Upload to Supabase storage
       const { error: uploadError } = await supabase.storage
         .from('media')
@@ -175,31 +176,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           cacheControl: '3600',
           upsert: true
         });
-      
+
       if (uploadError) throw uploadError;
-      
+
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('media')
         .getPublicUrl(filePath);
-      
+
       // Update profile with new avatar URL
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ avatar_url: publicUrl })
         .eq('id', user.id);
-      
+
       if (updateError) throw updateError;
-      
+
       // Update local state and clear cache
       setUser(prev => prev ? {
         ...prev,
         avatar: publicUrl
       } : null);
-      
+
       // Clear cache for this user to ensure fresh data
       userProfileCache.delete(user.id);
-      
+
       toast.success('Avatar updated successfully');
     } catch (error) {
       console.error('Error updating avatar:', error);
@@ -230,9 +231,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .select('*')
       .eq('id', supabaseUser.id)
       .single();
-    
+
     let mappedUser: User;
-    
+
     if (profileError) {
       console.error('Failed to fetch profile for user:', profileError);
       // Fall back to creating a user object from auth data only
@@ -294,12 +295,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           email: "user@example.com"
         }
       ];
-      
-      const mockUser = MOCK_USERS.find(u => 
-        (u.username === email && u.password === password) || 
+
+      const mockUser = MOCK_USERS.find(u =>
+        (u.username === email && u.password === password) ||
         (u.email === email && u.password === password)
       );
-      
+
       if (mockUser) {
         const { password, ...userWithoutPassword } = mockUser;
         setUser(userWithoutPassword);
@@ -307,17 +308,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         toast.success("تم تسجيل الدخول بنجاح");
         return;
       }
-      
+
       // If not a mock user, use Supabase auth
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.includes('@') ? email : `${email}@example.com`,
         password: password,
       });
-      
+
       if (error) {
         throw error;
       }
-      
+
       if (data.user) {
         try {
           const mappedUser = await mapSupabaseUser(data.user);
@@ -351,12 +352,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         { username: "admin", email: "admin@example.com" },
         { username: "user", email: "user@example.com" }
       ];
-      
+
       if (MOCK_USERS.some(u => u.username === email || u.email === email)) {
         toast.error("اسم المستخدم أو البريد الإلكتروني مستخدم بالفعل");
         throw new Error("Email or username already exists");
       }
-      
+
       // Register with Supabase
       const { data, error } = await supabase.auth.signUp({
         email: email.includes('@') ? email : `${email}@example.com`,
@@ -368,13 +369,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
       });
-      
+
       if (error) {
         throw error;
       }
-      
+
       toast.success("تم إنشاء الحساب بنجاح");
-      
+
       if (data.user) {
         try {
           const mappedUser = await mapSupabaseUser(data.user);
@@ -397,10 +398,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const signInWithProvider = async (provider: 'google' | 'facebook' | 'adobe') => {
+    try {
+      if (provider === 'adobe') {
+        toast.error("Adobe login is currently being configured. Please use Google or Facebook for now.");
+        return;
+      }
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: provider as any,
+        options: {
+          redirectTo: `${window.location.origin}/`,
+        },
+      });
+
+      if (error) throw error;
+    } catch (error: any) {
+      console.error(`${provider} login error:`, error);
+      toast.error(`خطأ في تسجيل الدخول عبر ${provider === 'google' ? 'جوجل' : 'فيسبوك'}`);
+    }
+  };
+
   const logout = async () => {
     // Sign out from Supabase
     await supabase.auth.signOut();
-    
+
     // Clear local state and cache
     setUser(null);
     localStorage.removeItem('artspace_user');
@@ -409,14 +431,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      loading: loading || !isInitialized, 
-      login, 
-      register, 
+    <AuthContext.Provider value={{
+      user,
+      loading: loading || !isInitialized,
+      login,
+      register,
       logout,
-      updateAvatar, 
-      isAuthenticated: !!user && isInitialized 
+      updateAvatar,
+      signInWithProvider,
+      isAuthenticated: !!user && isInitialized
     }}>
       {children}
     </AuthContext.Provider>

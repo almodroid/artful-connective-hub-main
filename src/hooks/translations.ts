@@ -8,6 +8,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     or: "Or",
     facebook: "Facebook",
     google: "Google",
+    adobe: "Adobe",
 
     // Auth - shared
     email: "Email",
@@ -78,6 +79,7 @@ export const translations: Record<Language, Record<TranslationKey, string>> = {
     or: "أو",
     facebook: "فيسبوك",
     google: "جوجل",
+    adobe: "أدوبي",
 
     // Auth - shared
     email: "البريد الإلكتروني",

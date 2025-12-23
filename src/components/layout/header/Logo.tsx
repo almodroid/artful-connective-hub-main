@@ -7,12 +7,12 @@ import { useTheme } from "@/contexts/ThemeContext";
 export function Logo({ className = "" }: { className?: string }) {
   const { isRtl } = useTranslation();
   const { theme } = useTheme();
-  
+
   return (
     <Link to="/" className={`sm:block flex justify-center ${isRtl ? 'sm:ml-4' : 'sm:mr-4'} mx-auto`}>
-      <img 
-        src={theme === 'light' ? '/assets/logolight.png' : '/assets/logo.png'}
-        alt="Artful Connective Hub Logo" 
+      <img
+        src='/assets/logo.png'
+        alt="Artful Connective Hub Logo"
         className={`h-12 w-auto object-contain ${className}`}
       />
     </Link>

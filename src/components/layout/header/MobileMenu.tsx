@@ -4,14 +4,13 @@ import { Link } from "react-router-dom";
 import { Menu, X, Home, Search, PlusSquare, Wand } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { ThemeToggle } from "../ThemeToggle";
 import { LanguageSwitcher } from "../LanguageSwitcher";
 import { useTranslation } from "@/hooks/use-translation";
 
 export function MobileMenu() {
   const { t, isRtl } = useTranslation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  
+
   const navItems = [
     {
       label: t("home"),
@@ -34,7 +33,7 @@ export function MobileMenu() {
       icon: <Wand className="h-5 w-5 mr-2" />
     }
   ];
-  
+
   return (
     <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
       <SheetTrigger asChild className="sm:hidden">
@@ -46,15 +45,15 @@ export function MobileMenu() {
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between py-4">
             <span className="text-lg font-medium">القائمة</span>
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               size="icon"
               onClick={() => setIsMenuOpen(false)}
             >
               <X className="h-5 w-5" />
             </Button>
           </div>
-          
+
           <nav className="flex flex-col gap-2">
             {navItems.map((item) => (
               <Button
@@ -71,10 +70,9 @@ export function MobileMenu() {
               </Button>
             ))}
           </nav>
-          
+
           <div className="mt-auto py-4">
             <div className="flex items-center gap-2">
-              <ThemeToggle />
               <LanguageSwitcher />
             </div>
           </div>

@@ -5,11 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { 
-  Facebook, 
-  Twitter, 
-  Linkedin, 
-  Mail, 
+import {
+  Facebook,
+  Twitter,
+  Linkedin,
+  Mail,
   Link as LinkIcon,
   Copy,
   Check,
@@ -120,11 +120,11 @@ export function ShareModal({ isOpen, onClose, url, title, description, type, aut
       updateMetaTag('og:description', getShareDescription());
       updateMetaTag('og:url', shareUrl);
       updateMetaTag('og:type', 'website');
-      
+
       // Use post image if available, otherwise use Art Space logo
-      const shareImage = image || (theme === 'light' ? '/assets/logolight.png' : '/assets/logo.png');
+      const shareImage = image || '/assets/logo.png';
       updateMetaTag('og:image', shareImage);
-      
+
       // Twitter Card metadata
       updateMetaTag('twitter:card', 'summary_large_image');
       updateMetaTag('twitter:title', getShareText());
@@ -144,9 +144,9 @@ export function ShareModal({ isOpen, onClose, url, title, description, type, aut
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <div className="flex items-center gap-2 mb-2">
-            <img 
-              src={theme === 'light' ? '/assets/logolight.png' : '/assets/logo.png'}
-              alt="Artful Connective Hub Logo" 
+            <img
+              src='/assets/logo.png'
+              alt="Artful Connective Hub Logo"
               className="h-8 w-auto object-contain"
             />
             <DialogTitle>
@@ -233,7 +233,7 @@ export function ShareModal({ isOpen, onClose, url, title, description, type, aut
                 onCheckedChange={(checked) => setIncludeAttribution(checked as boolean)}
               />
               <Label htmlFor="attribution">
-                {isRtl 
+                {isRtl
                   ? `إضافة إشارة إلى ${author.displayName}`
                   : `Add attribution to ${author.displayName}`
                 }
@@ -274,9 +274,9 @@ export function ShareModal({ isOpen, onClose, url, title, description, type, aut
 
           {/* Art Space Branding */}
           <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mt-4">
-            <img 
-              src={theme === 'light' ? '/assets/logolight.png' : '/assets/logo.png'}
-              alt="Art Space Logo" 
+            <img
+              src='/assets/logo.png'
+              alt="Art Space Logo"
               className="h-4 w-auto object-contain"
             />
             <span>{isRtl ? 'تمت المشاركة عبر ارت سبيس' : 'Shared via Art Space'}</span>

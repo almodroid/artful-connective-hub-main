@@ -59,6 +59,7 @@ function App() {
                   <Route path="/projects/:id" element={<ProjectDetail />} />
                   <Route path="/space-ai" element={<SpaceAI />} />
                   <Route path="/post/:postId" element={<Post />} />
+                  <Route path="/reels" element={<Reels />} />
                   <Route path="/reel/:id" element={<Reel />} />
                   <Route path="/reels/:reelId" element={<Reel />} />
                   <Route path="/create" element={<CreatePost />} />

@@ -95,35 +95,35 @@ export function RightSidebar() {
             <div className="flex flex-col space-y-2 items-start">
               <Link to={`/profile/${profileData.username}`} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
                 <User className="h-4 w-4" />
-                {t("Visit Profile")}
+                {t("Visit_Profile")}
               </Link>
               <Link to="/edit-profile" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
                 <Settings className="h-4 w-4" />
-                {t("Edit Profile")}
+                {t("Edit_Profile")}
               </Link>
             </div>
           </CardContent>
         </Card>
       )}
 
-      <Card className="relative overflow-hidden rounded-lg p-8 pb-16">
+      <Card className="relative overflow-hidden rounded-lg p-8 pb-32 spaceai">
         <div className="justify-center flex m-4">
           <svg width="21" height="21" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M10.5 0C4.69831 0 0 4.69831 0 10.5C0 16.3017 4.69831 21 10.5 21C16.3017 21 21 16.3017 21 10.5C21 4.69831 16.3017 0 10.5 0ZM13.1339 19.3912C13.9098 13.7176 5.60949 10.1939 1.73695 12.2583C6.27153 8.81288 11.4112 2.31356 9.21864 0.405763C10.5214 1.34542 11.6959 2.44881 12.9986 3.38847C14.7712 4.66983 16.679 5.75186 18.4302 7.05458C20.4803 8.57797 20.5231 8.63492 20.7651 8.97661C20.6868 8.91254 20.5871 8.81288 20.4946 8.79153C20.4447 8.77729 15.2054 9.49627 13.1268 19.3983L13.1339 19.3912Z" fill="white" />
           </svg>
+          
         </div>
         <CardHeader className="relative z-10 p-0">
-          <CardTitle className="text-sm font-bold">مساعدك الذكي في عالم الفن والإبداع.</CardTitle>
-          <CardDescription className="text-purple-200">اسأله، خذ رأيه، وخله يساعدك</CardDescription>
+          <CardTitle className="text-sm font-bold">{t("spaceCard")}</CardTitle>{t("spaceCardDesc")}
         </CardHeader>
         <CardContent className="relative z-10 mt-4 p-0">
-          <Button asChild className="w-full bg-white text-purple-800 hover:bg-gray-100">
-            <Link to="/space-ai">ابدا محادثتك مع سبيس</Link>
+          <Button asChild className="w-full bg-white text-purple-800 hover:bg-gray-100 hover:no-underline">
+            <Link to="/space-ai">{t("spaceCardBtn")}</Link>
           </Button>
 
 
         </CardContent>
-        <svg width="303" height="217" viewBox="0 0 303 217" fill="none" xmlns="http://www.w3.org/2000/svg" className="absolute bottom-0 left-0 w-full h-full">
+        <svg width="303" height="217" viewBox="0 0 303 217" fill="none" xmlns="http://www.w3.org/2000/svg" className="absolute bottom-0 left-0 w-full h-full translate-y-[80px]">
           <g filter="url(#filter0_f_2_39)">
             <path d="M157 138.733C66.934 140.502 -4.26656 20.4287 -63 88.7325C-109.375 142.664 -63 279.733 -63 279.733L361 268.233C361 268.233 422.562 186.814 376.5 138.733C320.286 80.0544 238.244 137.136 157 138.733Z" fill="#6805AF" />
           </g>

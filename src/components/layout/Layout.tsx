@@ -17,9 +17,10 @@ interface LayoutProps {
   hideSidebars?: boolean;
   forceDarkMode?: boolean;
   hideHeader?: boolean;
+  hideBottomBar?: boolean;
 }
 
-export function Layout({ children, hideFooter = false, fullBleed = false, hideSidebars = false, forceDarkMode = false, hideHeader = false }: LayoutProps) {
+export function Layout({ children, hideFooter = false, fullBleed = false, hideSidebars = false, forceDarkMode = false, hideHeader = false, hideBottomBar = false }: LayoutProps) {
   const location = useLocation();
   const { isRtl } = useTranslation();
   const { setTheme } = useTheme();
@@ -47,14 +48,14 @@ export function Layout({ children, hideFooter = false, fullBleed = false, hideSi
       {!hideHeader && <Header />}
       <div className={cn("flex min-h-screen", !hideHeader && "mt-16")}>
         {!hideSidebars && <LeftSidebar />}
-        <main className={cn("flex-1", (fullBleed && hideHeader) ? "py-16" : "", !fullBleed && !hideSidebars && "py-4 container max-w-screen-xl px-2 sm:px-3 lg:px-4")}>
+        <main className={cn("flex-1", (fullBleed && hideHeader && !hideBottomBar) ? "py-16" : "", !fullBleed && !hideSidebars && "py-4 container max-w-screen-xl px-2 sm:px-3 lg:px-4")}>
           {children}
         </main>
         {!hideSidebars && <RightSidebar />}
       </div>
       {/* Only show Footer on md and up */}
       {!hideFooter && <div className="hidden md:block"><Footer /></div>}
-      <BottomBar />
+      {!hideBottomBar && <BottomBar />}
     </div>
   );
 }

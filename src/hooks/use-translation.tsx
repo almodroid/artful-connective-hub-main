@@ -93,6 +93,14 @@ const translations = {
     accountScheduledDeletion: "Your account is scheduled for deletion on",
     restoringAccount: "Restoring account...",
     editProfile: "Edit Profile",
+    Projects: "Projects",
+    Followers: "Followers",
+    Following: "Following",
+    Visit_Profile: "Visit Profile",
+    Edit_Profile: "Edit Profile",
+    spaceCard: "Your smart assistant in the world of art and creativity.",
+    spaceCardDesc:"Ask me, take a look, and let me help you.",
+    spaceCardBtn: "Start Chatting with Space AI",
     
     // Account
     accountSettings: "Account Settings",
@@ -291,8 +299,11 @@ const translations = {
   ar: {
     // Navigation
     home: "الرئيسية",
-    explore: "استكشاف",
+    explore: "تصفح",
     projects: "المشاريع",
+    stars: "نجوم",
+    Meteorites: "نيازك",
+    space: "سبيس",
     notifications: "الإشعارات",
     noNotifications: "لا توجد إشعارات",
     profile: "الملف الشخصي",
@@ -302,6 +313,16 @@ const translations = {
     login: "تسجيل الدخول",
     register: "إنشاء حساب",
     logout: "تسجيل الخروج",
+
+    //profile
+    Projects: "المشاريع",
+    Followers: "متابعين",
+    Following: "متابعون",
+    Visit_Profile: "عرض الملف الشخصي",
+    Edit_Profile: "تعديل الملف الشخصي",
+    spaceCard: "مساعدك الذكي في عالم الفن والإبداع.",
+    spaceCardDesc:"اســـأله، خذ رأيه، وخلــه يســـــاعدك",
+    spaceCardBtn: "ابدأ محادثتك مع سبيس",
     
     // Common
     search: "بحث",
@@ -332,6 +353,8 @@ const translations = {
     Edit: "تعديل",
     Delete: "حذف",
     React: "تفاعل",
+    trends: "الأكثر رواجاً",
+    topProjects: "المشاريع الأكثر تداولاً",
     
     //messages
     Messages: "الرسائل",

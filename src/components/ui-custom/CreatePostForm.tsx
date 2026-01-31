@@ -289,7 +289,7 @@ export function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
                 placeholder={isRtl ? "ماذا يدور في ذهنك؟" : "What's on your mind?"}
                 value={content}
                 onChange={e => setContent(e.target.value)}
-                className="min-h-20 border-none bg-secondary/30 focus-visible:ring-0 resize-none px-4 py-3"
+                className="min-h-20 bg-[#000] text-[#200B2E] placeholder:text-[#200B2E]/60 dark:bg-[#000] dark:text-white dark:placeholder:text-white/60 focus-visible:ring-0 resize-none px-4 py-3"
                 disabled={uploading}
                 dir={isRtl ? "rtl" : "ltr"}
               />

@@ -15,7 +15,7 @@ const Login = () => {
   }, [isAuthenticated, loading, navigate]);
 
   return (
-    <Layout hideFooter fullBleed hideSidebars forceDarkMode={true} hideHeader={true}>
+    <Layout hideFooter fullBleed hideSidebars forceDarkMode={true} hideHeader={true} hideBottomBar={true}>
       <div className="min-h-screen w-full bg-[url('/assets/bg.png')] bg-cover bg-center flex items-center justify-center px-4 sm:px-6 lg:px-8 py-8">
         <div className="w-full max-w-md px-0 md:px-0">
           <LoginForm />

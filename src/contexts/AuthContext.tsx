@@ -26,7 +26,7 @@ interface AuthContextType {
   logout: () => void;
   isAuthenticated: boolean;
   updateAvatar: (file: File) => Promise<void>;
-  signInWithProvider: (provider: 'google' | 'facebook' | 'adobe') => Promise<void>;
+  signInWithProvider: (provider: 'google' | 'facebook' | 'adobe' | 'twitter') => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -235,16 +235,64 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let mappedUser: User;
 
     if (profileError) {
-      console.error('Failed to fetch profile for user:', profileError);
-      // Fall back to creating a user object from auth data only
-      mappedUser = {
-        id: supabaseUser.id,
-        username: supabaseUser.email?.split('@')[0] || 'user',
-        displayName: supabaseUser.user_metadata?.display_name || supabaseUser.email?.split('@')[0] || 'User',
-        avatar: supabaseUser.user_metadata?.avatar_url || `https://i.pravatar.cc/150?u=${supabaseUser.id}`,
-        isAdmin: supabaseUser.email === 'admin@example.com',
-        email: supabaseUser.email || '',
-      };
+      // If profile doesn't exist (PGRST116), create one
+      if (profileError.code === 'PGRST116') {
+        const username = supabaseUser.user_metadata?.username || 
+                        supabaseUser.email?.split('@')[0] + Math.floor(Math.random() * 10000).toString() || 
+                        `user_${supabaseUser.id.substring(0, 8)}`;
+        
+        const newProfile = {
+          id: supabaseUser.id,
+          username: username,
+          display_name: supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.display_name || supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
+          avatar_url: supabaseUser.user_metadata?.avatar_url || supabaseUser.user_metadata?.picture || `https://i.pravatar.cc/150?u=${supabaseUser.id}`,
+          bio: '',
+          location: '',
+          website: '',
+          is_admin: false
+        };
+
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert([newProfile]);
+
+        if (insertError) {
+          console.error('Failed to create profile for user:', insertError);
+          // Fallback to memory object if insertion fails
+          mappedUser = {
+            id: supabaseUser.id,
+            username: newProfile.username,
+            displayName: newProfile.display_name,
+            avatar: newProfile.avatar_url,
+            isAdmin: false,
+            email: supabaseUser.email || '',
+          };
+        } else {
+          // Successfully created profile
+          mappedUser = {
+            id: supabaseUser.id,
+            username: newProfile.username,
+            displayName: newProfile.display_name,
+            avatar: newProfile.avatar_url,
+            isAdmin: false,
+            email: supabaseUser.email || '',
+            bio: '',
+            website: '',
+            location: '',
+          };
+        }
+      } else {
+        console.error('Failed to fetch profile for user:', profileError);
+        // Fall back to creating a user object from auth data only
+        mappedUser = {
+          id: supabaseUser.id,
+          username: supabaseUser.email?.split('@')[0] || 'user',
+          displayName: supabaseUser.user_metadata?.display_name || supabaseUser.email?.split('@')[0] || 'User',
+          avatar: supabaseUser.user_metadata?.avatar_url || `https://i.pravatar.cc/150?u=${supabaseUser.id}`,
+          isAdmin: supabaseUser.email === 'admin@example.com',
+          email: supabaseUser.email || '',
+        };
+      }
     } else {
       // Create user object with combined data from auth and profiles
       mappedUser = {
@@ -398,7 +446,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signInWithProvider = async (provider: 'google' | 'facebook' | 'adobe') => {
+  const signInWithProvider = async (provider: 'google' | 'facebook' | 'adobe' | 'twitter') => {
     try {
       if (provider === 'adobe') {
         toast.error("Adobe login is currently being configured. Please use Google or Facebook for now.");
@@ -415,7 +463,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
     } catch (error: any) {
       console.error(`${provider} login error:`, error);
-      toast.error(`خطأ في تسجيل الدخول عبر ${provider === 'google' ? 'جوجل' : 'فيسبوك'}`);
+      toast.error(`خطأ في تسجيل الدخول عبر ${provider}`);
     }
   };
 

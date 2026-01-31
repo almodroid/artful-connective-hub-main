@@ -55,7 +55,7 @@ export default {
 				}
 			},
 			fontFamily: {
-				sans: ['Cairo', 'sans-serif'],
+				sans: ['IBM Plex Sans Arabic', 'sans-serif'],
 				display: ['Tajawal', 'sans-serif'],
 			},
 			borderRadius: {

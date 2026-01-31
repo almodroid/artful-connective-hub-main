@@ -1,34 +1,10 @@
 import { supabase } from '@/integrations/supabase/client';
-import { Json } from '@/types/supabase';
+import { Database, Json } from '@/integrations/supabase/types';
 import { Project, CreateProjectInput, ProjectDetails } from "@/types/project.types";
 import { toast } from "sonner";
 import { createProjectNotification } from "./notification.service";
-import { Database } from '@/types/supabase';
 
 type ProjectRow = Database['public']['Tables']['projects']['Row'];
-
-// Add a local type for migration compatibility
-type ProjectRowWithImages = {
-  id: string;
-  title: string;
-  description: string;
-  tags: string[];
-  image_url?: string;
-  image_urls?: string[];
-  cover_image_url: string;
-  content_blocks: Json;
-  external_link: string;
-  views: number;
-  user_id: string;
-  created_at: string;
-  updated_at: string;
-  profiles?: {
-    username?: string;
-    display_name?: string;
-    avatar_url?: string;
-  };
-  project_likes?: { count: number }[];
-};
 
 // Extended project type with user information
 export interface ProjectWithUser extends Project {
@@ -52,12 +28,12 @@ export const fetchProjects = async (): Promise<ProjectWithUser[]> => {
 
   if (error) throw error;
 
-  const projects: ProjectWithUser[] = (data as ProjectRowWithImages[]).map(project => ({
+  const projects: ProjectWithUser[] = (data as any[]).map(project => ({
     id: project.id,
     title: project.title,
     description: project.description,
     tags: project.tags,
-    image_urls: project.image_urls || (project.image_url ? [project.image_url] : []),
+    image_urls: project.image_urls || [],
     cover_image_url: project.cover_image_url,
     content_blocks: project.content_blocks,
     external_link: project.external_link,
@@ -91,14 +67,14 @@ export const fetchProjectById = async (id: string): Promise<ProjectDetails> => {
   if (error) throw error;
   if (!data) throw new Error('Project not found');
 
-  const project = data as ProjectRowWithImages;
+  const project = data as any;
 
   return {
     id: project.id,
     title: project.title,
     description: project.description,
     tags: project.tags,
-    image_urls: project.image_urls || (project.image_url ? [project.image_url] : []),
+    image_urls: project.image_urls || [],
     cover_image_url: project.cover_image_url,
     content_blocks: project.content_blocks,
     external_link: project.external_link,
@@ -165,7 +141,7 @@ export const createProject = async (input: CreateProjectInput, userId: string): 
       title: input.title,
       description: input.description,
       tags: input.tags,
-      image_urls: image_urls,
+      image_url: image_urls[0] || null,
       cover_image_url: cover_image_url,
       content_blocks: input.content_blocks,
       external_link: input.external_link || '',
@@ -182,13 +158,13 @@ export const createProject = async (input: CreateProjectInput, userId: string): 
   if (error) throw error;
   if (!data) throw new Error('Failed to create project');
 
-  const project = data as ProjectRowWithImages;
+  const project = data as any;
   return {
     id: project.id,
     title: project.title,
     description: project.description,
     tags: project.tags,
-    image_urls: project.image_urls || (project.image_url ? [project.image_url] : []),
+    image_urls: project.image_urls || [],
     cover_image_url: project.cover_image_url,
     content_blocks: project.content_blocks,
     external_link: project.external_link,
@@ -273,13 +249,13 @@ export const updateProject = async (id: string, input: CreateProjectInput, userI
   if (error) throw error;
   if (!data) throw new Error('Project not found or unauthorized');
 
-  const project = data as ProjectRowWithImages;
+  const project = data as any;
   return {
     id: project.id,
     title: project.title,
     description: project.description,
     tags: project.tags,
-    image_urls: project.image_urls || (project.image_url ? [project.image_url] : []),
+    image_urls: project.image_urls || [],
     cover_image_url: project.cover_image_url,
     content_blocks: project.content_blocks,
     external_link: project.external_link,
@@ -447,7 +423,7 @@ export const fetchProjectsByUserId = async (userId: string): Promise<ProjectWith
       throw error;
     }
 
-    return (data as ProjectRowWithImages[]).map(project => ({
+    return (data as any[]).map(project => ({
       ...project,
       image_urls: project.image_urls || (project.image_url ? [project.image_url] : []),
       user: {

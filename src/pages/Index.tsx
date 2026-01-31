@@ -2,12 +2,19 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { PostCard, Post as PostCardType } from "@/components/ui-custom/PostCard";
-import { ProjectCard } from "@/components/ui-custom/ProjectCard";
+import { ProjectCard, Project as ProjectCardUI } from "@/components/ui-custom/ProjectCard";
 import { CreatePostForm } from "@/components/ui-custom/CreatePostForm";
-import { Project, ProjectCardType } from "@/types/project.types";
+import { Project } from "@/types/project.types";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePosts, Post as DatabasePost } from "@/hooks/use-posts";
 import { useTranslation } from "@/hooks/use-translation";
@@ -21,6 +28,9 @@ type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type SupabasePost = Database["public"]["Tables"]["posts"]["Row"] & {
   profiles: Profile | null;
 };
+type SupabaseProject = Database["public"]["Tables"]["projects"]["Row"] & {
+  profiles: Profile | null;
+};
 
 const Index = () => {
   const { isAuthenticated, user } = useAuth();
@@ -32,15 +42,15 @@ const Index = () => {
   const [filteredPosts, setFilteredPosts] = useState<DatabasePost[]>([]);
   const [followingPosts, setFollowingPosts] = useState<PostCardType[]>([]);
   const [loadingFollowing, setLoadingFollowing] = useState(false);
-  const [topProjectsPosts, setTopProjectsPosts] = useState<ProjectCardType[]>([]);
+  const [topProjectsPosts, setTopProjectsPosts] = useState<ProjectCardUI[]>([]);
   const [loadingTopProjects, setLoadingTopProjects] = useState(false);
   const { adsSettings, loading: adsLoading } = useSettings();
-  
+
   const likePost = async (id: string, type: 'post' | 'project') => {
     if (!isAuthenticated || !user) return;
 
     try {
-      let item: PostCardType | undefined;
+      let item: PostCardType | ProjectCardUI | undefined;
       if (type === 'post') {
         item = forYouPosts.find(p => p.id === id) || followingPosts.find(p => p.id === id);
       } else {
@@ -91,7 +101,7 @@ const Index = () => {
       toast.error(isRtl ? 'حدث خطأ أثناء تحديث الإعجاب' : 'Error updating like status');
     }
   };
-  
+
   const handlePostCreated = () => {
     // Refresh posts after creating a new post
     setForYouPosts([]);
@@ -185,7 +195,7 @@ const Index = () => {
   useEffect(() => {
     const fetchTrendsPosts = async () => {
       if (activeTab !== 'trends') return;
-      
+
       setLoadingFollowing(true);
       try {
         // Fetch posts ordered by creation date (for trends)
@@ -269,7 +279,7 @@ const Index = () => {
 
         if (projectsError) throw projectsError;
 
-        const transformedProjects = await Promise.all((projectsData as Project[]).map(async project => {
+        const transformedProjects = await Promise.all((projectsData as unknown as SupabaseProject[]).map(async project => {
           const { count: commentCount } = await supabase
             .from('project_comments')
             .select('*', { count: 'exact', head: true })
@@ -285,10 +295,10 @@ const Index = () => {
           return {
             id: project.id,
             title: project.title || "",
-            description: project.description,
-            thumbnail_url: project.image_urls && project.image_urls.length > 0 ? project.image_urls[0] : "",
-            project_url: project.project_url || undefined,
-            github_url: project.github_url || undefined,
+            description: project.description || "",
+            thumbnail_url: project.image_urls?.[0] || "",
+            project_url: project.external_link || undefined,
+            github_url: undefined,
             technologies: project.tags || [],
             createdAt: new Date(project.created_at || ""),
             user: {
@@ -322,16 +332,32 @@ const Index = () => {
     <Layout>
       <div className={`max-w-4xl mx-auto px-2 sm:px-4  ${isRtl ? 'rtl text-right' : 'ltr text-left'}`}>
 
-        
-        <Tabs defaultValue="for-you" className="w-full mb-8" onValueChange={setActiveTab}>
-          <TabsList className={`w-full ${isRtl ? 'flex-row-reverse' : ''} ${!isAuthenticated ? 'mb-8' : ''}`}>
+
+        <Tabs value={activeTab} className="w-full mb-8" onValueChange={setActiveTab}>
+          {/* Mobile View: Select */}
+          <div className="md:hidden mb-6">
+            <Select value={activeTab} onValueChange={setActiveTab}>
+              <SelectTrigger className="w-full" dir={isRtl ? "rtl" : "ltr"}>
+                <SelectValue placeholder={t('selectView')} />
+              </SelectTrigger>
+              <SelectContent dir={isRtl ? "rtl" : "ltr"}>
+                <SelectItem value="for-you">{t('forYou')}</SelectItem>
+                <SelectItem value="trends">{t('trends')}</SelectItem>
+                <SelectItem value="top-projects">{t('topProjects')}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Desktop View: TabsList */}
+          <TabsList className={`hidden md:flex w-full ${isRtl ? 'flex-row-reverse' : ''} ${!isAuthenticated ? 'mb-8' : ''}`}>
             <TabsTrigger value="for-you" className="flex-1">{t('forYou')}</TabsTrigger>
             <TabsTrigger value="trends" className="flex-1">{t('trends')}</TabsTrigger>
             <TabsTrigger value="top-projects" className="flex-1">{t('topProjects')}</TabsTrigger>
           </TabsList>
+          
           <TabsContent value="for-you" className="mt-0">
             {isAuthenticated && <CreatePostForm onPostCreated={handlePostCreated} />}
-      
+
             {!adsLoading && adsSettings?.homepage_feed && (
               <div className="my-4">
                 <GoogleAd adSlotId={adsSettings.homepage_feed} publisherId={adsSettings.adsense_publisher_id} />
@@ -361,7 +387,7 @@ const Index = () => {
               <div className="space-y-6">
                 {forYouPosts.map((post, index) => (
                   <>
-                    <PostCard 
+                    <PostCard
                       key={post.id}
                       post={post}
                       onLike={(id) => likePost(id, 'post')}
@@ -405,7 +431,7 @@ const Index = () => {
             ) : followingPosts.length > 0 ? (
               <div className="space-y-6">
                 {followingPosts.map((post) => (
-                  <PostCard 
+                  <PostCard
                     key={post.id}
                     post={post}
                     onLike={(id) => likePost(id, 'post')}
@@ -443,7 +469,7 @@ const Index = () => {
             ) : topProjectsPosts.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {topProjectsPosts.map((project) => (
-                  <ProjectCard 
+                  <ProjectCard
                     key={project.id}
                     project={project}
                     onLike={(id) => likePost(id, 'project')}

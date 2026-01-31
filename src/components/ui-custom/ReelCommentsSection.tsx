@@ -10,6 +10,7 @@ import { FormattedText } from "./FormattedText";
 import { useTranslation } from "@/hooks/use-translation";
 import { Trash2 } from "lucide-react";
 import { Spinner } from "./Loaders";
+import { cn } from "@/lib/utils";
 
 interface ReelCommentsSectionProps {
   reelId: string;
@@ -127,7 +128,7 @@ function CommentItem({ comment, onDelete, isOwner }: CommentItemProps) {
         <div className="bg-muted p-2 rounded-md">
           <div className="flex items-center justify-between">
             
-              <FormattedText text={comment.content} className="text-sm mt-1" />
+              <FormattedText text={comment.content} className={cn("text-sm mt-1", isRtl ? "text-right" : "text-left")} />
               {isOwner && (
                 <Button
                   variant="ghost"

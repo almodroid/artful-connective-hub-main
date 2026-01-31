@@ -490,7 +490,7 @@ export type Database = {
           description: string | null
           external_link: string | null
           id: string
-          image_url: string | null
+          image_urls: string[] | null
           tags: string[] | null
           title: string
           updated_at: string | null
@@ -504,7 +504,7 @@ export type Database = {
           description?: string | null
           external_link?: string | null
           id?: string
-          image_url?: string | null
+          image_urls?: string[] | null
           tags?: string[] | null
           title: string
           updated_at?: string | null
@@ -518,7 +518,7 @@ export type Database = {
           description?: string | null
           external_link?: string | null
           id?: string
-          image_url?: string | null
+          image_urls?: string[] | null
           tags?: string[] | null
           title?: string
           updated_at?: string | null

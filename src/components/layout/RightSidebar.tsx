@@ -123,7 +123,19 @@ export function RightSidebar() {
 
 
         </CardContent>
-        <svg width="303" height="217" viewBox="0 0 303 217" fill="none" xmlns="http://www.w3.org/2000/svg" className="absolute bottom-0 left-0 w-full h-full translate-y-[80px]">
+        <svg width="303" height="135" viewBox="0 0 303 135" fill="none" xmlns="http://www.w3.org/2000/svg" className="absolute bottom-0 left-0 w-full translate-y-[80px]">
+          <g filter="url(#filter0_f_277_113)">
+            <path d="M88.5 100.129C44.1899 102.785 -15.1451 151.678 -29.6829 164.218C-31.8219 166.063 -33 168.741 -33 171.565V190.507C-33 196.077 -28.4483 200.574 -22.8782 200.506L328.763 196.223C333.319 196.168 337.261 193.04 338.351 188.616L348.615 146.957C350.604 138.881 342.362 131.856 334.602 134.848C308.93 144.748 262.202 160.652 227 160.629C170.592 160.593 144.807 96.754 88.5 100.129Z" fill="#D9D9D9" />
+          </g>
+          <defs>
+            <filter id="filter0_f_277_113" x="-133" y="0" width="581.916" height="300.507" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
+              <feFlood floodOpacity="0" result="BackgroundImageFix" />
+              <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape" />
+              <feGaussianBlur stdDeviation="50" result="effect1_foregroundBlur_277_113" />
+            </filter>
+          </defs>
+        </svg>
+        <svg width="303" height="217" viewBox="0 0 303 217" fill="none" xmlns="http://www.w3.org/2000/svg" className="absolute bottom-0 left-0 w-full h-full translate-y-[70px]">
           <g filter="url(#filter0_f_2_39)">
             <path d="M157 138.733C66.934 140.502 -4.26656 20.4287 -63 88.7325C-109.375 142.664 -63 279.733 -63 279.733L361 268.233C361 268.233 422.562 186.814 376.5 138.733C320.286 80.0544 238.244 137.136 157 138.733Z" fill="#6805AF" />
           </g>

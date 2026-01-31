@@ -1,12 +1,14 @@
 import { Link } from 'react-router-dom';
 import { Home, Search, PlusSquare, MessageCircle, Wand, Bell, Bookmark, Stars, Settings } from 'lucide-react';
 import { useTranslation } from '@/hooks/use-translation';
+import { useAuth } from '@/contexts/AuthContext';
 import { useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
 export function LeftSidebar() {
   const { t, isRtl } = useTranslation();
   const location = useLocation();
+  const { user } = useAuth();
 
   const navItems = [
     { href: '/', label: t('home'), icon: Home },
@@ -30,11 +32,12 @@ export function LeftSidebar() {
           <path d="M9.24708 6.83099C9.09544 7.07109 9.01331 7.35542 9.01331 7.66501C9.01331 8.54326 9.72728 9.25724 10.6055 9.25724C11.231 9.25724 11.7681 8.90341 12.0335 8.38531" stroke="white" stroke-linecap="round" stroke-linejoin="round" />
         </svg>)
     },
-    { href: '/messages', label: t('messages'), icon: MessageCircle },
-    { href: '/notifications', label: t('notifications'), icon: Bell },
-    { href: '/bookmarks', label: t('bookmarks'), icon: Bookmark },
-    { href:'/edit-profile', label: t('settings'), icon: Settings },
-
+    ...(user ? [
+      { href: '/messages', label: t('messages'), icon: MessageCircle },
+      { href: '/notifications', label: t('notifications'), icon: Bell },
+      { href: '/bookmarks', label: t('bookmarks'), icon: Bookmark },
+      { href:'/edit-profile', label: t('settings'), icon: Settings },
+    ] : [])
   ];
 
   return (

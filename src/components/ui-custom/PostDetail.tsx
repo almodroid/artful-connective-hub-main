@@ -14,6 +14,8 @@ import { useNotificationsApi } from "@/hooks/use-notifications-api";
 import { supabase } from "@/integrations/supabase/client";
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShareModal } from "./ShareModal";
+import { useTranslation } from "@/hooks/use-translation";
+import { cn } from "@/lib/utils";
 
 export interface Comment {
   id: string;
@@ -66,6 +68,7 @@ export function PostDetail({
   isLoading = false
 }: PostDetailProps) {
   const { user, isAuthenticated } = useAuth();
+  const { isRtl } = useTranslation();
   const [commentText, setCommentText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const { sendInteractionNotification } = useNotificationsApi();
@@ -429,11 +432,11 @@ export function PostDetail({
                     <span className="text-xs text-muted-foreground">
                       {formatDistanceToNow(comment.createdAt, { 
                         addSuffix: true,
-                        locale: ar 
+                        locale: isRtl ? ar : undefined 
                       })}
                     </span>
                   </div>
-                  <p className="mt-1 text-foreground">{comment.content}</p>
+                  <p className={cn("mt-1 text-foreground", isRtl ? "text-right" : "text-left")}>{comment.content}</p>
                 </div>
                 
                 <div className="flex items-center gap-4 mt-2 mr-2">

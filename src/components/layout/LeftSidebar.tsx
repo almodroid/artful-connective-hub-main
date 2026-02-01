@@ -36,7 +36,7 @@ export function LeftSidebar() {
       { href: '/messages', label: t('messages'), icon: MessageCircle },
       { href: '/notifications', label: t('notifications'), icon: Bell },
       { href: '/bookmarks', label: t('bookmarks'), icon: Bookmark },
-      { href:'/edit-profile', label: t('settings'), icon: Settings },
+      { href: '/edit-profile', label: t('settings'), icon: Settings },
     ] : [])
   ];
 
@@ -47,8 +47,8 @@ export function LeftSidebar() {
           key={item.href}
           to={item.href}
           className={cn(
-            'flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors hover:no-underline',
-            location.pathname === item.href && 'bg-muted text-primary'
+            'flex items-center gap-3 p-2 rounded-lg hover:bg-primary/30 dark:hover:bg-purple-500/30 transition-colors hover:no-underline',
+            location.pathname === item.href && 'bg-primary/30 dark:bg-purple-500/30 text-primary'
           )}
         >
           <item.icon className='h-5 w-5' />

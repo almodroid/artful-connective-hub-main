@@ -99,7 +99,7 @@ export default function CreatePost() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.title.trim()) {
       toast.error(t("enterPostTitle"));
       return;
@@ -108,7 +108,7 @@ export default function CreatePost() {
     try {
       setIsSubmitting(true);
       // TODO: Implement post creation API call
-      
+
       toast.success(t("postCreatedSuccess"));
       navigate("/");
     } catch (error) {
@@ -140,7 +140,7 @@ export default function CreatePost() {
       setVideos([]);
       setVideoPreview([]);
       setImages(prev => [...prev, ...validFiles]);
-      
+
       Promise.all(
         validFiles.map(file => {
           return new Promise<string>((resolve) => {
@@ -174,7 +174,7 @@ export default function CreatePost() {
       setImages([]);
       setImagePreview([]);
       setVideos(validFiles);
-      
+
       Promise.all(
         validFiles.map(file => {
           return new Promise<string>((resolve) => {
@@ -214,14 +214,15 @@ export default function CreatePost() {
       }
       return newImages;
     });
-    
+
     setImagePreview(prev => prev.filter((_, i) => i !== index));
   };
 
   useEffect(() => {
     if (showGifPicker && giphyResults.length === 0) {
       setLoadingGiphy(true);
-      fetch(`https://api.giphy.com/v1/gifs/search?api_key=${import.meta.env.VITE_GIPHY_KEY}&q=meme&limit=12`)
+      const randomOffset = Math.floor(Math.random() * 50);
+      fetch(`https://api.giphy.com/v1/gifs/trending?api_key=${import.meta.env.VITE_GIPHY_KEY}&limit=12&rating=pg&offset=${randomOffset}`)
         .then(res => res.json())
         .then(data => {
           setGiphyResults(data.data || []);
@@ -238,7 +239,7 @@ export default function CreatePost() {
     <Layout>
       <div className="container max-w-2xl py-10" dir={isRtl ? "rtl" : "ltr"}>
         <h1 className="text-3xl font-bold mb-8">{t("createNewPost")}</h1>
-        
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
             <label htmlFor="title" className="text-sm font-medium">
@@ -280,13 +281,13 @@ export default function CreatePost() {
                   {isRtl ? "إزالة الكل" : "Remove All"}
                 </Button>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 {imagePreview.map((preview, index) => (
                   <div key={index} className="relative aspect-square rounded-md overflow-hidden group">
-                    <img 
-                      src={preview} 
-                      alt={`Preview ${index + 1}`} 
+                    <img
+                      src={preview}
+                      alt={`Preview ${index + 1}`}
                       className="w-full h-full object-cover"
                     />
                     <Button
@@ -306,8 +307,8 @@ export default function CreatePost() {
 
           {videoPreview.length > 0 && (
             <div className="relative rounded-md overflow-hidden">
-              <video 
-                src={videoPreview[0]} 
+              <video
+                src={videoPreview[0]}
                 controls
                 className="max-h-96 w-full rounded-md"
               />
@@ -325,9 +326,9 @@ export default function CreatePost() {
 
           {selectedGif && (
             <div className="relative rounded-md overflow-hidden">
-              <img 
-                src={selectedGif} 
-                alt="Selected GIF" 
+              <img
+                src={selectedGif}
+                alt="Selected GIF"
                 className="max-h-64 w-full object-cover rounded-md"
               />
               <Button
@@ -437,7 +438,7 @@ export default function CreatePost() {
                     setGiphySearch(e.target.value);
                     if (e.target.value.trim()) {
                       setLoadingGiphy(true);
-                      fetch(`https://api.giphy.com/v1/gifs/search?api_key=${import.meta.env.VITE_GIPHY_KEY}&q=${encodeURIComponent(e.target.value)}&limit=20`)
+                      fetch(`https://api.giphy.com/v1/gifs/search?api_key=${import.meta.env.VITE_GIPHY_KEY}&q=${encodeURIComponent(e.target.value)}&limit=20&rating=pg`)
                         .then(res => res.json())
                         .then(data => {
                           setGiphyResults(data.data || []);
@@ -449,7 +450,8 @@ export default function CreatePost() {
                         });
                     } else {
                       setLoadingGiphy(true);
-                      fetch(`https://api.giphy.com/v1/gifs/search?api_key=${import.meta.env.VITE_GIPHY_KEY}&q=meme&limit=12`)
+                      const randomOffset = Math.floor(Math.random() * 50);
+                      fetch(`https://api.giphy.com/v1/gifs/trending?api_key=${import.meta.env.VITE_GIPHY_KEY}&limit=12&rating=pg&offset=${randomOffset}`)
                         .then(res => res.json())
                         .then(data => {
                           setGiphyResults(data.data || []);
@@ -461,7 +463,8 @@ export default function CreatePost() {
                         });
                     }
                   }}
-                  className="mb-2"
+                  className="mb-2 bg-background"
+                  dir={isRtl ? "rtl" : "ltr"}
                 />
                 {loadingGiphy ? (
                   <div className="flex justify-center items-center h-40">
@@ -470,13 +473,13 @@ export default function CreatePost() {
                 ) : (
                   <div className="grid grid-cols-4 gap-2 max-h-80 overflow-y-auto">
                     {giphyResults.map((gif) => (
-                      <div 
-                        key={gif.id} 
+                      <div
+                        key={gif.id}
                         className="cursor-pointer hover:opacity-90"
                         onClick={() => handleGifSelect(gif)}
                       >
-                        <img 
-                          src={gif.images.fixed_height_small.url} 
+                        <img
+                          src={gif.images.fixed_height_small.url}
                           alt={gif.title}
                           className="w-full h-20 object-cover rounded"
                         />
@@ -494,8 +497,8 @@ export default function CreatePost() {
             </label>
             <div className="flex flex-wrap gap-2 mb-2">
               {formData.tags.map((tag) => (
-                <Badge 
-                  key={tag} 
+                <Badge
+                  key={tag}
                   variant="secondary"
                   className="flex items-center gap-1 px-2 py-1"
                 >
@@ -510,7 +513,7 @@ export default function CreatePost() {
                 </Badge>
               ))}
             </div>
-            
+
             <Popover open={open} onOpenChange={setOpen}>
               <PopoverTrigger asChild>
                 <Button
@@ -525,8 +528,8 @@ export default function CreatePost() {
               </PopoverTrigger>
               <PopoverContent className="w-full p-0">
                 <Command>
-                  <CommandInput 
-                    placeholder={isRtl ? "ابحث عن وسوم أو أضف وسماً جديداً..." : "Search tags or add a new one..."} 
+                  <CommandInput
+                    placeholder={isRtl ? "ابحث عن وسوم أو أضف وسماً جديداً..." : "Search tags or add a new one..."}
                     value={tagInput}
                     onValueChange={setTagInput}
                   />
@@ -563,29 +566,29 @@ export default function CreatePost() {
                       </div>
                     ) : (
                       <>
-                        {tagInput && !topTags.some(tag => 
+                        {tagInput && !topTags.some(tag =>
                           tag.name.toLowerCase() === tagInput.toLowerCase()
                         ) && (
-                          <CommandItem
-                            value={tagInput}
-                            onSelect={() => {
-                              const formattedTag = formatTag(tagInput);
-                              if (!formData.tags.includes(formattedTag)) {
-                                setFormData(prev => ({
-                                  ...prev,
-                                  tags: [...prev.tags, formattedTag]
-                                }));
-                              }
-                              setTagInput("");
-                              setOpen(false);
-                            }}
-                          >
-                            <Plus className="mr-2 h-4 w-4" />
-                            {isRtl ? "إضافة" : "Add"} # {formatTagForDisplay(tagInput)}
-                          </CommandItem>
-                        )}
+                            <CommandItem
+                              value={tagInput}
+                              onSelect={() => {
+                                const formattedTag = formatTag(tagInput);
+                                if (!formData.tags.includes(formattedTag)) {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    tags: [...prev.tags, formattedTag]
+                                  }));
+                                }
+                                setTagInput("");
+                                setOpen(false);
+                              }}
+                            >
+                              <Plus className="mr-2 h-4 w-4" />
+                              {isRtl ? "إضافة" : "Add"} # {formatTagForDisplay(tagInput)}
+                            </CommandItem>
+                          )}
                         {topTags
-                          .filter(tag => 
+                          .filter(tag =>
                             tag.name.toLowerCase().includes(tagInput.toLowerCase())
                           )
                           .map((tag) => (
@@ -614,7 +617,7 @@ export default function CreatePost() {
                                 )}
                               />
                               # {formatTagForDisplay(tag.name)}
-                              
+
                             </CommandItem>
                           ))
                         }
@@ -626,7 +629,7 @@ export default function CreatePost() {
             </Popover>
           </div>
 
-          
+
 
           <div className="flex justify-end gap-4">
             <Button
@@ -637,8 +640,8 @@ export default function CreatePost() {
             >
               {t("cancel")}
             </Button>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={isSubmitting || (!formData.title.trim() && !images.length && !videos.length && !selectedGif && !link)}
             >
               {isSubmitting ? (

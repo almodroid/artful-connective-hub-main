@@ -5,11 +5,11 @@ import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { 
-  Card, CardContent, CardDescription, CardHeader, CardTitle 
+import {
+  Card, CardContent, CardDescription, CardHeader, CardTitle
 } from "@/components/ui/card";
-import { 
-  Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage 
+import {
+  Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -28,19 +28,19 @@ const settingsSchema = z.object({
   site_description: z.string().min(1, "Site description is required"),
   site_logo: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   site_favicon: z.string().url("Must be a valid URL").optional().or(z.literal("")),
-  
+
   // SEO settings
   meta_title: z.string().min(1, "Meta title is required"),
   meta_description: z.string().min(1, "Meta description is required"),
   meta_keywords: z.string().optional(),
   google_analytics_id: z.string().optional(),
-  
+
   // Social media settings
   facebook_url: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   twitter_url: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   instagram_url: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   linkedin_url: z.string().url("Must be a valid URL").optional().or(z.literal("")),
-  
+
   // SMTP settings
   smtp_host: z.string().min(1, "SMTP host is required"),
   smtp_port: z.string().min(1, "SMTP port is required"),
@@ -48,12 +48,12 @@ const settingsSchema = z.object({
   smtp_password: z.string().min(1, "SMTP password is required"),
   smtp_from_email: z.string().email("Must be a valid email"),
   smtp_from_name: z.string().min(1, "From name is required"),
-  
+
   // Notification settings
   enable_email_notifications: z.boolean().default(true),
   enable_push_notifications: z.boolean().default(true),
   notification_frequency: z.enum(["immediate", "daily", "weekly"]).default("immediate"),
-  
+
   // Optimization settings
   enable_caching: z.boolean().default(true),
   enable_compression: z.boolean().default(true),
@@ -80,7 +80,7 @@ export function SettingsManagement() {
   const queryClient = useQueryClient();
   const { isRtl } = useTranslation();
   const [unlimitedAI, setUnlimitedAI] = useState(false);
-  
+
   // Initialize form with default values
   const form = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsSchema),
@@ -122,7 +122,7 @@ export function SettingsManagement() {
       homepage_feed: "",
     },
   });
-  
+
   // Fetch settings from the database
   const { data: settings, isLoading, isError } = useQuery({
     queryKey: ["admin-settings"],
@@ -133,24 +133,24 @@ export function SettingsManagement() {
           .from('settings' as any)
           .select('key')
           .limit(1);
-        
+
         if (tableCheckError && tableCheckError.code === '42P01') {
           // Table doesn't exist, create it
           const { error: createTableError } = await supabase.rpc('create_settings_table' as any);
-          
+
           if (createTableError) {
             console.error("Error creating settings table:", createTableError);
             throw createTableError;
           }
-          
+
           // Insert default settings
           const defaultSettings = [
-            { key: 'site_name', value: 'Artful Connective Hub', description: 'The name of the site', category: 'site' },
+            { key: 'site_name', value: 'Artspace', description: 'The name of the site', category: 'site' },
             { key: 'site_description', value: 'A platform for artists to connect and share their work', description: 'The description of the site', category: 'site' },
             { key: 'site_logo', value: '', description: 'The logo of the site', category: 'site' },
             { key: 'site_favicon', value: '', description: 'The favicon of the site', category: 'site' },
-            { key: 'meta_title', value: 'Artful Connective Hub - Artist Community', description: 'Meta title for SEO', category: 'seo' },
-            { key: 'meta_description', value: 'Join the Artful Connective Hub community to connect with artists, share your work, and discover new art.', description: 'Meta description for SEO', category: 'seo' },
+            { key: 'meta_title', value: 'Artspace - Artist Community', description: 'Meta title for SEO', category: 'seo' },
+            { key: 'meta_description', value: 'Join the Artspace community to connect with artists, share your work, and discover new art.', description: 'Meta description for SEO', category: 'seo' },
             { key: 'meta_keywords', value: 'art, artists, community, gallery, portfolio', description: 'Meta keywords for SEO', category: 'seo' },
             { key: 'google_analytics_id', value: '', description: 'Google Analytics ID', category: 'seo' },
             { key: 'facebook_url', value: '', description: 'Facebook URL', category: 'social' },
@@ -180,40 +180,40 @@ export function SettingsManagement() {
             { key: 'adsense_script', value: '', description: 'Custom AdSense Script', category: 'ads' },
             { key: 'homepage_feed', value: '', description: 'Ad Slot ID for Homepage Feed', category: 'ads' },
           ];
-          
+
           const { error: insertError } = await supabase
             .from('settings' as any)
             .insert(defaultSettings as any);
-          
+
           if (insertError) {
             console.error("Error inserting default settings:", insertError);
             throw insertError;
           }
-          
+
           // Return default settings
           return defaultSettings.reduce((acc, setting) => {
             acc[setting.key] = setting.value;
             return acc;
           }, {} as Record<string, string>);
         }
-        
+
         // Get all settings
         const { data: settingsData, error: settingsError } = await supabase
           .from('settings' as any)
           .select('*');
-        
+
         if (settingsError) {
           console.error("Error fetching settings:", settingsError);
           toast.error(isRtl ? "حدث خطأ أثناء جلب الإعدادات" : "Error fetching settings");
           throw settingsError;
         }
-        
+
         // Transform settings data into a flat object
         const settingsObject = (settingsData as any[]).reduce((acc, setting) => {
           acc[setting.key] = setting.value;
           return acc;
         }, {} as Record<string, string>);
-        
+
         return settingsObject;
       } catch (error) {
         console.error("Error in settings query:", error);
@@ -225,7 +225,7 @@ export function SettingsManagement() {
     retry: 1, // Only retry once
     retryDelay: 1000, // Wait 1 second before retrying
   });
-  
+
   // Update settings mutation
   const updateSettingsMutation = useMutation({
     mutationFn: async (values: SettingsFormValues) => {
@@ -236,26 +236,26 @@ export function SettingsManagement() {
           value: String(value),
           updated_at: new Date().toISOString()
         }));
-        
+
         // Update each setting
-        const updatePromises = settingsRecords.map(record => 
+        const updatePromises = settingsRecords.map(record =>
           supabase
             .from('settings' as any)
             .update({ value: record.value, updated_at: record.updated_at })
             .eq('key', record.key)
         );
-        
+
         const results = await Promise.all(updatePromises);
-        
+
         // Check for errors
         const errors = results.filter(result => result.error);
         if (errors.length > 0) {
           console.error("Error updating settings:", errors);
           throw new Error("Failed to update settings");
         }
-        
+
         return { success: true };
-    } catch (error) {
+      } catch (error) {
         console.error("Error in update settings mutation:", error);
         setError(isRtl ? "حدث خطأ أثناء تحديث الإعدادات" : "Error updating settings");
         throw error;
@@ -270,7 +270,7 @@ export function SettingsManagement() {
       toast.error(isRtl ? "حدث خطأ أثناء تحديث الإعدادات" : "Error updating settings");
     }
   });
-  
+
   // Set form values when settings are loaded
   useEffect(() => {
     if (settings && !isLoading) {
@@ -315,7 +315,7 @@ export function SettingsManagement() {
       });
     }
   }, [settings, isLoading, form]);
-  
+
   // Handle form submission
   const onSubmit = (values: SettingsFormValues) => {
     const submitValues = { ...values };
@@ -324,7 +324,7 @@ export function SettingsManagement() {
     }
     updateSettingsMutation.mutate(submitValues);
   };
-  
+
   // Default values for reset
   const defaultSectionValues = {
     site: {
@@ -377,26 +377,26 @@ export function SettingsManagement() {
       adsense_script: "",
     },
   };
-  
+
   return (
-          <Card>
-            <CardHeader>
+    <Card>
+      <CardHeader>
         <CardTitle className="flex items-center gap-2 text-xl">
           <SettingsIcon className="h-6 w-6" />
           {isRtl ? "إعدادات النظام" : "System Settings"}
         </CardTitle>
-              <CardDescription>
-          {isRtl 
-            ? "تكوين إعدادات الموقع وإعدادات البريد الإلكتروني وإعدادات الإشعارات" 
+        <CardDescription>
+          {isRtl
+            ? "تكوين إعدادات الموقع وإعدادات البريد الإلكتروني وإعدادات الإشعارات"
             : "Configure site settings, email settings, and notification settings"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
         {error ? (
           <div className="p-4 border border-destructive rounded-md bg-destructive/10 text-destructive">
             <p>{error}</p>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="mt-4"
               onClick={() => {
                 setError(null);
@@ -468,7 +468,7 @@ export function SettingsManagement() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="site_description"
@@ -485,7 +485,7 @@ export function SettingsManagement() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="site_logo"
@@ -502,7 +502,7 @@ export function SettingsManagement() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="site_favicon"
@@ -544,7 +544,7 @@ export function SettingsManagement() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="meta_description"
@@ -561,7 +561,7 @@ export function SettingsManagement() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="meta_keywords"
@@ -578,7 +578,7 @@ export function SettingsManagement() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="google_analytics_id"
@@ -620,7 +620,7 @@ export function SettingsManagement() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="twitter_url"
@@ -637,7 +637,7 @@ export function SettingsManagement() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="instagram_url"
@@ -654,7 +654,7 @@ export function SettingsManagement() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="linkedin_url"
@@ -696,7 +696,7 @@ export function SettingsManagement() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="smtp_port"
@@ -713,31 +713,31 @@ export function SettingsManagement() {
                       </FormItem>
                     )}
                   />
-                  
-                    <FormField
+
+                  <FormField
                     control={form.control}
                     name="smtp_user"
-                      render={({ field }) => (
+                    render={({ field }) => (
                       <FormItem>
                         <FormLabel>{isRtl ? "اسم مستخدم SMTP" : "SMTP Username"}</FormLabel>
                         <FormControl>
                           <Input placeholder="user@example.com" {...field} />
                         </FormControl>
-                            <FormDescription>
+                        <FormDescription>
                           {isRtl ? "اسم مستخدم خادم SMTP" : "SMTP server username"}
-                            </FormDescription>
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="smtp_password"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{isRtl ? "كلمة مرور SMTP" : "SMTP Password"}</FormLabel>
-                          <FormControl>
+                        <FormControl>
                           <Input type="password" placeholder="••••••••" {...field} />
                         </FormControl>
                         <FormDescription>
@@ -747,7 +747,7 @@ export function SettingsManagement() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="smtp_from_email"
@@ -756,16 +756,16 @@ export function SettingsManagement() {
                         <FormLabel>{isRtl ? "البريد الإلكتروني المرسل" : "From Email"}</FormLabel>
                         <FormControl>
                           <Input type="email" placeholder="noreply@example.com" {...field} />
-                          </FormControl>
+                        </FormControl>
                         <FormDescription>
                           {isRtl ? "عنوان البريد الإلكتروني المرسل" : "Sender email address"}
                         </FormDescription>
                         <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
                     control={form.control}
                     name="smtp_from_name"
                     render={({ field }) => (
@@ -793,54 +793,54 @@ export function SettingsManagement() {
                   <FormField
                     control={form.control}
                     name="enable_email_notifications"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel className="text-base">
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">
                             {isRtl ? "تفعيل إشعارات البريد الإلكتروني" : "Enable Email Notifications"}
-                            </FormLabel>
-                            <FormDescription>
+                          </FormLabel>
+                          <FormDescription>
                             {isRtl ? "إرسال إشعارات عبر البريد الإلكتروني" : "Send notifications via email"}
-                            </FormDescription>
-                          </div>
-                          <FormControl>
+                          </FormDescription>
+                        </div>
+                        <FormControl>
                           <Switch
-                              checked={field.value}
+                            checked={field.value}
                             onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
                     control={form.control}
                     name="enable_push_notifications"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel className="text-base">
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">
                             {isRtl ? "تفعيل الإشعارات المباشرة" : "Enable Push Notifications"}
-                            </FormLabel>
-                            <FormDescription>
+                          </FormLabel>
+                          <FormDescription>
                             {isRtl ? "إرسال إشعارات مباشرة إلى المتصفح" : "Send push notifications to browser"}
-                            </FormDescription>
-                          </div>
-                          <FormControl>
+                          </FormDescription>
+                        </div>
+                        <FormControl>
                           <Switch
-                              checked={field.value}
+                            checked={field.value}
                             onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                  
-                    <FormField
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
                     control={form.control}
                     name="notification_frequency"
-                      render={({ field }) => (
-                        <FormItem>
+                    render={({ field }) => (
+                      <FormItem>
                         <FormLabel>{isRtl ? "تكرار الإشعارات" : "Notification Frequency"}</FormLabel>
                         <Select
                           onValueChange={field.onChange}
@@ -861,9 +861,9 @@ export function SettingsManagement() {
                           {isRtl ? "عدد مرات إرسال الإشعارات" : "How often to send notifications"}
                         </FormDescription>
                         <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                      </FormItem>
+                    )}
+                  />
                 </TabsContent>
                 {/* Optimization Section */}
                 <TabsContent value="optimization" className="space-y-6 pt-4">
@@ -873,10 +873,10 @@ export function SettingsManagement() {
                     <Button type="button" size="icon" variant="ghost" className="ml-2" onClick={() => form.reset({ ...form.getValues(), ...defaultSectionValues.optimization })} title={isRtl ? "إعادة الافتراضي" : "Reset to default"}><RefreshCcw className="h-4 w-4" /></Button>
                   </div>
                   <Separator />
-                    <FormField
+                  <FormField
                     control={form.control}
                     name="enable_caching"
-                      render={({ field }) => (
+                    render={({ field }) => (
                       <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                         <div className="space-y-0.5">
                           <FormLabel className="text-base">
@@ -886,20 +886,20 @@ export function SettingsManagement() {
                             {isRtl ? "تحسين الأداء عن طريق تخزين البيانات مؤقتًا" : "Improve performance by caching data"}
                           </FormDescription>
                         </div>
-                          <FormControl>
+                        <FormControl>
                           <Switch
                             checked={field.value}
                             onCheckedChange={field.onChange}
                           />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                  
-                    <FormField
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
                     control={form.control}
                     name="enable_compression"
-                      render={({ field }) => (
+                    render={({ field }) => (
                       <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                         <div className="space-y-0.5">
                           <FormLabel className="text-base">
@@ -909,20 +909,20 @@ export function SettingsManagement() {
                             {isRtl ? "تقليل حجم البيانات المرسلة" : "Reduce the size of data being sent"}
                           </FormDescription>
                         </div>
-                          <FormControl>
+                        <FormControl>
                           <Switch
                             checked={field.value}
                             onCheckedChange={field.onChange}
                           />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
                     control={form.control}
                     name="enable_lazy_loading"
-                      render={({ field }) => (
+                    render={({ field }) => (
                       <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                         <div className="space-y-0.5">
                           <FormLabel className="text-base">
@@ -932,32 +932,32 @@ export function SettingsManagement() {
                             {isRtl ? "تحميل الصور فقط عند الحاجة إليها" : "Load images only when they are needed"}
                           </FormDescription>
                         </div>
-                          <FormControl>
+                        <FormControl>
                           <Switch
                             checked={field.value}
                             onCheckedChange={field.onChange}
                           />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
                     control={form.control}
                     name="max_upload_size"
-                      render={({ field }) => (
-                        <FormItem>
+                    render={({ field }) => (
+                      <FormItem>
                         <FormLabel>{isRtl ? "الحد الأقصى لحجم التحميل" : "Max Upload Size"}</FormLabel>
-                          <FormControl>
+                        <FormControl>
                           <Input type="number" min="1" max="50" {...field} />
-                          </FormControl>
+                        </FormControl>
                         <FormDescription>
                           {isRtl ? "الحد الأقصى لحجم الملفات التي يمكن تحميلها (بالميجابايت)" : "Maximum size of files that can be uploaded (in MB)"}
                         </FormDescription>
                         <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                      </FormItem>
+                    )}
+                  />
                 </TabsContent>
                 {/* AI Section */}
                 <TabsContent value="ai" className="space-y-6 pt-4">
@@ -966,7 +966,7 @@ export function SettingsManagement() {
                     <h2 className="text-lg font-bold">{isRtl ? "إعدادات الذكاء الاصطناعي" : "AI Settings"}</h2>
                     <Button type="button" size="icon" variant="ghost" className="ml-2" onClick={() => form.reset({ ...form.getValues(), ...defaultSectionValues.ai })} title={isRtl ? "إعادة الافتراضي" : "Reset to default"}><RefreshCcw className="h-4 w-4" /></Button>
                   </div>
-              <Separator />
+                  <Separator />
                   <FormField
                     control={form.control}
                     name="ai_enabled"
@@ -1139,12 +1139,12 @@ export function SettingsManagement() {
                   {updateSettingsMutation.isPending
                     ? (isRtl ? "جاري الحفظ..." : "Saving...")
                     : (isRtl ? "حفظ الإعدادات" : "Save Settings")}
-                  </Button>
+                </Button>
               </div>
-                </form>
-              </Form>
+            </form>
+          </Form>
         }
-            </CardContent>
-          </Card>
+      </CardContent>
+    </Card>
   );
 }

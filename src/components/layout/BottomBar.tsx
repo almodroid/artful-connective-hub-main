@@ -1,6 +1,6 @@
 import { useLocation } from "react-router-dom";
 import { Link } from "react-router-dom";
-import { Home, Search, PlusSquare, Bell, User, FolderKanban, Plus, MessageSquare, Wand } from "lucide-react";
+import { Home, Search, PlusSquare, Bell, User, FolderKanban, Plus, MessageSquare, Wand, MessageCircle } from "lucide-react";
 import { useTranslation } from "@/hooks/use-translation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -22,8 +22,12 @@ export function BottomBar() {
     { name: t("home"), href: "/", icon: Home },
     { name: t("explore"), href: "/explore", icon: Search },
     { name: t("projects"), href: "/projects", icon: FolderKanban },
-    { name: t("messages"), href: "/messages", icon: MessageSquare },
-    { name: t("space"), href: "/space-ai", icon: Wand},
+    { name: t("messages"), href: "/messages", icon: MessageCircle },
+    { name: t("space"), href: "/space-ai", icon: () => (
+        <svg width="21" height="21" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M10.5 0C4.69831 0 0 4.69831 0 10.5C0 16.3017 4.69831 21 10.5 21C16.3017 21 21 16.3017 21 10.5C21 4.69831 16.3017 0 10.5 0ZM13.1339 19.3912C13.9098 13.7176 5.60949 10.1939 1.73695 12.2583C6.27153 8.81288 11.4112 2.31356 9.21864 0.405763C10.5214 1.34542 11.6959 2.44881 12.9986 3.38847C14.7712 4.66983 16.679 5.75186 18.4302 7.05458C20.4803 8.57797 20.5231 8.63492 20.7651 8.97661C20.6868 8.91254 20.5871 8.81288 20.4946 8.79153C20.4447 8.77729 15.2054 9.49627 13.1268 19.3983L13.1339 19.3912Z" fill="white" />
+          </svg>
+      )},
   ];
 
   if (!isAuthenticated) {
@@ -93,7 +97,7 @@ export function BottomBar() {
         {!location.pathname.startsWith('/space-ai') && (
           <Link
             to={isAuthenticated ? "/create" : "/login"}
-            className="fixed right-4 bottom-20 z-50"
+            className={`fixed ${isRtl ? 'left-4' : 'right-4'} bottom-20 z-50`}
           >
             <Button size="icon" variant="default" className="h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-shadow">
               <Plus className="h-6 w-6" />

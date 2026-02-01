@@ -53,7 +53,8 @@ export function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
   useEffect(() => {
     if (showGifPicker && giphyResults.length === 0) {
       setLoadingGiphy(true);
-      fetch(`https://api.giphy.com/v1/gifs/search?api_key=${import.meta.env.VITE_GIPHY_KEY}&q=meme&limit=12`)
+      const randomOffset = Math.floor(Math.random() * 50);
+      fetch(`https://api.giphy.com/v1/gifs/trending?api_key=${import.meta.env.VITE_GIPHY_KEY}&limit=12&rating=pg&offset=${randomOffset}`)
         .then(res => res.json())
         .then(data => {
           setGiphyResults(data.data || []);
@@ -65,7 +66,7 @@ export function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
         });
     }
   }, [showGifPicker]);
-  
+
   useEffect(() => {
     const fetchTopTags = async () => {
       try {
@@ -96,9 +97,9 @@ export function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
 
     fetchTopTags();
   }, []);
-  
+
   if (!user) return null;
-  
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length > 2) {
@@ -120,7 +121,7 @@ export function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
       setVideos([]);
       setVideoPreview([]);
       setImages(prev => [...prev, ...validFiles]);
-      
+
       Promise.all(
         validFiles.map(file => {
           return new Promise<string>((resolve) => {
@@ -154,7 +155,7 @@ export function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
       setImages([]);
       setImagePreview([]);
       setVideos(validFiles);
-      
+
       Promise.all(
         validFiles.map(file => {
           return new Promise<string>((resolve) => {
@@ -180,7 +181,7 @@ export function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
   const handleLinkChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setLink(e.target.value);
   };
-  
+
   const removeMedia = () => {
     setImages([]);
     setImagePreview([]);
@@ -189,7 +190,7 @@ export function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
     setSelectedGif(null);
     setMediaType(null);
   };
-  
+
   const removeImage = (index: number) => {
     setImages(prev => {
       const newImages = prev.filter((_, i) => i !== index);
@@ -198,10 +199,10 @@ export function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
       }
       return newImages;
     });
-    
+
     setImagePreview(prev => prev.filter((_, i) => i !== index));
   };
-  
+
   const moveImage = (fromIndex: number, toIndex: number) => {
     setImages(prev => {
       const newImages = [...prev];
@@ -209,7 +210,7 @@ export function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
       newImages.splice(toIndex, 0, movedImage);
       return newImages;
     });
-    
+
     setImagePreview(prev => {
       const newPreviews = [...prev];
       const [movedPreview] = newPreviews.splice(fromIndex, 1);
@@ -217,12 +218,12 @@ export function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
       return newPreviews;
     });
   };
-  
+
   const handleTagInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault();
       const newTag = formatTag(tagInput);
-      
+
       if (newTag && !tags.includes(newTag)) {
         setTags([...tags, newTag]);
         setTagInput("");
@@ -233,22 +234,22 @@ export function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
   const removeTag = (tagToRemove: string) => {
     setTags(tags.filter(tag => tag !== tagToRemove));
   };
-  
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!content.trim() && !images.length && !videos.length && !selectedGif && !link) {
       toast.error(isRtl ? "يرجى كتابة محتوى أو إضافة وسائط أو رابط" : "Please write content or add media or a link");
       return;
     }
-    
+
     try {
       console.log("Submitting post with content:", content.substring(0, 30) + "...");
       console.log("Media included:", mediaType ? "Yes" : "No");
-      
-      await createPost({ 
-        content, 
-        images: mediaType === 'images' ? images : [], 
+
+      await createPost({
+        content,
+        images: mediaType === 'images' ? images : [],
         videos: mediaType === 'video' ? videos : [],
         gifUrl: mediaType === 'gif' ? selectedGif : null,
         link,
@@ -263,7 +264,7 @@ export function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
       setLink("");
       setMediaType(null);
       setTags([]);
-      
+
       if (onPostCreated) {
         onPostCreated();
       }
@@ -273,7 +274,7 @@ export function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
       toast.error(isRtl ? "حدث خطأ أثناء نشر المنشور" : "Error publishing post");
     }
   };
-  
+
   return (
     <Card className="border-border/40 bg-card/30 w-full mt-4">
       <CardContent className="p-4">
@@ -283,7 +284,7 @@ export function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
               <AvatarImage src={user.avatar} alt={user.displayName} />
               <AvatarFallback>{user.displayName.charAt(0)}</AvatarFallback>
             </Avatar>
-            
+
             <div className="flex-1">
               <Textarea
                 placeholder={isRtl ? "ماذا يدور في ذهنك؟" : "What's on your mind?"}
@@ -293,7 +294,7 @@ export function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
                 disabled={uploading}
                 dir={isRtl ? "rtl" : "ltr"}
               />
-              
+
               {showGifPicker && (
                 <div className="mt-3 rounded-md overflow-hidden bg-background/95 p-4">
                   <div className="mb-3">
@@ -305,7 +306,7 @@ export function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
                         setGiphySearch(e.target.value);
                         if (e.target.value.trim()) {
                           setLoadingGiphy(true);
-                          fetch(`https://api.giphy.com/v1/gifs/search?api_key=${import.meta.env.VITE_GIPHY_KEY}&q=${encodeURIComponent(e.target.value)}&limit=20`)
+                          fetch(`https://api.giphy.com/v1/gifs/search?api_key=${import.meta.env.VITE_GIPHY_KEY}&q=${encodeURIComponent(e.target.value)}&limit=20&rating=pg`)
                             .then(res => res.json())
                             .then(data => {
                               setGiphyResults(data.data || []);
@@ -317,7 +318,8 @@ export function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
                             });
                         } else {
                           setLoadingGiphy(true);
-                          fetch(`https://api.giphy.com/v1/gifs/search?api_key=${import.meta.env.VITE_GIPHY_KEY}&q=meme&limit=12`)
+                          const randomOffset = Math.floor(Math.random() * 50);
+                          fetch(`https://api.giphy.com/v1/gifs/trending?api_key=${import.meta.env.VITE_GIPHY_KEY}&limit=12&rating=pg&offset=${randomOffset}`)
                             .then(res => res.json())
                             .then(data => {
                               setGiphyResults(data.data || []);
@@ -329,7 +331,8 @@ export function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
                             });
                         }
                       }}
-                      className="mb-2"
+                      className="mb-2 bg-background"
+                      dir={isRtl ? "rtl" : "ltr"}
                     />
                     {loadingGiphy ? (
                       <div className="flex justify-center items-center h-40">
@@ -338,13 +341,13 @@ export function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
                     ) : (
                       <div className="grid grid-cols-4 gap-2 max-h-80 overflow-y-auto">
                         {giphyResults.map((gif) => (
-                          <div 
-                            key={gif.id} 
+                          <div
+                            key={gif.id}
                             className="cursor-pointer hover:opacity-90"
                             onClick={() => handleGifSelect(gif)}
                           >
-                            <img 
-                              src={gif.images.fixed_height_small.url} 
+                            <img
+                              src={gif.images.fixed_height_small.url}
                               alt={gif.title}
                               className="w-full h-20 object-cover rounded"
                             />
@@ -371,13 +374,13 @@ export function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
                       {isRtl ? "إزالة الكل" : "Remove All"}
                     </Button>
                   </div>
-                  
+
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4" dir={isRtl ? "rtl" : "ltr"}>
                     {imagePreview.map((preview, index) => (
                       <div key={index} className="relative aspect-square rounded-md overflow-hidden group">
-                        <img 
-                          src={preview} 
-                          alt={`Preview ${index + 1}`} 
+                        <img
+                          src={preview}
+                          alt={`Preview ${index + 1}`}
                           className="w-full h-full object-cover"
                         />
                         <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -426,8 +429,8 @@ export function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
                 <div className="mt-3">
                   {videoPreview.map((preview, index) => (
                     <div key={index} className="relative rounded-md overflow-hidden">
-                      <video 
-                        src={preview} 
+                      <video
+                        src={preview}
                         controls
                         className="max-h-96 w-full rounded-md"
                       />
@@ -448,9 +451,9 @@ export function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
 
               {selectedGif && (
                 <div className="relative mt-3 rounded-md overflow-hidden">
-                  <img 
-                    src={selectedGif} 
-                    alt="Selected GIF" 
+                  <img
+                    src={selectedGif}
+                    alt="Selected GIF"
                     className="max-h-64 w-full object-cover rounded-md"
                   />
                   <Button
@@ -465,7 +468,7 @@ export function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
                   </Button>
                 </div>
               )}
-              
+
               <div className={`flex gap-2 mt-3 ${isRtl ? 'flex-row-reverse' : ''}`}>
                 {showLinkInput && (
                   <div className="flex-1">
@@ -485,8 +488,8 @@ export function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
               <div className="" dir={isRtl ? "rtl" : "ltr"}>
                 <div className="flex flex-wrap gap-2 mb-2">
                   {tags.map((tag) => (
-                    <Badge 
-                      key={tag} 
+                    <Badge
+                      key={tag}
                       variant="secondary"
                       className="flex items-center gap-1 px-2 py-1 mt-2"
                     >
@@ -501,7 +504,7 @@ export function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
                     </Badge>
                   ))}
                 </div>
-                
+
                 <Popover open={open} onOpenChange={setOpen}>
                   <PopoverTrigger asChild>
                     <Button
@@ -516,8 +519,8 @@ export function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
                   </PopoverTrigger>
                   <PopoverContent className="w-full p-0">
                     <Command>
-                      <CommandInput 
-                        placeholder={isRtl ? "ابحث عن وسوم أو أضف وسماً جديداً..." : "Search tags or add a new one..."} 
+                      <CommandInput
+                        placeholder={isRtl ? "ابحث عن وسوم أو أضف وسماً جديداً..." : "Search tags or add a new one..."}
                         value={tagInput}
                         onValueChange={setTagInput}
                       />
@@ -551,26 +554,26 @@ export function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
                           </div>
                         ) : (
                           <>
-                            {tagInput && !topTags.some(tag => 
+                            {tagInput && !topTags.some(tag =>
                               tag.name.toLowerCase() === tagInput.toLowerCase()
                             ) && (
-                              <CommandItem
-                                value={tagInput}
-                                onSelect={() => {
-                                  const formattedTag = formatTag(tagInput);
-                                  if (!tags.includes(formattedTag)) {
-                                    setTags([...tags, formattedTag]);
-                                  }
-                                  setTagInput("");
-                                  setOpen(false);
-                                }}
-                              >
-                                <Plus className="mr-2 h-4 w-4" />
-                                {isRtl ? "إضافة" : "Add"} # {formatTagForDisplay(tagInput)}
-                              </CommandItem>
-                            )}
+                                <CommandItem
+                                  value={tagInput}
+                                  onSelect={() => {
+                                    const formattedTag = formatTag(tagInput);
+                                    if (!tags.includes(formattedTag)) {
+                                      setTags([...tags, formattedTag]);
+                                    }
+                                    setTagInput("");
+                                    setOpen(false);
+                                  }}
+                                >
+                                  <Plus className="mr-2 h-4 w-4" />
+                                  {isRtl ? "إضافة" : "Add"} # {formatTagForDisplay(tagInput)}
+                                </CommandItem>
+                              )}
                             {topTags
-                              .filter(tag => 
+                              .filter(tag =>
                                 tag.name.toLowerCase().includes(tagInput.toLowerCase())
                               )
                               .map((tag) => (
@@ -663,23 +666,23 @@ export function CreatePostForm({ onPostCreated }: CreatePostFormProps) {
                   </Button>
 
                   <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className={`gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}
-                  onClick={() => {
-                    setShowLinkInput(!showLinkInput);
-                    if (!showLinkInput) {
-                      setLink(''); // Clear link when opening input
-                    }
-                  }}
-                  disabled={uploading}
-                >
-                  <LinkIcon className="h-4 w-4" />
-                  {isMobile ? '' : <span>{isRtl ? "إضافة رابط" : "Add Link"}</span>}
-                </Button>
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={`gap-2 ${isRtl ? 'flex-row-reverse' : ''}`}
+                    onClick={() => {
+                      setShowLinkInput(!showLinkInput);
+                      if (!showLinkInput) {
+                        setLink(''); // Clear link when opening input
+                      }
+                    }}
+                    disabled={uploading}
+                  >
+                    <LinkIcon className="h-4 w-4" />
+                    {isMobile ? '' : <span>{isRtl ? "إضافة رابط" : "Add Link"}</span>}
+                  </Button>
                 </div>
-                
+
                 <Button
                   type="submit"
                   size="sm"

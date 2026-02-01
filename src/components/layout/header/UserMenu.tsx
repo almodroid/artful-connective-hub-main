@@ -2,7 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { User, LogOut, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -20,17 +20,17 @@ export function UserMenu() {
   const navigate = useNavigate();
   const { t, isRtl } = useTranslation();
   const isMobile = useIsMobile();
-  
+
   const handleLogout = async () => {
     await logout();
     navigate("/login");
   };
-  
+
   if (loading) {
     // Optionally, show a spinner here instead of null
     return null;
   }
-  
+
   if (!isAuthenticated && !isMobile) {
     return (
       <>
@@ -47,24 +47,24 @@ export function UserMenu() {
   if (isMobile && !isAuthenticated) {
     return (
       <>
-      <Link to="/login">
-        <User className="rounded-full bg-gray-900 p-2 w-8 h-8 mx-2 text-white dark:text-white"/>
+        <Link to="/login">
+          <User className="rounded-full bg-gray-900 p-2 w-8 h-8 mx-2 text-white dark:text-white" />
         </Link>
       </>
     );
   }
 
-  
+
   return (
     <>
-      {!isMobile && <NotificationsDropdown />}
-      
+      {!isMobile}
+
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" className="rounded-full mt-1 mr-2">
             <Avatar className="h-8 w-8 border overflow-hidden">
-              <AvatarImage 
-                src={user?.avatar} 
+              <AvatarImage
+                src={user?.avatar}
                 alt={user?.displayName}
                 className="object-cover"
               />
@@ -103,7 +103,7 @@ export function UserMenu() {
             </DropdownMenuItem>
           )}
           <DropdownMenuSeparator />
-          <DropdownMenuItem 
+          <DropdownMenuItem
             className="cursor-pointer text-destructive focus:text-destructive text-right w-full text-red-600 dark:text-red-400 hover:text-destructive hover:text-red-400 dark:hover:text-red-200 focus:outline-none focus:ring-0"
             onClick={handleLogout}
             dir={isRtl ? "rtl" : "ltr"}

@@ -60,44 +60,67 @@ const Index = () => {
       if (!item) return;
 
       const wasLiked = item.isLiked;
+      const originalLikes = item.likes;
+
+      // Optimistic update
       item.isLiked = !wasLiked;
       item.likes = wasLiked ? Math.max(0, item.likes - 1) : item.likes + 1;
 
-      const tableName = type === 'post' ? 'post_likes' : 'project_likes';
-      const idColumn = type === 'post' ? 'post_id' : 'project_id';
-
-      if (wasLiked) {
-        const { error } = await supabase
-          .from(tableName)
-          .delete()
-          .eq(idColumn, id)
-          .eq('user_id', user.id);
-        if (error) {
-          toast.error(isRtl ? 'حدث خطأ أثناء تحديث الإعجاب' : 'Error updating like status');
-          return;
+      if (type === 'post') {
+        if (wasLiked) {
+          const { error } = await supabase
+            .from('post_likes')
+            .delete()
+            .eq('post_id', id)
+            .eq('user_id', user.id);
+          if (error) throw error;
+          toast.success(isRtl ? 'تم إزالة الإعجاب بنجاح' : 'Successfully unliked');
+        } else {
+          const { error } = await supabase
+            .from('post_likes')
+            .upsert(
+              { post_id: id, user_id: user.id },
+              { onConflict: 'post_id,user_id' }
+            );
+          if (error) throw error;
+          toast.success(isRtl ? 'تم تسجيل الإعجاب بنجاح' : 'Successfully liked');
         }
-        toast.success(isRtl ? 'تم إزالة الإعجاب بنجاح' : 'Successfully unliked');
+
+        // Refresh count
+        const { data: likeData } = await supabase
+          .from('post_likes')
+          .select('*', { count: 'exact', head: true })
+          .eq('post_id', id);
+        item.likes = likeData?.length || 0;
       } else {
-        const { error } = await supabase
-          .from(tableName)
-          .upsert(
-            { [idColumn]: id, user_id: user.id, created_at: new Date().toISOString() },
-            { onConflict: `${idColumn},user_id` }
-          );
-        if (error) {
-          toast.error(isRtl ? 'حدث خطأ أثناء تحديث الإعجاب' : 'Error updating like status');
-          return;
+        if (wasLiked) {
+          const { error } = await supabase
+            .from('project_likes')
+            .delete()
+            .eq('project_id', id)
+            .eq('user_id', user.id);
+          if (error) throw error;
+          toast.success(isRtl ? 'تم إزالة الإعجاب بنجاح' : 'Successfully unliked');
+        } else {
+          const { error } = await supabase
+            .from('project_likes')
+            .upsert(
+              { project_id: id, user_id: user.id },
+              { onConflict: 'project_id,user_id' }
+            );
+          if (error) throw error;
+          toast.success(isRtl ? 'تم تسجيل الإعجاب بنجاح' : 'Successfully liked');
         }
-        toast.success(isRtl ? 'تم تسجيل الإعجاب بنجاح' : 'Successfully liked');
-      }
 
-      // Refresh like count after update
-      const { data: likeData } = await supabase
-        .from(tableName)
-        .select('*', { count: 'exact', head: true })
-        .eq(idColumn, id);
-      item.likes = likeData?.length || 0;
-    } catch {
+        // Refresh count
+        const { data: likeData } = await supabase
+          .from('project_likes')
+          .select('*', { count: 'exact', head: true })
+          .eq('project_id', id);
+        item.likes = likeData?.length || 0;
+      }
+    } catch (error) {
+      console.error('Like error:', error);
       toast.error(isRtl ? 'حدث خطأ أثناء تحديث الإعجاب' : 'Error updating like status');
     }
   };
@@ -247,6 +270,9 @@ const Index = () => {
           };
         }));
 
+        // Sort by likes descending to show trends
+        transformedPosts.sort((a, b) => b.likes - a.likes);
+
         setFollowingPosts(transformedPosts);
       } catch (error) {
         console.error('Error fetching trends posts:', error);
@@ -296,7 +322,7 @@ const Index = () => {
             id: project.id,
             title: project.title || "",
             description: project.description || "",
-            thumbnail_url: project.image_urls?.[0] || "",
+            thumbnail_url: (project as any).cover_image_url || project.image_urls?.[0] || "",
             project_url: project.external_link || undefined,
             github_url: undefined,
             technologies: project.tags || [],
@@ -354,7 +380,7 @@ const Index = () => {
             <TabsTrigger value="trends" className="flex-1">{t('trends')}</TabsTrigger>
             <TabsTrigger value="top-projects" className="flex-1">{t('topProjects')}</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="for-you" className="mt-0">
             {isAuthenticated && <CreatePostForm onPostCreated={handlePostCreated} />}
 

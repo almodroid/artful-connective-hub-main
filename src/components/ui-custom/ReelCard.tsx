@@ -7,7 +7,7 @@ import { Heart, MessageCircle, Share2, Play, Pause, Volume2, VolumeX, Link as Li
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { 
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogClose,
-  DialogTrigger 
+  DialogTrigger
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -69,36 +69,36 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
   const [isMuted, setIsMuted] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
-  
+
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Heart animation states
   const [hearts, setHearts] = useState<AnimatedHeart[]>([]);
   const [heartCount, setHeartCount] = useState(0);
   const heartContainerRef = useRef<HTMLDivElement>(null);
-  
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const { sendInteractionNotification } = useNotificationsApi();
   const { deleteReel } = useReels();
-  
+
   const navigate = useNavigate();
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [fallbackPoster, setFallbackPoster] = useState<string | null>(null);
   const fallbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   // Check if the current user is the owner of this reel
   const isOwner = isAuthenticated && user?.id === reel.user.id;
 
   // Function to generate random hearts
   const generateHearts = (count: number) => {
     if (!heartContainerRef.current) return;
-    
+
     const containerRect = heartContainerRef.current.getBoundingClientRect();
     const centerX = containerRect.width / 2;
     const centerY = containerRect.height / 2;
-    
+
     const newHearts: AnimatedHeart[] = [];
-    
+
     for (let i = 0; i < count; i++) {
       // Create random properties for each heart
       const id = heartCount + i;
@@ -108,13 +108,13 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
       const duration = Math.random() * 1.5 + 0.5; // Animation duration between 0.5-2s
       const opacity = Math.random() * 0.3 + 0.7; // Opacity between 0.7-1
       const rotation = Math.random() * 60 - 30; // Rotation between -30 and 30 degrees
-      
+
       newHearts.push({ id, x, y, size, duration, opacity, rotation });
     }
-    
+
     setHeartCount(prev => prev + count);
     setHearts(prev => [...prev, ...newHearts]);
-    
+
     // Remove hearts after animation completes
     setTimeout(() => {
       setHearts(prev => prev.filter(heart => !newHearts.some(newHeart => newHeart.id === heart.id)));
@@ -125,26 +125,26 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
   useEffect(() => {
     if (videoRef.current) {
       const video = videoRef.current;
-      
+
       const handleLoadStart = () => {
         setIsLoading(true);
         setHasError(false);
       };
-      
+
       const handleCanPlay = () => {
         setIsLoading(false);
         setHasError(false);
       };
-      
+
       const handleError = () => {
         setIsLoading(false);
         setHasError(true);
       };
-      
+
       video.addEventListener('loadstart', handleLoadStart);
       video.addEventListener('canplay', handleCanPlay);
       video.addEventListener('error', handleError);
-      
+
       return () => {
         video.removeEventListener('loadstart', handleLoadStart);
         video.removeEventListener('canplay', handleCanPlay);
@@ -156,9 +156,9 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
   // Handle video playback
   useEffect(() => {
     if (!videoRef.current) return;
-    
+
     const video = videoRef.current;
-    
+
     if (isActive) {
       // Only set initial state, don't auto-play
       setIsPlaying(false);
@@ -210,7 +210,7 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
   // Handle manual playback toggle
   const togglePlayback = () => {
     if (!videoRef.current) return;
-    
+
     if (isPlaying) {
       videoRef.current.pause();
       setIsPlaying(false);
@@ -233,35 +233,35 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
       });
     }
   };
-  
+
   // Handle mute/unmute
   const toggleMute = () => {
     if (!videoRef.current) return;
     videoRef.current.muted = !isMuted;
     setIsMuted(!isMuted);
   };
-  
+
   const handleLike = () => {
     if (!isAuthenticated) {
       toast.error(isRtl ? "يجب تسجيل الدخول أولاً" : "You must be logged in");
       return;
     }
-    
+
     const newLikedState = !isLiked;
     setIsLiked(newLikedState);
     setLikeCount(prev => newLikedState ? prev + 1 : prev - 1);
-    
+
     if (newLikedState) {
       // Only send notification and show animation when liking, not unliking
       sendInteractionNotification(reel.user.id, "like", reel.id, "reel");
       generateHearts(5 + Math.floor(Math.random() * 3)); // Generate 5-7 hearts
     }
-    
+
     if (onLike) {
       onLike(reel.id);
     }
   };
-  
+
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [reportReason, setReportReason] = useState("");
   const { reportReel } = useReels();
@@ -285,14 +285,14 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
 
   const handleDeleteReel = async () => {
     if (!isAuthenticated || !isOwner) return;
-    
+
     setIsSubmitting(true);
     try {
       const success = await deleteReel(reel.id);
       if (success) {
         setIsDeleteDialogOpen(false);
         if (onDelete) onDelete();
-        
+
         // If we're on the single reel page, navigate back
         if (isSingleReelPage) {
           window.history.back();
@@ -356,12 +356,12 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
       return false;
     }
   };
-  
+
   const handleShare = () => {
     const shareTitle = `${isRtl ? "ريل بواسطة" : "Reel by"} ${reel.user.displayName}`;
     const shareText = `${reel.caption?.substring(0, 100) || ''}${reel.caption && reel.caption.length > 100 ? '...' : ''}\n\n${isRtl ? "مشاركة من" : "Shared from"} ${window.location.host}`;
     const shareUrl = `${window.location.origin}/reel/${reel.id}?utm_source=share&utm_medium=social&utm_campaign=reel_share&publisher=${reel.user.username}`;
-    
+
     // Create a share dialog
     if (navigator.share) {
       navigator.share({
@@ -382,11 +382,11 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
       copyToClipboard(shareUrl, shareTitle, shareText);
     }
   };
-  
+
   const copyToClipboard = (url: string, title: string, text: string) => {
     // Create a formatted text with credit
     const formattedText = `${title}\n${text}\n${url}`;
-    
+
     // Try to copy rich text if supported
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(formattedText)
@@ -402,7 +402,7 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
       fallbackCopy(url);
     }
   };
-  
+
   const fallbackCopy = (text: string) => {
     // Old method for browsers not supporting clipboard API
     const textArea = document.createElement("textarea");
@@ -410,7 +410,7 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
     document.body.appendChild(textArea);
     textArea.focus();
     textArea.select();
-    
+
     try {
       document.execCommand('copy');
       toast.success(isRtl ? "تم نسخ الرابط إلى الحافظة" : "Link copied to clipboard");
@@ -418,21 +418,21 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
     } catch (err) {
       toast.error(isRtl ? "فشل نسخ الرابط" : "Failed to copy link");
     }
-    
+
     document.body.removeChild(textArea);
   };
 
   // Helper function to handle different date formats
   const getFormattedDate = () => {
     if (reel.createdAt instanceof Date) {
-      return formatDistanceToNow(reel.createdAt, { 
-        addSuffix: true, 
-        locale: isRtl ? ar : undefined 
+      return formatDistanceToNow(reel.createdAt, {
+        addSuffix: true,
+        locale: isRtl ? ar : undefined
       });
     } else if (typeof reel.createdAt === 'string') {
-      return formatDistanceToNow(new Date(reel.createdAt), { 
-        addSuffix: true, 
-        locale: isRtl ? ar : undefined 
+      return formatDistanceToNow(new Date(reel.createdAt), {
+        addSuffix: true,
+        locale: isRtl ? ar : undefined
       });
     }
     return "";
@@ -466,10 +466,10 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
               <AvatarImage src={reel.user.avatar} alt={reel.user.displayName} />
               <AvatarFallback>{reel.user.displayName.charAt(0)}</AvatarFallback>
             </Avatar>
-            
+
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
-                <Link 
+                <Link
                   to={`/profile/${reel.user.username}`}
                   className="font-medium text-white hover:text-primary transition-colors"
                 >
@@ -477,13 +477,13 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
                 </Link>
                 <div className="flex items-center gap-2">
 
-                  
+
                   {/* More Options Dropdown */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="h-6 w-8 rounded-full text-white/80 hover:text-white hover:bg-black/20"
                       >
                         <MoreVertical className="h-4 w-4" />
@@ -491,8 +491,8 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-48">
                       {isOwner ? (
-                        <DropdownMenuItem 
-                          className="text-destructive" 
+                        <DropdownMenuItem
+                          className="text-destructive"
                           onClick={() => setIsDeleteDialogOpen(true)}
                           dir={isRtl ? "rtl" : "ltr"}
                         >
@@ -500,7 +500,7 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
                           {isRtl ? "حذف الريل" : "Delete Reel"}
                         </DropdownMenuItem>
                       ) : (
-                        <DropdownMenuItem 
+                        <DropdownMenuItem
                           onClick={() => setIsReportDialogOpen(true)}
                           dir={isRtl ? "rtl" : "ltr"}
                         >
@@ -512,16 +512,16 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
                   </DropdownMenu>
                 </div>
               </div>
-              <Link 
+              <Link
                 to={`/profile/${reel.user.username}`}
                 className="text-sm text-white/70 hover:text-white transition-colors"
               >
-                
+
               </Link>
             </div>
           </div>
         </div>
-        
+
         <div className="relative bg-black h-full">
           {isLoading && isMobile && fallbackPoster ? (
             <img src={fallbackPoster} alt="Video frame" className="absolute inset-0 w-full h-full object-cover" />
@@ -530,13 +530,13 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
               <div className="w-6 h-6 border-4 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
           ) : null}
-          
+
           {hasError && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white p-4 text-center">
               <p className="text-sm mb-2">{isRtl ? "حدث خطأ في تحميل الفيديو" : "Error loading video"}</p>
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 className="text-white border-white hover:bg-white/10"
                 onClick={() => {
                   if (videoRef.current) {
@@ -548,10 +548,10 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
               </Button>
             </div>
           )}
-          
-          <video 
+
+          <video
             ref={videoRef}
-            src={reel.video_url} 
+            src={reel.video_url}
             className="w-full h-full object-cover cursor-pointer"
             loop
             playsInline
@@ -560,16 +560,16 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
             onClick={togglePlayback}
             onTouchEnd={togglePlayback}
           />
-          
+
           {/* Hearts animation container */}
-          <div 
+          <div
             ref={heartContainerRef}
             className="absolute inset-0 pointer-events-none overflow-hidden"
           >
             {hearts.map((heart) => (
               <div
                 key={heart.id}
-                className="absolute text-primary fill-primary"
+                className="absolute text-purple-500 fill-purple-500"
                 style={{
                   left: `${heart.x}px`,
                   top: `${heart.y}px`,
@@ -585,19 +585,19 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
               </div>
             ))}
           </div>
-          
+
           {/* Bottom video controls */}
           <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/70 to-transparent flex justify-between items-center video-controls">
             <div className="flex gap-2">
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 className="h-9 w-9 rounded-full bg-black/50 text-white hover:bg-black/70"
                 onClick={toggleMute}
               >
                 {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
               </Button>
-              
+
               {!isSingleReelPage && (
                 <Button
                   variant="ghost"
@@ -605,7 +605,7 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
                   className="h-9 w-9 rounded-full bg-black/50 text-white hover:bg-black/70 reel-link"
                   asChild
                 >
-                  <Link 
+                  <Link
                     to={`/reel/${reel.id}`}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -620,28 +620,28 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
                 </Button>
               )}
             </div>
-            
+
             <div className="text-sm text-white/90">
               {reel.views} {isRtl ? "مشاهدة" : "views"}
             </div>
           </div>
         </div>
-        
+
         {/* Caption below video */}
         {reel.caption && (
           <div className="p-4 pt-3 text-sm leading-relaxed text-foreground">
             <FormattedText text={reel.caption} />
           </div>
         )}
-        
+
         {/* Delete Dialog */}
         <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle className={isRtl ? "text-right" : "text-left"}>{isRtl ? "حذف الريل" : "Delete Reel"}</DialogTitle>
               <DialogDescription className={isRtl ? "text-right" : "text-left"}>
-                {isRtl ? "هل أنت متأكد من حذف هذا الريل؟ لا يمكن التراجع عن هذا الإجراء." : 
-                "Are you sure you want to delete this reel? This action cannot be undone."}
+                {isRtl ? "هل أنت متأكد من حذف هذا الريل؟ لا يمكن التراجع عن هذا الإجراء." :
+                  "Are you sure you want to delete this reel? This action cannot be undone."}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="mt-4">
@@ -650,8 +650,8 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
                   {isRtl ? "إلغاء" : "Cancel"}
                 </Button>
               </DialogClose>
-              <Button 
-                variant="destructive" 
+              <Button
+                variant="destructive"
                 onClick={handleDeleteReel}
                 disabled={isSubmitting}
               >
@@ -664,15 +664,15 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
             </DialogFooter>
           </DialogContent>
         </Dialog>
-        
+
         {/* Report Dialog */}
         <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{isRtl ? "الإبلاغ عن ريل" : "Report Reel"}</DialogTitle>
               <DialogDescription>
-                {isRtl ? "يرجى تقديم سبب للإبلاغ عن هذا الريل. سيراجع فريقنا الإبلاغ." : 
-                "Please provide a reason for reporting this reel. Our team will review the report."}
+                {isRtl ? "يرجى تقديم سبب للإبلاغ عن هذا الريل. سيراجع فريقنا الإبلاغ." :
+                  "Please provide a reason for reporting this reel. Our team will review the report."}
               </DialogDescription>
             </DialogHeader>
             <div className="mt-4">
@@ -704,8 +704,8 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
                   {isRtl ? "إلغاء" : "Cancel"}
                 </Button>
               </DialogClose>
-              <Button 
-                variant="destructive" 
+              <Button
+                variant="destructive"
                 onClick={handleReportReel}
                 disabled={isSubmitting || !reportReason.trim()}
               >
@@ -721,7 +721,8 @@ export function ReelCard({ reel, onLike, onView, isActive = false, onDelete, cla
       </CardContent>
 
       {/* Style for animations */}
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         @keyframes float-up {
           0% {
             transform: translate(0, 0) rotate(${Math.random() * 20 - 10}deg) scale(1);

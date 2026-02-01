@@ -23,6 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { BottomBar } from "@/components/layout/BottomBar";
+import { Layout } from "@/components/layout/Layout";
 import { ar } from "date-fns/locale";
 import { compressFile } from '../utils/imageCompression';
 import type { TablesInsert } from '../integrations/supabase/types';
@@ -55,8 +56,8 @@ const Messages = () => {
     getBlockedUsers,
     deleteConversation,
   } = useMessages();
-  
-  
+
+
 
   const [messageContent, setMessageContent] = useState('');
   const [showConversations, setShowConversations] = useState(!conversationId || isMobile);
@@ -89,7 +90,7 @@ const Messages = () => {
   useEffect(() => {
     getConversations();
     getBlockedUsers();
-    
+
     // If userId is provided (from profile page), create a conversation with that user
     const handleUserIdParam = async () => {
       if (userId && user && userId !== user.id) {
@@ -108,7 +109,7 @@ const Messages = () => {
         }
       }
     };
-    
+
     if (userId) {
       handleUserIdParam();
     }
@@ -137,7 +138,7 @@ const Messages = () => {
     };
   }, [conversationId, subscribeToMessages, getMessages]);
 
- 
+
 
   const handleEditMessage = async (messageId: string, content: string) => {
     if (!messageId || !content.trim()) return;
@@ -203,10 +204,10 @@ const Messages = () => {
       });
     }
   };
-  
+
   const searchGiphy = async (query: string) => {
     if (!query.trim()) return;
-    
+
     setLoadingGiphy(true);
     try {
       const response = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=${import.meta.env.VITE_GIPHY_KEY}&q=${encodeURIComponent(query)}&limit=20`);
@@ -223,10 +224,10 @@ const Messages = () => {
       setLoadingGiphy(false);
     }
   };
-  
+
   const handleGiphySelect = async (gifUrl: string) => {
     if (!conversationId) return;
-    
+
     try {
       await sendMessage(conversationId, 'GIF', [gifUrl], 'gif');
       setShowGiphyPicker(false);
@@ -259,7 +260,7 @@ const Messages = () => {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) {
-      const validFiles = files.filter(file => 
+      const validFiles = files.filter(file =>
         file.type.startsWith('image/') || file.type.startsWith('video/')
       );
       if (validFiles.length !== files.length) {
@@ -276,30 +277,30 @@ const Messages = () => {
   const handleRemoveFile = (index: number) => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
-  
 
 
 
-const handleSendMessage = async (e: React.FormEvent) => {
+
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!conversationId || (!messageContent.trim() && selectedFiles.length === 0)) return;
-    
+
     setUploading(true);
     try {
       if (selectedFiles.length > 0) {
         const mediaUrls: string[] = [];
-        
+
         for (const file of selectedFiles) {
           // Compress image files before upload
           const processedFile = await compressFile(file);
-          
+
           const fileExt = processedFile.name.split('.').pop();
           const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
           const filePath = `${conversationId}/${fileName}`;
-          
+
           // Convert processed file to ArrayBuffer for direct upload
           const arrayBuffer = await processedFile.arrayBuffer();
-          
+
           const { error: uploadError, data } = await supabase.storage
             .from('messages_media')
             .upload(filePath, arrayBuffer, {
@@ -309,20 +310,20 @@ const handleSendMessage = async (e: React.FormEvent) => {
             });
 
           if (uploadError) throw uploadError;
-          
+
           const { data: { publicUrl } } = supabase.storage
             .from('messages_media')
             .getPublicUrl(filePath);
-          
+
           mediaUrls.push(publicUrl);
         }
-        
+
         const mediaType = selectedFiles[0].type.startsWith('image/') ? 'image' : 'video';
         await sendMessage(conversationId, messageContent, mediaUrls, mediaType);
       } else {
         await sendMessage(conversationId, messageContent);
       }
-      
+
       setMessageContent('');
       setSelectedFiles([]);
     } catch (error: any) {
@@ -363,7 +364,7 @@ const handleSendMessage = async (e: React.FormEvent) => {
   useEffect(() => {
     const checkIfBlocked = async () => {
       if (!user || !otherParticipant) return;
-      
+
       try {
         const { data, error } = await supabase
           .from('blocked_users')
@@ -382,7 +383,7 @@ const handleSendMessage = async (e: React.FormEvent) => {
     checkIfBlocked();
   }, [user, otherParticipant]);
   const [isFollowing, setIsFollowing] = useState(false);
-  
+
   useEffect(() => {
     if (otherParticipant && user?.id) {
       const checkFollowingStatus = async () => {
@@ -397,71 +398,84 @@ const handleSendMessage = async (e: React.FormEvent) => {
     }
   }, [otherParticipant, user]);
 
+
   return (
-    <div className="flex flex-col min-h-screen">
-      <Header />
-      <div className="container mx-auto pt-24 pb-16 max-w-6xl flex-1">
-        <div className='flex gap-3'>
-          <a href='/'>
-            {isRtl? <ArrowRight className="h-5 w-5 mt-2" /> : <ArrowLeft className="h-5 w-5 mt-2" />}
-          </a>
-          <h1 className="text-2xl font-bold mb-6 flex">{t('Messages')}</h1>
-        </div>
-      <div className="flex rounded-lg border overflow-hidden h-[calc(100vh-200px)]">
-        {/* Conversations List */}
-        {(showConversations || !isMobile) && (
-          <div className={`${isMobile ? 'w-full' : 'w-1/3'} border-r border-l`}>
-            <div className="p-[26px] border-b border-l">
-              <h2 className="font-semibold">{t('Conversations')}</h2>
+    <>
+      <Layout hideSidebars hideFooter hideBottomBar>
+        <div className="flex h-[calc(100vh-4rem)] overflow-hidden bg-background">
+          {/* Conversations Sidebar */}
+          <aside className={cn(
+            "w-80 border-e bg-card flex flex-col transition-all duration-300 shrink-0",
+            isMobile && !showConversations && "hidden",
+            isMobile && showConversations && "fixed inset-0 z-50 w-full"
+          )}>
+            <div className="p-4 border-b flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <a href='/'>
+                  {isRtl ? <ArrowRight className="h-5 w-5" /> : <ArrowLeft className="h-5 w-5" />}
+                </a>
+                <h1 className="text-xl font-bold">{t('Messages')}</h1>
+              </div>
+              {isMobile && showConversations && (
+                <Button variant="ghost" size="icon" onClick={() => setShowConversations(false)}>
+                  <X className="h-5 w-5" />
+                </Button>
+              )}
             </div>
-            <ScrollArea className="h-[calc(100vh-260px)]">
+
+            <ScrollArea className="flex-1">
               {loading && !conversations.length ? (
-                // Loading skeletons
                 Array(5).fill(0).map((_, i) => (
-                  <div key={i} className="flex items-center gap-3 p-4 border-b">
+                  <div key={i} className="flex items-center gap-3 p-4 border-b animate-pulse">
                     <Skeleton className="h-10 w-10 rounded-full" />
-                    <div className="space-y-2">
+                    <div className="space-y-2 flex-1">
                       <Skeleton className="h-4 w-24" />
                       <Skeleton className="h-3 w-40" />
                     </div>
                   </div>
                 ))
               ) : conversations.length === 0 ? (
-                <div className="p-4 text-center text-muted-foreground">
+                <div className="p-8 text-center text-muted-foreground">
+                  <div className="bg-muted/50 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <Smile className="h-6 w-6 opacity-30" />
+                  </div>
                   {t('No conversations yet')}
                 </div>
               ) : (
                 conversations.map(conversation => {
                   const otherUser = conversation.participants.find(p => p.user_id !== user?.id);
                   if (!otherUser) return null;
-                  
+
                   return (
-                    <div 
+                    <div
                       key={conversation.id}
-                      className={`flex items-center gap-3 p-4 border-b hover:bg-muted/50 cursor-pointer ${conversation.id === conversationId ? 'bg-muted' : ''}`}
+                      className={cn(
+                        "flex items-center gap-3 p-4 border-b hover:bg-muted/50 cursor-pointer transition-colors relative",
+                        conversation.id === conversationId && "bg-muted shadow-sm before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-primary"
+                      )}
                       onClick={() => handleConversationClick(conversation.id)}
                       dir={isRtl ? 'rtl' : 'ltr'}
                     >
-                      <Avatar>
+                      <Avatar className="h-11 w-11 shadow-sm border border-background">
                         <AvatarImage src={otherUser.avatar_url} alt={otherUser.display_name} />
                         <AvatarFallback>{otherUser.display_name.charAt(0)}</AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-center">
-                          <p className="font-medium truncate">{otherUser.display_name}</p>
+                        <div className="flex justify-between items-start mb-0.5">
+                          <p className="font-semibold truncate text-sm">{otherUser.display_name}</p>
                           {conversation.last_message && (
-                            <span className="text-xs text-muted-foreground">
-                              {formatDistanceToNow(new Date(conversation.last_message.created_at), { 
-                              addSuffix: true,
-                              locale: isRtl ? ar : undefined
-                            })}
+                            <span className="text-[10px] text-muted-foreground flex-shrink-0">
+                              {formatDistanceToNow(new Date(conversation.last_message.created_at), {
+                                addSuffix: false,
+                                locale: isRtl ? ar : undefined
+                              })}
                             </span>
                           )}
                         </div>
                         {conversation.last_message && (
-                          <p className="text-sm text-muted-foreground truncate text-start">
+                          <p className="text-xs text-muted-foreground truncate leading-tight">
                             {conversation.last_message.sender_id === user?.id ? `${t('You')}: ` : ''}
-                            {conversation.last_message.content?.slice(0, 20)}{conversation.last_message.content?.length > 20 ? '...' : ''}
+                            {conversation.last_message.content}
                           </p>
                         )}
                       </div>
@@ -470,128 +484,109 @@ const handleSendMessage = async (e: React.FormEvent) => {
                 })
               )}
             </ScrollArea>
-          </div>
-        )}
+          </aside>
 
-        {/* Messages Area */}
-        {(!showConversations || !isMobile) && conversationId && (
-          <div className={`${isMobile ? 'w-full' : 'w-2/3'} flex flex-col`}>
-            {/* Conversation Header */}
-            <div className="p-4 border-b flex items-center gap-3">
-              {isMobile && (
-                <Button variant="ghost" size="icon" onClick={() => {
-                  if (location.state?.from) {
-                    navigate(location.state.from);
-                  } else {
-                    handleBackToConversations();
-                  }
-                }}>
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
-              )}
-              {otherParticipant && (
-                <>
-                  <Avatar className="cursor-pointer" onClick={() => navigate(`/profile/${otherParticipant.username}`)}>
-                    <AvatarImage src={otherParticipant.avatar_url} alt={otherParticipant.display_name} />
-                    <AvatarFallback>{otherParticipant.display_name.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <p className="font-medium flex">
-                      <a href={`/profile/${otherParticipant.username}`} className="hover:underline">
-                        {otherParticipant.display_name}
-                      </a>
-                    </p>
-                    <p className="text-sm text-muted-foreground flex">@{otherParticipant.username}</p>
+          {/* Main Conversation Area */}
+          <div className="flex-1 flex flex-col h-full overflow-hidden relative">
+            {!conversationId ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center p-8 bg-muted/5 animate-in fade-in duration-500">
+                <div className="bg-primary/5 p-6 rounded-full mb-6">
+                  <Send className="w-12 h-12 text-purple-500/40 rotate-12" />
+                </div>
+                <h2 className="text-2xl font-bold mb-2">{t('Your Messages')}</h2>
+                <p className="text-muted-foreground max-w-sm">
+                  {isRtl ? "اختر محادثة من القائمة للبدء أو استكشف الملفات الشخصية لإرسال رسائل جديدة." : "Select a conversation from the list to start or explore profiles to send new messages."}
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* Message Area Header */}
+                <header className="h-16 border-b bg-background/80 backdrop-blur-md flex items-center px-4 justify-between sticky top-0 z-30">
+                  <div className="flex items-center gap-3">
+                    {isMobile && (
+                      <Button variant="ghost" size="icon" onClick={handleBackToConversations}>
+                        <ArrowLeft className="h-5 w-5" />
+                      </Button>
+                    )}
+                    {otherParticipant && (
+                      <div className="flex items-center gap-3 animate-in slide-in-from-left duration-300">
+                        <Avatar
+                          className="h-9 w-9 cursor-pointer hover:ring-2 hover:ring-primary/20 transition-all"
+                          onClick={() => navigate(`/profile/${otherParticipant.username}`)}
+                        >
+                          <AvatarImage src={otherParticipant.avatar_url} alt={otherParticipant.display_name} />
+                          <AvatarFallback>{otherParticipant.display_name.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-semibold text-sm leading-none flex gap-1 items-center">
+                            <a href={`/profile/${otherParticipant.username}`} className="hover:underline">
+                              {otherParticipant.display_name}
+                            </a>
+                            {isFollowing && <Check className="h-3 w-3 text-primary" />}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">@{otherParticipant.username}</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  {otherParticipant.user_id !== user?.id && (
-                     <Button
-                       variant={isFollowing ? "ghost" : "outline"}
-                       size="sm"
-                       className="mr-2"
-                       onClick={async () => {
-                         if (isFollowing) {
-                           const { error } = await supabase
+
+                  <div className="flex items-center gap-1">
+                    {otherParticipant?.user_id !== user?.id && (
+                      <Button
+                        variant={isFollowing ? "ghost" : "outline"}
+                        size="sm"
+                        className="h-8 text-xs font-medium"
+                        onClick={async () => {
+                          if (isFollowing) {
+                            const { error } = await supabase
                               .from('followers')
                               .delete()
                               .eq('follower_id', user?.id)
-                              .eq('following_id', otherParticipant.user_id);
+                              .eq('following_id', otherParticipant?.user_id);
                             if (!error) {
                               setIsFollowing(false);
                               toast({
                                 title: isRtl ? "تم إلغاء المتابعة بنجاح" : "Successfully unfollowed",
-                                variant: "default"
                               });
                             }
-                         } else {
-                           const { error } = await supabase
-                             .from('followers')
-                             .insert({
-                               follower_id: user?.id,
-                               following_id: otherParticipant.user_id
-                             });
-                           if (!error) {
-                             setIsFollowing(true);
-                             toast({
-                               title: isRtl ? "تم المتابعة بنجاح" : "Successfully followed",
-                               variant: "default"
-                             });
-                           }
-                         }
-                       }}
-                     >
-                       {isFollowing ? (
-                         <>
-                           <UserX className="h-4 w-4 mr-1" />
-                           {t('Unfollow')}
-                         </>
-                       ) : (
-                         <>
-                           <UserPlus className="h-4 w-4 mr-1" />
-                           {t('Follow')}
-                         </>
-                       )}
-                     </Button>
-                   )}
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreVertical className="h-5 w-5" />
+                          } else {
+                            const { error } = await supabase
+                              .from('followers')
+                              .insert({
+                                follower_id: user?.id,
+                                following_id: otherParticipant?.user_id
+                              });
+                            if (!error) {
+                              setIsFollowing(true);
+                              toast({
+                                title: isRtl ? "تم المتابعة بنجاح" : "Successfully followed",
+                              });
+                            }
+                          }
+                        }}
+                      >
+                        {isFollowing ? t('Unfollow') : t('Follow')}
                       </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-48">
-                      <div className="space-y-2">
+                    )}
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent align="end" className="w-48 p-1">
                         <Button
                           variant="ghost"
-                          className="w-full justify-start"
-                          onClick={() => navigate(`/profile/${otherParticipant.username}`)}
+                          className="w-full justify-start text-xs h-9"
+                          onClick={() => navigate(`/profile/${otherParticipant?.username}`)}
                         >
-                          <User className="h-4 w-4 mr-2" />
+                          <User className="h-3.5 w-3.5 mr-2" />
                           {t('view_profile')}
                         </Button>
-                        
-                        {blockedUsers.includes(otherParticipant.user_id) ? (
-                          <Button
-                            variant="ghost"
-                            className="w-full justify-start"
-                            onClick={() => unblockUser(otherParticipant.user_id)}
-                          >
-                            <UserX className="h-4 w-4 mr-2" />
-                            {t('Unblock')}
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            className="w-full justify-start text-destructive"
-                            onClick={() => blockUser(otherParticipant.user_id)}
-                          >
-                            <UserX className="h-4 w-4 mr-2" />
-                            {t('Block')}
-                          </Button>
-                        )}
-                        
+                        <Separator className="my-1" />
                         <Button
                           variant="ghost"
-                          className="w-full justify-start text-destructive"
+                          className="w-full justify-start text-xs h-9 text-destructive"
                           onClick={() => {
                             if (currentConversation?.id) {
                               deleteConversation(currentConversation.id);
@@ -599,414 +594,428 @@ const handleSendMessage = async (e: React.FormEvent) => {
                             }
                           }}
                         >
-                          <Trash2 className="h-4 w-4 mr-2" />
+                          <Trash2 className="h-3.5 w-3.5 mr-2" />
                           {t('Delete_Chat')}
                         </Button>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </>
-              )}
-            </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </header>
 
-            {/* Messages */}
-            <ScrollArea ref={scrollAreaRef} className="flex-1 p-4" dir={isRtl? 'rtl' : 'ltr'} style={{ height: 'calc(100vh - 200px)' }}>
-              {(isBlocked || amIBlocked) && (
-                <div className="mb-4 p-3 bg-destructive/10 text-destructive rounded-md text-sm">
-                  {isBlocked 
-                     ? t('You_cannot_send_blocked')
-                     : t('You_cannot_send_has_blocked_you')}
-                </div>
-              )}
-              {loading && !messages.length ? (
-                Array(5).fill(0).map((_, i) => (
-                  <div key={i} className={`flex ${i % 2 === 0 ? 'justify-start' : 'justify-end'} mb-4`}>
-                    <div className={`max-w-[70%] ${i % 2 === 0 ? 'bg-muted' : 'bg-primary text-primary-foreground'} rounded-lg p-3`}>
-                      <Skeleton className="h-4 w-40" />
-                    </div>
-                  </div>
-                ))
-              ) : messages.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-center text-muted-foreground">
-                  <div>
-                    <p>{t('No_messages')}</p>
-                    <p className="text-sm">{t('Send_message')}</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4 pb-2">
-                  {messages.map((message) => (
-                    <div
-                      key={message.id}
-                      ref={message.id === messages[messages.length - 1].id ? messagesEndRef : undefined}
-                      className={`flex flex-col ${message.sender_id === user?.id ? 'items-start' : 'items-end'} mb-4`}
-                    >
-                  <div
-                    className={`max-w-[70%] ${message.sender_id === user?.id ? 'bg-primary text-primary-foreground' : 'bg-muted'} ${isRtl? 'pl-5':'pr-5'} rounded-lg p-3 relative group`}
-                  >
-                    {message.sender_id === user?.id && (
-                      <div className={`absolute opacity-0 group-hover:opacity-100 transition-opacity`}
-                        style={{
-                          right: isRtl? 'auto' : '10px',
-                          left: isRtl? '10px' : 'auto',
-                        }}
-                      >
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-6 w-6">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-40 p-2">
-                            <Button
-                              variant="ghost"
-                              className="w-full justify-start"
-                              disabled={new Date().getTime() - new Date(message.created_at).getTime() > 60000}
-                              onClick={() => {
-                                setEditingMessageId(message.id);
-                                setEditContent(message.content);
-                              }}
-                            >
-                              <Edit className="h-4 w-4 mr-2" />
-                              {t('Edit')}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              className="w-full justify-start text-destructive"
-                              onClick={() => handleDeleteMessage(message.id)}
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              {t('Delete')}
-                            </Button>
-                            {!isBlocked && !amIBlocked && (
-                              <>
-                                <Separator className="my-2" />
-                                <Popover>
-                                  <PopoverTrigger asChild>
-                                    <Button variant="ghost" className="w-full justify-start">
-                                      <Smile className="h-4 w-4 mr-2" />
-                                      {t('React')}
-                                    </Button>
-                                  </PopoverTrigger>
-                                  <PopoverContent className="w-64 p-0" align="end">
-                                    <ScrollArea className="h-[200px] p-4">
-                                      <EmojiPicker onEmojiSelect={(emoji) => handleAddReaction(message.id, emoji)} />
-                                    </ScrollArea>
-                                  </PopoverContent>
-                                </Popover>
-                              </>
-                            )}
-                          </PopoverContent>
-                        </Popover>
+                {/* Messages Content */}
+                <ScrollArea ref={scrollAreaRef} className="flex-1 px-4">
+                  <div className="max-w-4xl mx-auto w-full pt-6 pb-40">
+                    {(isBlocked || amIBlocked) && (
+                      <div className="mb-6 p-4 bg-destructive/5 text-destructive border border-destructive/10 rounded-xl text-xs text-center font-medium animate-fade-in">
+                        {isBlocked
+                          ? t('You_cannot_send_blocked')
+                          : t('You_cannot_send_has_blocked_you')}
                       </div>
                     )}
-                    
-                    {editingMessageId === message.id ? (
-                      <form
-                        onSubmit={(e) => {
-                          e.preventDefault();
-                          handleEditMessage(message.id, editContent);
-                        }}
-                        className="flex gap-2"
-                      >
-                        <Input
-                          value={editContent}
-                          onChange={(e) => setEditContent(e.target.value)}
-                          className="flex-1 text-primary"
-                        />
-                        <Button type="submit" size="sm" variant="ghost">{t('Save')}</Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setEditingMessageId(null);
-                            setEditContent('');
-                          }}
-                        >
-                          {t('Cancel')}
-                        </Button>
-                      </form>
-                    ) : (
-                      <>
-                        <p className={`text-start`}>{message.content}</p>
-                        {message.media_urls && message.media_urls.length > 0 && (
-                          <div className="mt-2 space-y-2">
-                            {message.media_urls.map((url, index) => (
-                              <div key={index}>
-                                {message.media_type === 'image' || message.media_type === 'gif' ? (
-                                  <img src={url} alt="" className="rounded-md max-w-full" />
-                                ) : message.media_type === 'video' ? (
-                                  <video src={url} controls className="rounded-md max-w-full" />
-                                ) : null}
-                              </div>
-                            ))}
+
+                    {loading && !messages.length ? (
+                      <div className="space-y-6">
+                        {Array(5).fill(0).map((_, i) => (
+                          <div key={i} className={cn("flex", i % 2 === 0 ? "justify-end" : "justify-start")}>
+                            <Skeleton className="h-12 w-48 rounded-2xl" />
                           </div>
-                        )}
-                        <div className={`flex items-center justify-between gap-2 text-xs mt-1 ${message.sender_id === user?.id ? 'flex-row' : 'flex-row-reverse'}`}>
-                          <span className=' opacity-70'>
-                            {formatDistanceToNow(new Date(message.created_at), { 
-                              addSuffix: true,
-                              locale: isRtl ? ar : undefined
-                            })}
-                            {message.edited && ` · ${t('edited')}`}
-                          </span>
-                          <div className={`flex gap-2 ${message.sender_id === user?.id ? 'flex-row' : 'flex-row-reverse'} `} >
-                           {/* Message Status Indicators */}
-                           {message.sender_id === user?.id && (
-                             <div className="flex items-center opacity-70">
-                               {message.read ? (
-                                 <div className="flex">
-                                   <Check className="h-3 w-3 text-purple-500" />
-                                   <Check className="h-3 w-3 text-purple-500 -ml-1" />
-                                 </div>
-                               ) : (
-                                 <Check className="h-3 w-3" />
-                               )}
-                             </div>
-                           )}
-                            <div className="flex items-center gap-1  opacity-70">
-                              
-                              {!isBlocked && !amIBlocked && (
-                                <Popover>
-                                  <PopoverTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-6 w-6">
-                                      <SmilePlus className="h-4 w-4" />
-                                    </Button>
-                                  </PopoverTrigger>
-                                  <PopoverContent className="w-80 p-0">
-                                    <ScrollArea className="h-[225px] p-2">
-                                      <EmojiPicker
-                                        onEmojiSelect={(emoji) => {
-                                          handleAddReaction(message.id, emoji);
+                        ))}
+                      </div>
+                    ) : messages.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground opacity-50">
+                        <SmilePlus className="h-10 w-10 mb-2" />
+                        <p className="text-sm">{t('Send_message')}</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-6">
+                        {messages.map((message) => (
+                          <div
+                            key={message.id}
+                            ref={message.id === messages[messages.length - 1].id ? messagesEndRef : undefined}
+                            className={`flex flex-col ${message.sender_id === user?.id ? 'items-start' : 'items-end'} mb-4`}
+                          >
+                            <div
+                              className={`max-w-[70%] ${message.sender_id === user?.id ? 'bg-primary text-primary-foreground' : 'bg-muted'} ${isRtl ? 'pl-5' : 'pr-5'} rounded-lg p-3 relative group`}
+                            >
+                              {message.sender_id === user?.id && (
+                                <div className={`absolute opacity-0 group-hover:opacity-100 transition-opacity`}
+                                  style={{
+                                    right: isRtl ? 'auto' : '10px',
+                                    left: isRtl ? '10px' : 'auto',
+                                  }}
+                                >
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-6 w-6">
+                                        <MoreVertical className="h-4 w-4" />
+                                      </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-40 p-2">
+                                      <Button
+                                        variant="ghost"
+                                        className="w-full justify-start"
+                                        disabled={new Date().getTime() - new Date(message.created_at).getTime() > 60000}
+                                        onClick={() => {
+                                          setEditingMessageId(message.id);
+                                          setEditContent(message.content);
                                         }}
-                                      />
-                                    </ScrollArea>
-                                  </PopoverContent>
-                                </Popover>
+                                      >
+                                        <Edit className="h-4 w-4 mr-2" />
+                                        {t('Edit')}
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        className="w-full justify-start text-destructive"
+                                        onClick={() => handleDeleteMessage(message.id)}
+                                      >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        {t('Delete')}
+                                      </Button>
+                                      {!isBlocked && !amIBlocked && (
+                                        <>
+                                          <Separator className="my-2" />
+                                          <Popover>
+                                            <PopoverTrigger asChild>
+                                              <Button variant="ghost" className="w-full justify-start">
+                                                <Smile className="h-4 w-4 mr-2" />
+                                                {t('React')}
+                                              </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-64 p-0" align="end">
+                                              <ScrollArea className="h-[200px] p-4">
+                                                <EmojiPicker onEmojiSelect={(emoji) => handleAddReaction(message.id, emoji)} />
+                                              </ScrollArea>
+                                            </PopoverContent>
+                                          </Popover>
+                                        </>
+                                      )}
+                                    </PopoverContent>
+                                  </Popover>
+                                </div>
                               )}
-                            </div>
-                            {message.reactions && message.reactions.length > 0 && !isBlocked && !amIBlocked && (
-                              <AnimatePresence>
-                                <motion.div 
-                                  initial={{ y: 10, opacity: 0 }}
-                                  animate={{ y: 0, opacity: 1 }}
-                                  exit={{ y: 10, opacity: 0 }}
-                                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                                  dir={isRtl? 'rtl' : 'ltr'}
-                                  className={`
+
+                              {editingMessageId === message.id ? (
+                                <form
+                                  onSubmit={(e) => {
+                                    e.preventDefault();
+                                    handleEditMessage(message.id, editContent);
+                                  }}
+                                  className="flex gap-2"
+                                >
+                                  <Input
+                                    value={editContent}
+                                    onChange={(e) => setEditContent(e.target.value)}
+                                    className="flex-1 text-primary"
+                                  />
+                                  <Button type="submit" size="sm" variant="ghost">{t('Save')}</Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setEditingMessageId(null);
+                                      setEditContent('');
+                                    }}
+                                  >
+                                    {t('Cancel')}
+                                  </Button>
+                                </form>
+                              ) : (
+                                <>
+                                  <p className={`text-start`}>{message.content}</p>
+                                  {message.media_urls && message.media_urls.length > 0 && (
+                                    <div className="mt-2 space-y-2">
+                                      {message.media_urls.map((url, index) => (
+                                        <div key={index}>
+                                          {message.media_type === 'image' || message.media_type === 'gif' ? (
+                                            <img src={url} alt="" className="rounded-md max-w-full" />
+                                          ) : message.media_type === 'video' ? (
+                                            <video src={url} controls className="rounded-md max-w-full" />
+                                          ) : null}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                  <div className={`flex items-center justify-between gap-2 text-xs mt-1 ${message.sender_id === user?.id ? 'flex-row' : 'flex-row-reverse'}`}>
+                                    <span className=' opacity-70'>
+                                      {formatDistanceToNow(new Date(message.created_at), {
+                                        addSuffix: true,
+                                        locale: isRtl ? ar : undefined
+                                      })}
+                                      {message.edited && ` · ${t('edited')}`}
+                                    </span>
+                                    <div className={`flex gap-2 ${message.sender_id === user?.id ? 'flex-row' : 'flex-row-reverse'} `} >
+                                      {/* Message Status Indicators */}
+                                      {message.sender_id === user?.id && (
+                                        <div className="flex items-center opacity-70">
+                                          {message.read ? (
+                                            <div className="flex">
+                                              <Check className="h-3 w-3 text-purple-500" />
+                                              <Check className="h-3 w-3 text-purple-500 -ml-1" />
+                                            </div>
+                                          ) : (
+                                            <Check className="h-3 w-3" />
+                                          )}
+                                        </div>
+                                      )}
+                                      <div className="flex items-center gap-1  opacity-70">
+
+                                        {!isBlocked && !amIBlocked && (
+                                          <Popover>
+                                            <PopoverTrigger asChild>
+                                              <Button variant="ghost" size="icon" className="h-6 w-6">
+                                                <SmilePlus className="h-4 w-4" />
+                                              </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-80 p-0">
+                                              <ScrollArea className="h-[225px] p-2">
+                                                <EmojiPicker
+                                                  onEmojiSelect={(emoji) => {
+                                                    handleAddReaction(message.id, emoji);
+                                                  }}
+                                                />
+                                              </ScrollArea>
+                                            </PopoverContent>
+                                          </Popover>
+                                        )}
+                                      </div>
+                                      {message.reactions && message.reactions.length > 0 && !isBlocked && !amIBlocked && (
+                                        <AnimatePresence>
+                                          <motion.div
+                                            initial={{ y: 10, opacity: 0 }}
+                                            animate={{ y: 0, opacity: 1 }}
+                                            exit={{ y: 10, opacity: 0 }}
+                                            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                                            dir={isRtl ? 'rtl' : 'ltr'}
+                                            className={`
                                     flex gap-1 px-2 py-1 rounded-full shadow-lg bg-background border
                                     ${message.sender_id === user?.id ? (isRtl ? '-ml-16 mr-0' : '-mr-16 mr-0') : (isRtl ? '-mr-12 ml-0' : '-ml-12 mr-0')}
                                   `}
-                                >
-                                  {message.reactions.slice(0, 2).map((reaction, index) => (
-                                    <motion.button
-                                      key={`${reaction.id}-${index}`}
-                                      whileHover={{ scale: 1.2 }}
-                                      whileTap={{ scale: 0.9 }}
-                                      transition={{ type: "spring", stiffness: 400 }}
-                                      className="text-sm hover:bg-muted/50 rounded-full w-6 h-6 flex items-center justify-center text-foreground hover:text-foreground"
-                                      onClick={() => handleRemoveReaction(message.id, reaction.reaction)}
-                                      title="Click to remove reaction"
-                                    >
-                                      {reaction.reaction}
-                                    </motion.button>
-                                  ))}
-                                </motion.div>
-                              </AnimatePresence>
-                            )}
+                                          >
+                                            {message.reactions.slice(0, 2).map((reaction, index) => (
+                                              <motion.button
+                                                key={`${reaction.id}-${index}`}
+                                                whileHover={{ scale: 1.2 }}
+                                                whileTap={{ scale: 0.9 }}
+                                                transition={{ type: "spring", stiffness: 400 }}
+                                                className="text-sm hover:bg-muted/50 rounded-full w-6 h-6 flex items-center justify-center text-foreground hover:text-foreground"
+                                                onClick={() => handleRemoveReaction(message.id, reaction.reaction)}
+                                                title="Click to remove reaction"
+                                              >
+                                                {reaction.reaction}
+                                              </motion.button>
+                                            ))}
+                                          </motion.div>
+                                        </AnimatePresence>
+                                      )}
+                                    </div>
+                                  </div>
+                                </>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </>
+                        ))}
+                        <div ref={messagesEndRef} />
+                      </div>
                     )}
                   </div>
-                </div>
-              ))}
-                  <div ref={messagesEndRef} />
-                </div>
-              )}
-            </ScrollArea>
+                </ScrollArea>
 
-            {/* Action Buttons */}
-            {!isFollowing && otherParticipant && otherParticipant.user_id !== user?.id && (
-              <div className="flex justify-center gap-2 p-4 border-t">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={async () => {
-                    const { error } = await supabase
-                      .from('followers')
-                      .insert({
-                        follower_id: user?.id,
-                        following_id: otherParticipant.user_id
-                      });
-                    if (!error) {
-                      setIsFollowing(true);
-                      toast({
-                        title: t('Successfully followed'),
-                        variant: "default"
-                      });
-                    } else {
-                      toast({
-                        title: t('Failed to follow user'),
-                        description: error.message,
-                        variant: "destructive"
-                      });
-                    }
-                  }}
-                >
-                  <UserPlus className="h-4 w-4 mr-1" />
-                  {t('Follow')}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={async () => {
-                    try {
-                      if (isBlocked) {
-                        await unblockUser(otherParticipant.user_id);
-                        toast({
-                          title: t('User unblocked successfully'),
-                          variant: "default"
-                        });
-                      } else {
-                        await blockUser(otherParticipant.user_id);
-                        toast({
-                          title: t('User blocked successfully'),
-                          variant: "default"
-                        });
-                      }
-                    } catch (error: any) {
-                      toast({
-                        title: t('Failed to update block status'),
-                        description: error.message,
-                        variant: "destructive"
-                      });
-                    }
-                  }}
-                >
-                  <UserX className="h-4 w-4 mr-1" />
-                  {isBlocked ? t('Unblock') : t('Block')}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={async () => {
-                    if (!user) return;
-                    const reportPayload: TablesInsert<'reports'> = {
-                      reporter_id: user.id,
-                      reported_id: otherParticipant.user_id,
-                      content_type: 'user',
-                      content_id: otherParticipant.user_id,
-                      reason: 'inappropriate_behavior',
-                      status: 'pending'
-                    };
-                    const { error } = await supabase
-                      .from('reports')
-                      .insert(reportPayload);
-                    if (!error) {
-                      toast({
-                        title: t('User reported successfully'),
-                        variant: "default"
-                      });
-                    } else {
-                      toast({
-                        title: t('Failed to report user'),
-                        description: error.message,
-                        variant: "destructive"
-                      });
-                    }
-                  }}
-                >
-                  <ArrowRight className="h-4 w-4 mr-1" />
-                  {t('Report')}
-                </Button>
-              </div>
+                {/* Action Buttons */}
+                {!isFollowing && otherParticipant && otherParticipant.user_id !== user?.id && (
+                  <div className="flex justify-center gap-2 p-4 border-t">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        const { error } = await supabase
+                          .from('followers')
+                          .insert({
+                            follower_id: user?.id,
+                            following_id: otherParticipant.user_id
+                          });
+                        if (!error) {
+                          setIsFollowing(true);
+                          toast({
+                            title: t('Successfully followed'),
+                            variant: "default"
+                          });
+                        } else {
+                          toast({
+                            title: t('Failed to follow user'),
+                            description: error.message,
+                            variant: "destructive"
+                          });
+                        }
+                      }}
+                    >
+                      <UserPlus className="h-4 w-4 mr-1" />
+                      {t('Follow')}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          if (isBlocked) {
+                            await unblockUser(otherParticipant.user_id);
+                            toast({
+                              title: t('User unblocked successfully'),
+                              variant: "default"
+                            });
+                          } else {
+                            await blockUser(otherParticipant.user_id);
+                            toast({
+                              title: t('User blocked successfully'),
+                              variant: "default"
+                            });
+                          }
+                        } catch (error: any) {
+                          toast({
+                            title: t('Failed to update block status'),
+                            description: error.message,
+                            variant: "destructive"
+                          });
+                        }
+                      }}
+                    >
+                      <UserX className="h-4 w-4 mr-1" />
+                      {isBlocked ? t('Unblock') : t('Block')}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        if (!user) return;
+                        const reportPayload: TablesInsert<'reports'> = {
+                          reporter_id: user.id,
+                          reported_id: otherParticipant.user_id,
+                          content_type: 'user',
+                          content_id: otherParticipant.user_id,
+                          reason: 'inappropriate_behavior',
+                          status: 'pending'
+                        };
+                        const { error } = await supabase
+                          .from('reports')
+                          .insert(reportPayload);
+                        if (!error) {
+                          toast({
+                            title: t('User reported successfully'),
+                            variant: "default"
+                          });
+                        } else {
+                          toast({
+                            title: t('Failed to report user'),
+                            description: error.message,
+                            variant: "destructive"
+                          });
+                        }
+                      }}
+                    >
+                      <ArrowRight className="h-4 w-4 mr-1" />
+                      {t('Report')}
+                    </Button>
+                  </div>
+                )}
+
+                {/* Sticky Message Input */}
+                <div className="absolute bottom-0 left-0 right-0 z-40">
+                  <div className="bg-gradient-to-t from-background via-background/95 to-transparent pt-10 pb-6 px-4">
+                    <div className="max-w-3xl mx-auto">
+                      <div className="shadow-2xl rounded-2xl overflow-hidden ring-1 ring-primary/10 border-2 border-primary/5 bg-background">
+                        <form onSubmit={handleSendMessage} className="p-2">
+                          {selectedFiles.length > 0 && (
+                            <div className="flex flex-wrap gap-2 p-2 mb-2 border-b">
+                              {selectedFiles.map((file, index) => (
+                                <div key={index} className="relative group">
+                                  {file.type.startsWith('image/') ? (
+                                    <img
+                                      src={URL.createObjectURL(file)}
+                                      alt=""
+                                      className="h-16 w-16 object-cover rounded-xl"
+                                    />
+                                  ) : (
+                                    <video
+                                      src={URL.createObjectURL(file)}
+                                      className="h-16 w-16 object-cover rounded-xl"
+                                    />
+                                  )}
+                                  <Button
+                                    variant="destructive"
+                                    size="icon"
+                                    className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                                    onClick={() => handleRemoveFile(index)}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2 px-2">
+                            {!isBlocked && !amIBlocked && (
+                              <div className="flex gap-1 flex-shrink-0">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors"
+                                  onClick={() => fileInputRef.current?.click()}
+                                >
+                                  <ImageIcon className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors"
+                                  onClick={() => setShowGiphyPicker(true)}
+                                >
+                                  <SmileIcon className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
+                            <input
+                              ref={fileInputRef}
+                              type="file"
+                              accept="image/*,video/*"
+                              multiple
+                              className="hidden"
+                              onChange={handleFileSelect}
+                            />
+                            <input
+                              className="flex-1 bg-transparent border-0 focus:ring-0 text-sm py-3 outline-none"
+                              value={messageContent}
+                              onChange={(e) => setMessageContent(e.target.value)}
+                              placeholder={isBlocked || amIBlocked ? t('You_cannot_send') : t('Type_a_message')}
+                              disabled={isBlocked || amIBlocked}
+                            />
+                            <Button
+                              type="submit"
+                              disabled={uploading || (!messageContent.trim() && selectedFiles.length === 0)}
+                              className="rounded-xl px-4 flex-shrink-0"
+                            >
+                              {uploading ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <span className="hidden sm:inline text-xs font-bold">{isRtl ? "إرسال" : "Send"}</span>
+                                  <Send className="h-3.5 w-3.5" />
+                                </div>
+                              )}
+                            </Button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
             )}
-
-            {/* Message Input */}
-            <form onSubmit={handleSendMessage} className="p-4 border-t">
-              <div className="flex flex-col gap-2">
-                {selectedFiles.length > 0 && (
-                  <div className="flex flex-wrap gap-2 p-2 border rounded-md">
-                    {selectedFiles.map((file, index) => (
-                      <div key={index} className="relative">
-                        {file.type.startsWith('image/') ? (
-                          <img
-                            src={URL.createObjectURL(file)}
-                            alt=""
-                            className="h-20 w-20 object-cover rounded-md"
-                          />
-                        ) : (
-                          <video
-                            src={URL.createObjectURL(file)}
-                            className="h-20 w-20 object-cover rounded-md"
-                          />
-                        )}
-                        <Button
-                          variant="destructive"
-                          size="icon"
-                          className="absolute -top-2 -right-2 h-6 w-6"
-                          onClick={() => handleRemoveFile(index)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <div className="flex gap-2">
-                  {!isBlocked && !amIBlocked && (
-                  <div className="flex gap-1">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      <ImageIcon className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setShowGiphyPicker(true)}
-                    >
-                      <SmileIcon className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*,video/*"
-                    multiple
-                    className="hidden"
-                    onChange={handleFileSelect}
-                  />
-                  <Input
-                    value={messageContent}
-                    onChange={(e) => setMessageContent(e.target.value)}
-                    placeholder={isBlocked || amIBlocked ? t('You_cannot_send') : t('Type_a_message')}
-                    disabled={isBlocked || amIBlocked}
-                  />
-                  <Button type="submit" disabled={uploading}>
-                    {uploading ? (
-                      <div className="animate-spin">
-                        <Loader2 className="h-4 w-4" />
-                      </div>
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </form>
           </div>
-        )}
-      </div>
-      
-      {/* Giphy Picker Dialog */}
+        </div>
+      </Layout>
+
       <Dialog open={showGiphyPicker} onOpenChange={setShowGiphyPicker}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -1056,10 +1065,7 @@ const handleSendMessage = async (e: React.FormEvent) => {
           </div>
         </DialogContent>
       </Dialog>
-      </div>
-      <Footer />
-      <BottomBar />
-    </div>
+    </>
   );
 };
 

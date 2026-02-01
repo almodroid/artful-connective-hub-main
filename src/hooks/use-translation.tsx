@@ -26,7 +26,7 @@ const translations = {
     login: "Login",
     register: "Register",
     logout: "Logout",
-    
+
     // Common
     search: "Search",
     submit: "Submit",
@@ -62,23 +62,24 @@ const translations = {
     noMessages: "No messages",
     Conversations: "Conversations",
     Send_message: "Send a message to start the conversation",
+    "Your Messages": "Your Messages",
     No_messages: "No messages yet",
     You_cannot_send: "You cannot send messages to this user",
     Type_a_message: "Type a message...",
     You_cannot_send_blocked: "You cannot send messages to this user as they have been blocked",
-    You_cannot_send_has_blocked_you:"You cannot send messages as this user has blocked you",
-    
+    You_cannot_send_has_blocked_you: "You cannot send messages as this user has blocked you",
+
     // Home
     forYou: "For You",
     following: "Following",
     trending: "Trending",
     noFollowing: "You're not following anyone yet",
     startFollowingPrompt: "Follow other users to see their posts here",
-    
+
     // Reels
     reels: "Reels",
     createReel: "Create Reel",
-    
+
     // Profile
     displayName: "Display Name",
     displayNameDesc: "This is your public display name.",
@@ -99,9 +100,9 @@ const translations = {
     Visit_Profile: "Visit Profile",
     Edit_Profile: "Edit Profile",
     spaceCard: "Your smart assistant in the world of art and creativity.",
-    spaceCardDesc:"Ask me, take a look, and let me help you.",
+    spaceCardDesc: "Ask me, take a look, and let me help you.",
     spaceCardBtn: "Start Chatting with Space AI",
-    
+
     // Account
     accountSettings: "Account Settings",
     accountSettingsDesc: "Manage your account settings and preferences.",
@@ -118,7 +119,7 @@ const translations = {
     accountRestoredDesc: "Your account has been restored successfully.",
     restorationFailed: "Restoration Failed",
     restorationFailedDesc: "An error occurred while restoring your account. Please try again.",
-    
+
     // Portfolio/Posts
     title: "Title",
     description: "Description",
@@ -138,7 +139,7 @@ const translations = {
     bookmarkRemoved: "Bookmark removed",
     bookmarkAdded: "Bookmark added",
     bookmarkError: "Error toggling bookmark",
-    
+
     // Project details
     views: "Views",
     like: "Like",
@@ -147,7 +148,7 @@ const translations = {
     visitProject: "Visit Project",
     projectContent: "Project content",
     backToProjects: "Back to Projects",
-    
+
     // Projects page
     projectsPage: "Projects",
     allProjects: "All Projects",
@@ -169,7 +170,7 @@ const translations = {
     createWithoutImage: "Create Without Image",
     coverImage: "Cover Image",
     galleryImages: "Gallery Images",
-    
+
     // Misc
     error: "An error occurred",
     success: "Success!",
@@ -254,7 +255,7 @@ const translations = {
     instant: "Instant",
     daily: "Daily",
     weekly: "Weekly",
-    emailSettings:"Email Settngs",
+    emailSettings: "Email Settngs",
     emailSettingsDesc: "Manage your email address and how you receive notifications.",
     currentEmail: "Current Email",
     passwordSettings: "Password Settings",
@@ -321,9 +322,9 @@ const translations = {
     Visit_Profile: "عرض الملف الشخصي",
     Edit_Profile: "تعديل الملف الشخصي",
     spaceCard: "مساعدك الذكي في عالم الفن والإبداع.",
-    spaceCardDesc:"اســـأله، خذ رأيه، وخلــه يســـــاعدك",
+    spaceCardDesc: "اســـأله، خذ رأيه، وخلــه يســـــاعدك",
     spaceCardBtn: "ابدأ محادثتك مع سبيس",
-    
+
     // Common
     search: "بحث",
     submit: "إرسال",
@@ -355,7 +356,7 @@ const translations = {
     React: "تفاعل",
     trends: "الأكثر رواجاً",
     topProjects: "المشاريع الأكثر تداولاً",
-    
+
     //messages
     Messages: "الرسائل",
     messages: "الرسائل",
@@ -366,6 +367,7 @@ const translations = {
     noMessages: "لا توجد رسائل",
     Conversations: "المحادثات",
     Send_message: "أرسل رسالة جديدة",
+    "Your Messages": "رسائلك",
     No_messages: "لا توجد رسائل حتى الآن",
     Follow: "متابعة الفنان",
     Unfollow: "إلغاء المتابعة",
@@ -376,7 +378,7 @@ const translations = {
     Type_a_message: "اكتب رسالة...",
     You_cannot_send_blocked: "لا يمكنك إرسال رسائل إلى هذا المستخدم لأنك قمت بحظره",
     You_cannot_send_has_blocked_you: "لا يمكنك إرسال رسائل إلى هذا المستخدم لأن قام بحظرك",
-    
+
     // Home
     forYou: "مخصص لك",
     following: "المتابَعين",
@@ -387,12 +389,12 @@ const translations = {
     // Explore
     searchPlaceholder: "ابحث عن مشاريع...",
     hashtags: "الوسوم",
-    hashtagsPlaceholder: "أضف وسوماً (اضغط على Enter بعد كل وسم)", 
+    hashtagsPlaceholder: "أضف وسوماً (اضغط على Enter بعد كل وسم)",
     mentions: "الإشارات",
     createNewPost: "إنشاء منشور جديد",
     enterTitle: "أدخل عنوان المنشور",
     enterDescription: "أدخل وصف المنشور",
-    
+
     // Reels
     reels: "الريلز",
     createReel: "إنشاء ريل",
@@ -441,8 +443,8 @@ const translations = {
     createProject: "إنشاء مشروع",
     editProject: "تعديل المشروع",
     deleteProject: "حذف المشروع",
-    
-    
+
+
     // Project details
     views: "مشاهدة",
     like: "إعجاب",
@@ -455,7 +457,7 @@ const translations = {
     bookmarkRemoved: "تمت إزالة الإشارة المرجعية",
     bookmarkAdded: "تمت إضافة الإشارة المرجعية",
     bookmarkError: "خطأ في تبديل الإشارة المرجعية",
-    
+
     // Projects page
     projectsPage: "المشاريع",
     allProjects: "كل المشاريع",
@@ -477,17 +479,17 @@ const translations = {
     createWithoutImage: "إنشاء بدون صورة",
     coverImage: "صورة الغلاف",
     galleryImages: "صور المعرض",
-    
+
     // Misc
     error: "حدث خطأ",
     success: "تم بنجاح!",
-    
+
     // Arter AI translations
     meetArter: "تعرف على سبيس Ai، مساعدك الذكي للفن والتصميم",
     arterDescription: "احصل على مساعدة إبداعية في لوحات الألوان، ملاحظات التصميم، التقنيات الفنية، وغير ذلك.",
     askArter: "أسأل سبيس Ai عن التصميم، الفن أو الأفكار الإبداعية...",
     clearChat: "مسح المحادثة",
-    meetSpaceAI:"تعرف على سبيس Ai، مساعدك الذكي للفن والتصميم",
+    meetSpaceAI: "تعرف على سبيس Ai، مساعدك الذكي للفن والتصميم",
     spaceAIDescription: "احصل على مساعدة إبداعية في لوحات الألوان، ملاحظات التصميم، التقنيات الفنية، وغير ذلك.",
     suggestColorPalette: "اقترح لوحة ألوان لموقعًا بسيطًا",
     suggestDesignFeedback: "كيف يمكنني تحسين تكويني؟",
@@ -572,7 +574,7 @@ const translations = {
     instant: "فوري",
     daily: "يومي",
     weekly: "أسبوعي",
-    emailSettings:"اعدادات البريد",
+    emailSettings: "اعدادات البريد",
     emailSettingsDesc: "إدارة عنوان بريدك الإلكتروني وكيفية تلقي الإشعارات.",
     currentEmail: "البريد الإلكتروني الحالي",
     passwordSettings: "إعدادات كلمة المرور",
@@ -620,7 +622,7 @@ export const TranslationProvider: React.FC<{ children: React.ReactNode }> = ({ c
     localStorage.setItem("language", language);
     document.documentElement.lang = language;
     document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
-    
+
     // Apply RTL class for styling
     if (language === "ar") {
       document.documentElement.classList.add("rtl");

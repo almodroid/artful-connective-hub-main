@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { TagInput } from "@/components/ui-custom/TagInput";
 import { useProjects } from "@/hooks/use-projects";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 
 interface UserProfile {
@@ -71,6 +72,7 @@ function CreateProjectDialog({ open, onOpenChange }: { open: boolean, onOpenChan
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
+  const isMobile = useIsMobile();
 
   const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
@@ -206,18 +208,19 @@ const Profile = () => {
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const navigate = useNavigate();
-  
+  const isMobile = useIsMobile();
+
   const isOwnProfile = isAuthenticated && user?.username === username;
-  
+
   const postsListRef = useRef<HTMLDivElement>(null);
 
-    const loadProfile = async () => {
+  const loadProfile = async () => {
     setLoading(true);
-      try {
-        // Fetch profile from Supabase
-        const { data: profileData, error: profileError } = await supabase
-          .from("profiles")
-          .select(`
+    try {
+      // Fetch profile from Supabase
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select(`
             *,
             followers_count,
             following_count,
@@ -230,80 +233,80 @@ const Profile = () => {
               )
             )
           `)
-          .eq("username", username)
-          .single();
-        
-        if (profileError) {
-          console.error("Error fetching profile:", profileError);
-          // If we can't find by username, try to use fallback mock data (for backward compatibility)
-          if (username === "admin" || username === "user") {
-            // Mock profile data for demo purposes
-            if (username === "admin") {
-              setProfileUser({
-                id: "1",
-                username: "admin",
-                display_name: "مدير النظام",
-                avatar_url: "/avatar-1.png",
-                bio: "مصمم ومطور ويب مهتم بالفنون البصرية والتصميم التفاعلي، مدير النظام في آرت سبيس.",
-                location: "الرياض، المملكة العربية السعودية",
-                website: "https://example.com",
-                followers: 1205,
-                following: 321,
-                joinDate: "يناير 2023"
-              });
-            } else if (username === "user") {
-              setProfileUser({
-                id: "2",
-                username: "user",
-                display_name: "مستخدم عادي",
-                avatar_url: "/avatar-2.png",
-                bio: "رسام ومصور فوتوغرافي. أحب التقاط لحظات الحياة اليومية وتحويلها إلى فن.",
-                location: "دبي، الإمارات العربية المتحدة",
-                website: "https://myportfolio.com",
-                followers: 452,
-                following: 189,
-                joinDate: "مارس 2023"
-              });
-            }
-          } else {
-            throw profileError;
+        .eq("username", username)
+        .single();
+
+      if (profileError) {
+        console.error("Error fetching profile:", profileError);
+        // If we can't find by username, try to use fallback mock data (for backward compatibility)
+        if (username === "admin" || username === "user") {
+          // Mock profile data for demo purposes
+          if (username === "admin") {
+            setProfileUser({
+              id: "1",
+              username: "admin",
+              display_name: "مدير النظام",
+              avatar_url: "/avatar-1.png",
+              bio: "مصمم ومطور ويب مهتم بالفنون البصرية والتصميم التفاعلي، مدير النظام في آرت سبيس.",
+              location: "الرياض، المملكة العربية السعودية",
+              website: "https://example.com",
+              followers: 1205,
+              following: 321,
+              joinDate: "يناير 2023"
+            });
+          } else if (username === "user") {
+            setProfileUser({
+              id: "2",
+              username: "user",
+              display_name: "مستخدم عادي",
+              avatar_url: "/avatar-2.png",
+              bio: "رسام ومصور فوتوغرافي. أحب التقاط لحظات الحياة اليومية وتحويلها إلى فن.",
+              location: "دبي، الإمارات العربية المتحدة",
+              website: "https://myportfolio.com",
+              followers: 452,
+              following: 189,
+              joinDate: "مارس 2023"
+            });
           }
         } else {
-          // Transform Supabase profile data to our UserProfile format
-          setProfileUser({
-            id: profileData.id,
-            username: profileData.username,
-            display_name: profileData.display_name,
-            avatar_url: profileData.avatar_url,
-            header_image: (profileData as any).header_image,
-            bio: profileData.bio,
-            location: profileData.location,
-            website: profileData.website,
-            followers: profileData.followers?.length || 0,
-            following: profileData.following_count || 0,
-            joinDate: new Date(profileData.created_at).toLocaleDateString('ar-SA', {
-              year: 'numeric',
-              month: 'long'
-            }),
-            created_at: profileData.created_at,
-            allow_messages: profileData.allow_messages
-          });
-
-          // Check if the current user is following this profile
-          if (isAuthenticated && user) {
-            const { data: isFollowingData } = await supabase
-              .rpc('is_following', {
-                follower_id: user.id,
-                following_id: profileData.id
-              });
-            setIsFollowing(isFollowingData);
-          }
+          throw profileError;
         }
-        
-        // Fetch posts for this user
-        const { data: postsData, error: postsError } = await supabase
-          .from("posts")
-          .select(`
+      } else {
+        // Transform Supabase profile data to our UserProfile format
+        setProfileUser({
+          id: profileData.id,
+          username: profileData.username,
+          display_name: profileData.display_name,
+          avatar_url: profileData.avatar_url,
+          header_image: (profileData as any).header_image,
+          bio: profileData.bio,
+          location: profileData.location,
+          website: profileData.website,
+          followers: profileData.followers?.length || 0,
+          following: profileData.following_count || 0,
+          joinDate: new Date(profileData.created_at).toLocaleDateString('ar-SA', {
+            year: 'numeric',
+            month: 'long'
+          }),
+          created_at: profileData.created_at,
+          allow_messages: profileData.allow_messages
+        });
+
+        // Check if the current user is following this profile
+        if (isAuthenticated && user) {
+          const { data: isFollowingData } = await supabase
+            .rpc('is_following', {
+              follower_id: user.id,
+              following_id: profileData.id
+            });
+          setIsFollowing(isFollowingData);
+        }
+      }
+
+      // Fetch posts for this user
+      const { data: postsData, error: postsError } = await supabase
+        .from("posts")
+        .select(`
             *,
             profiles:user_id (
               username,
@@ -311,75 +314,75 @@ const Profile = () => {
               avatar_url
             )
           `)
-          .eq("user_id", profileData?.id || "")
-          .order("created_at", { ascending: false });
-        
-        if (postsError) {
-          console.error("Error fetching posts:", postsError);
-          // Fallback to mock posts if needed
-          setUserPosts([]);
-        } else {
-          // Transform the posts data to match our Post interface
-          let transformedPosts = postsData.map(post => {
-            const profile = post.profiles || {};
-            return {
-              id: post.id,
-              content: post.content,
-              images: Array.isArray(post.media_urls) ? post.media_urls : (post.media_urls ? [post.media_urls] : []),
-              createdAt: new Date(post.created_at),
-              likes: 0, // Will be set after fetching like counts
-              comments: post.comments_count || 0,
-              isLiked: false,
-              user: {
-                id: post.user_id,
-                username: (profile as any).username || "",
-                displayName: (profile as any).display_name || "",
-                avatar: (profile as any).avatar_url || `https://i.pravatar.cc/150?u=${post.user_id}`
-              }
-            };
-          });
+        .eq("user_id", profileData?.id || "")
+        .order("created_at", { ascending: false });
 
-          // Fetch like counts for all posts in batch
-          const postIds = transformedPosts.map(post => post.id);
-          let likedPostIds = [];
-          if (postIds.length > 0) {
-            const { data: likeCounts, error: likeCountsError } = await supabase
-              .from('post_likes')
-              .select('post_id, user_id', { count: 'exact', head: false })
-              .in('post_id', postIds);
-            if (!likeCountsError && likeCounts) {
-              const likeCountMap = new Map();
-              likeCounts.forEach(item => {
-                likeCountMap.set(item.post_id, (likeCountMap.get(item.post_id) || 0) + 1);
-              });
-              // Find which posts are liked by the current user
-              if (isAuthenticated && user) {
-                likedPostIds = likeCounts.filter(like => like.user_id === user.id).map(like => like.post_id);
-              }
-              transformedPosts = transformedPosts.map(post => ({
-                ...post,
-                likes: likeCountMap.get(post.id) || 0,
-                isLiked: likedPostIds.includes(post.id)
-              }));
+      if (postsError) {
+        console.error("Error fetching posts:", postsError);
+        // Fallback to mock posts if needed
+        setUserPosts([]);
+      } else {
+        // Transform the posts data to match our Post interface
+        let transformedPosts = postsData.map(post => {
+          const profile = post.profiles || {};
+          return {
+            id: post.id,
+            content: post.content,
+            images: Array.isArray(post.media_urls) ? post.media_urls : (post.media_urls ? [post.media_urls] : []),
+            createdAt: new Date(post.created_at),
+            likes: 0, // Will be set after fetching like counts
+            comments: post.comments_count || 0,
+            isLiked: false,
+            user: {
+              id: post.user_id,
+              username: (profile as any).username || "",
+              displayName: (profile as any).display_name || "",
+              avatar: (profile as any).avatar_url || `https://i.pravatar.cc/150?u=${post.user_id}`
             }
+          };
+        });
+
+        // Fetch like counts for all posts in batch
+        const postIds = transformedPosts.map(post => post.id);
+        let likedPostIds = [];
+        if (postIds.length > 0) {
+          const { data: likeCounts, error: likeCountsError } = await supabase
+            .from('post_likes')
+            .select('post_id, user_id', { count: 'exact', head: false })
+            .in('post_id', postIds);
+          if (!likeCountsError && likeCounts) {
+            const likeCountMap = new Map();
+            likeCounts.forEach(item => {
+              likeCountMap.set(item.post_id, (likeCountMap.get(item.post_id) || 0) + 1);
+            });
+            // Find which posts are liked by the current user
+            if (isAuthenticated && user) {
+              likedPostIds = likeCounts.filter(like => like.user_id === user.id).map(like => like.post_id);
+            }
+            transformedPosts = transformedPosts.map(post => ({
+              ...post,
+              likes: likeCountMap.get(post.id) || 0,
+              isLiked: likedPostIds.includes(post.id)
+            }));
           }
-          setUserPosts(transformedPosts);
         }
-      } catch (error) {
-        console.error("Error loading profile:", error);
-        toast.error("حدث خطأ أثناء تحميل الملف الشخصي");
-        setProfileUser(null);
-      } finally {
-        setLoading(false);
+        setUserPosts(transformedPosts);
       }
-    };
-    
+    } catch (error) {
+      console.error("Error loading profile:", error);
+      toast.error("حدث خطأ أثناء تحميل الملف الشخصي");
+      setProfileUser(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (username) {
       loadProfile();
     }
   }, [username, isAuthenticated, user]);
-  
+
   const handleFollow = async () => {
     if (!isAuthenticated || !user || !profileUser) {
       toast.error("يجب تسجيل الدخول أولاً");
@@ -397,7 +400,7 @@ const Profile = () => {
 
         if (error) throw error;
         setIsFollowing(false);
-        
+
         // Refresh profile data to get updated counts
         const { data: updatedProfile, error: refreshError } = await supabase
           .from("profiles")
@@ -408,7 +411,7 @@ const Profile = () => {
           `)
           .eq("username", username)
           .single();
-          
+
         if (refreshError) {
           console.error("Error refreshing profile:", refreshError);
         } else if (updatedProfile) {
@@ -418,7 +421,7 @@ const Profile = () => {
             following: updatedProfile.following_count || 0
           } : null);
         }
-        
+
         toast.success("تم إلغاء المتابعة بنجاح");
       } else {
         // Follow
@@ -431,7 +434,7 @@ const Profile = () => {
 
         if (error) throw error;
         setIsFollowing(true);
-        
+
         // Refresh profile data to get updated counts
         const { data: updatedProfile, error: refreshError } = await supabase
           .from("profiles")
@@ -442,7 +445,7 @@ const Profile = () => {
           `)
           .eq("username", username)
           .single();
-          
+
         if (refreshError) {
           console.error("Error refreshing profile:", refreshError);
         } else if (updatedProfile) {
@@ -452,7 +455,7 @@ const Profile = () => {
             following: updatedProfile.following_count || 0
           } : null);
         }
-        
+
         toast.success("تم المتابعة بنجاح");
       }
     } catch (error) {
@@ -464,28 +467,28 @@ const Profile = () => {
   // Function to load data for the active tab
   const loadTabData = async (tab: string) => {
     if (!profileUser) return;
-    
+
     if (tab === 'projects') {
       setLoadingProjects(true);
     } else {
       setLoadingTab(true);
     }
-    
+
     try {
       switch (tab) {
         case "posts":
           // Posts are already loaded in loadProfile, or can be re-fetched if needed
           break;
-          
+
         case "reels":
           // Reels are handled by the useReels hook, filtering happens in JSX
           break;
-          
+
         case "media":
           // Filter posts with media
           setUserMediaPosts(userPosts.filter(post => post.image).map(post => ({ ...post, isLiked: post.isLiked ?? false })));
           break;
-          
+
         case "likes":
           // Fetch liked posts
           const { data: likedPostsData, error: likedPostsError } = await supabase
@@ -508,13 +511,13 @@ const Profile = () => {
             `)
             .eq("user_id", isOwnProfile ? user.id : profileUser.id)
             .order("created_at", { ascending: false });
-            
+
           if (likedPostsError) {
             console.error("Error fetching liked posts:", likedPostsError);
             toast.error(isRtl ? "حدث خطأ أثناء تحميل المنشورات المعجبة بها" : "Error loading liked posts");
             return;
           }
-          
+
           // Transform the liked posts data
           let transformedLikedPosts = likedPostsData
             .filter(item => item.posts) // Filter out any null posts
@@ -547,7 +550,7 @@ const Profile = () => {
           }));
           setUserLikedPosts(transformedLikedPosts);
           break;
-          
+
         case "projects":
           // Fetch user's projects
           const projectsData = await fetchProjectsByUserId(profileUser.id);
@@ -565,7 +568,7 @@ const Profile = () => {
       }
     }
   };
-  
+
   // Load tab data when tab changes
   useEffect(() => {
     loadTabData(activeTab);
@@ -595,9 +598,9 @@ const Profile = () => {
                 </div>
               </div>
             </div>
-            
+
             <Skeleton className="h-12 w-full" />
-            
+
             <div className="space-y-4">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="border rounded-lg p-4 space-y-3">
@@ -640,9 +643,9 @@ const Profile = () => {
         <div className="rounded-xl overflow-hidden bg-muted/10 mb-8">
           <div className="h-48 bg-gradient-to-r from-primary/10 to-primary/30 relative overflow-hidden">
             {profileUser?.header_image && (
-              <img 
-                src={profileUser.header_image} 
-                alt="Header" 
+              <img
+                src={profileUser.header_image}
+                alt="Header"
                 className="w-full h-full object-cover"
               />
             )}
@@ -656,11 +659,11 @@ const Profile = () => {
                   onClick={() => document.getElementById('header-upload')?.click()}
                 >
                   <Edit className="h-4 w-4" />
-                  <input 
-                    id="header-upload" 
-                    type="file" 
-                    accept="image/*" 
-                    className="hidden" 
+                  <input
+                    id="header-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
                     onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (file) {
@@ -671,7 +674,7 @@ const Profile = () => {
                             toast.error('يُسمح فقط بصور JPG و PNG و GIF و WEBP');
                             return;
                           }
-                          
+
                           // Validate file size (max 5MB)
                           if (file.size > 5 * 1024 * 1024) {
                             toast.error('يجب أن يكون حجم الصورة أقل من 5 ميغابايت');
@@ -712,7 +715,7 @@ const Profile = () => {
                             .eq('id', user?.id);
 
                           toast.dismiss(loadingToast);
-                          
+
                           if (updateError) {
                             console.error('Error updating profile with header image:', updateError);
                             toast.error('حدث خطأ أثناء تحديث صورة الغلاف');
@@ -720,7 +723,7 @@ const Profile = () => {
                           }
 
                           toast.success('تم تحديث صورة الغلاف بنجاح');
-                          
+
                           // Update local state
                           setProfileUser(prev => prev ? {
                             ...prev,
@@ -737,14 +740,14 @@ const Profile = () => {
               </>
             )}
           </div>
-          
+
           <div className="relative px-6 py-4 pb-8">
             <div className="flex flex-col md:flex-row gap-6">
               <div className="relative -mt-16 md:-mt-20 z-10">
                 <div className="relative">
                   <Avatar className="h-32 w-32 border-4 border-background shadow-md overflow-hidden">
-                    <AvatarImage 
-                      src={profileUser?.avatar_url} 
+                    <AvatarImage
+                      src={profileUser?.avatar_url}
                       alt={profileUser?.display_name}
                       className="object-cover"
                     />
@@ -759,11 +762,11 @@ const Profile = () => {
                         onClick={() => document.getElementById('avatar-upload')?.click()}
                       >
                         <Edit className="h-4 w-4" />
-                        <input 
-                          id="avatar-upload" 
-                          type="file" 
-                          accept="image/*" 
-                          className="hidden" 
+                        <input
+                          id="avatar-upload"
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (file) {
@@ -774,13 +777,13 @@ const Profile = () => {
                                   toast.error('يُسمح فقط بصور JPG و PNG و GIF و WEBP');
                                   return;
                                 }
-                                
+
                                 // Validate file size (max 5MB)
                                 if (file.size > 5 * 1024 * 1024) {
                                   toast.error('يجب أن يكون حجم الصورة أقل من 5 ميغابايت');
                                   return;
                                 }
-                                
+
                                 // Show loading toast
                                 const loadingToast = toast.loading('جاري تحديث الصورة الشخصية...');
 
@@ -815,7 +818,7 @@ const Profile = () => {
                                   .eq('id', user?.id);
 
                                 toast.dismiss(loadingToast);
-                                
+
                                 if (updateError) {
                                   console.error('Error updating profile with avatar image:', updateError);
                                   toast.error('حدث خطأ أثناء تحديث الصورة الشخصية');
@@ -823,7 +826,7 @@ const Profile = () => {
                                 }
 
                                 toast.success('تم تحديث الصورة الشخصية بنجاح');
-                                
+
                                 // Update local state
                                 setProfileUser(prev => prev ? {
                                   ...prev,
@@ -840,14 +843,14 @@ const Profile = () => {
                   )}
                 </div>
               </div>
-              
+
               <div className="flex-1">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
                   <div>
                     <h1 className="text-2xl font-display font-bold">{profileUser?.display_name}</h1>
                     <p className="text-muted-foreground">@{profileUser?.username}</p>
                   </div>
-                  
+
                   {isOwnProfile ? (
                     <div className="flex gap-2">
                       <Button
@@ -859,14 +862,14 @@ const Profile = () => {
                       </Button>
                       <Button asChild>
                         <Link to="/edit-profile">
-                          <Edit className="h-4 w-4 me-2" />
-                          {isRtl ? "تعديل الملف الشخصي" : "Edit Profile"}
+                          <Edit className="h-4 w-4" />
+                          {(isRtl ? "تعديل الملف الشخصي" : "Edit Profile")}
                         </Link>
                       </Button>
                     </div>
                   ) : (
                     <div className="flex gap-2">
-                      <Button 
+                      <Button
                         variant={isFollowing ? "outline" : "default"}
                         onClick={handleFollow}
                       >
@@ -874,7 +877,7 @@ const Profile = () => {
                       </Button>
                       {/* Only show message button if user allows messages */}
                       {(profileUser.allow_messages !== false) && (
-                        <Button 
+                        <Button
                           variant="outline"
                           asChild
                         >
@@ -887,9 +890,9 @@ const Profile = () => {
                     </div>
                   )}
                 </div>
-                
-                <p className="max-w-2xl mb-4">{profileUser?.bio}</p>
-                
+
+                <p className="max-w-2xl mb-4 text-start rtl:text-right">{profileUser?.bio}</p>
+
                 <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
                   {profileUser?.location && (
                     <div className="flex items-center text-muted-foreground">
@@ -939,7 +942,7 @@ const Profile = () => {
             </div>
           </div>
         </div>
-        
+
         {/* Profile Content */}
         <Tabs defaultValue="posts" onValueChange={setActiveTab}>
           <TabsList className={`w-full mb-8 ${isRtl ? 'justify-end flex-row-reverse' : 'justify-start'} overflow-x-auto scrollbar-none flex-nowrap sm:flex-wrap`} style={{ WebkitOverflowScrolling: 'touch' }}>
@@ -972,7 +975,7 @@ const Profile = () => {
               </TabsTrigger>
             )}
           </TabsList>
-          
+
           <TabsContent value="posts" className="mt-0" dir={isRtl ? 'rtl' : 'ltr'}>
             {isOwnProfile && (
               <div className="flex justify-end mb-4">
@@ -1002,24 +1005,24 @@ const Profile = () => {
               <div className="text-center py-12 border rounded-lg">
                 <h3 className="text-lg font-medium mb-2">{isRtl ? "لا توجد منشورات بعد" : "No posts yet"}</h3>
                 <p className="text-muted-foreground">
-                  {isOwnProfile ? 
-                    (isRtl ? "ابدأ بمشاركة أعمالك مع المجتمع" : "Start sharing your work with the community") : 
+                  {isOwnProfile ?
+                    (isRtl ? "ابدأ بمشاركة أعمالك مع المجتمع" : "Start sharing your work with the community") :
                     (isRtl ? "سيظهر هنا المنشورات عند نشرها" : "Posts will appear here when published")}
                 </p>
               </div>
             ) : (
               <div ref={postsListRef} className="space-y-6">
                 {userPosts.map((post) => (
-                    <PostCard 
-                      post={post} 
+                  <PostCard
+                    post={post}
                     key={post.id}
                     onDelete={reloadPostsAndScrollTop}
-                    />
+                  />
                 ))}
               </div>
             )}
           </TabsContent>
-          
+
           <TabsContent value="reels" className="mt-0" dir={isRtl ? 'rtl' : 'ltr'}>
             {isOwnProfile && (
               <div className="flex justify-end mb-4">
@@ -1042,9 +1045,9 @@ const Profile = () => {
                   {isOwnProfile ? (
                     <>
                       {isRtl ? "ابدأ بمشاركة ريلز مع المجتمع" : "Start sharing reels with the community"}{" "}
-                      <Button 
-                        variant="link" 
-                        className="px-0 py-0 h-auto" 
+                      <Button
+                        variant="link"
+                        className="px-0 py-0 h-auto"
                         onClick={() => setIsCreateReelOpen(true)}
                       >
                         {isRtl ? "إنشاء ريل جديد" : "Create a new reel"}
@@ -1079,11 +1082,11 @@ const Profile = () => {
                       views: reel.views_count || 0,
                       isLiked: false
                     };
-                    
+
                     return (
                       <div key={reel.id} className="aspect-[9/16]">
-                        <ReelCard 
-                          reel={reelWithUser} 
+                        <ReelCard
+                          reel={reelWithUser}
                           isActive={true}
                           onView={viewReel}
                           onLike={likeReel}
@@ -1099,7 +1102,7 @@ const Profile = () => {
               </div>
             )}
           </TabsContent>
-          
+
           <TabsContent value="media" className="mt-0" dir={isRtl ? 'rtl' : 'ltr'}>
             {loadingTab ? (
               <div dir={isRtl ? 'rtl' : 'ltr'} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1111,8 +1114,8 @@ const Profile = () => {
               <div className="text-center py-12 border rounded-lg">
                 <h3 className="text-lg font-medium mb-2">{isRtl ? "لا توجد وسائط بعد" : "No media yet"}</h3>
                 <p className="text-muted-foreground">
-                  {isOwnProfile ? 
-                    (isRtl ? "ابدأ بمشاركة صور وفيديوهات مع المجتمع" : "Start sharing photos and videos with the community") : 
+                  {isOwnProfile ?
+                    (isRtl ? "ابدأ بمشاركة صور وفيديوهات مع المجتمع" : "Start sharing photos and videos with the community") :
                     (isRtl ? "سيظهر هنا الوسائط عند نشرها" : "Media will appear here when published")}
                 </p>
               </div>
@@ -1120,9 +1123,9 @@ const Profile = () => {
               <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 ${isRtl ? 'flex-row-reverse' : ''}`} dir={isRtl ? 'rtl' : 'ltr'}>
                 {userMediaPosts.map((post) => (
                   <Link to={`/post/${post.id}`} key={post.id} className="group relative aspect-square rounded-md overflow-hidden bg-muted">
-                    <img 
-                      src={post.image} 
-                      alt="" 
+                    <img
+                      src={post.image}
+                      alt=""
                       className="w-full h-full object-cover transition duration-300 group-hover:scale-105"
                     />
                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
@@ -1144,7 +1147,7 @@ const Profile = () => {
               </div>
             )}
           </TabsContent>
-          
+
           {isOwnProfile && (
             <TabsContent value="likes" className="mt-0" dir={isRtl ? 'rtl' : 'ltr'}>
               {loadingTab ? (
@@ -1167,25 +1170,25 @@ const Profile = () => {
                 <div className="text-center py-12 border rounded-lg">
                   <h3 className="text-lg font-medium mb-2">{isRtl ? "لا توجد إعجابات بعد" : "No likes yet"}</h3>
                   <p className="text-muted-foreground">
-                    {isOwnProfile ? 
-                      (isRtl ? "ستظهر هنا المنشورات التي أعجبت بها" : "Posts you like will appear here") : 
+                    {isOwnProfile ?
+                      (isRtl ? "ستظهر هنا المنشورات التي أعجبت بها" : "Posts you like will appear here") :
                       (isRtl ? "سيظهر هنا المنشورات التي أعجب بها" : "Liked posts will appear here")}
                   </p>
                 </div>
               ) : (
                 <div className="space-y-6">
                   {userLikedPosts.map((post) => (
-                      <PostCard 
-                        post={post} 
+                    <PostCard
+                      post={post}
                       key={post.id}
                       onDelete={reloadPostsAndScrollTop}
-                      />
+                    />
                   ))}
                 </div>
               )}
             </TabsContent>
           )}
-          
+
           <TabsContent value="projects" className="mt-0" dir={isRtl ? 'rtl' : 'ltr'}>
             {isOwnProfile && (
               <div className="flex justify-end mb-4">
@@ -1222,8 +1225,8 @@ const Profile = () => {
               <div className="text-center py-12 border rounded-lg">
                 <h3 className="text-lg font-medium mb-2">{isRtl ? "لا توجد مشاريع بعد" : "No projects yet"}</h3>
                 <p className="text-muted-foreground">
-                  {isOwnProfile ? 
-                    (isRtl ? "ابدأ بمشاركة مشاريعك الإبداعية" : "Start sharing your creative projects") : 
+                  {isOwnProfile ?
+                    (isRtl ? "ابدأ بمشاركة مشاريعك الإبداعية" : "Start sharing your creative projects") :
                     (isRtl ? "سيظهر هنا المشاريع عند نشرها" : "Projects will appear here when published")}
                 </p>
               </div>
@@ -1232,9 +1235,9 @@ const Profile = () => {
                 {userProjects.map((project) => (
                   <Card key={project.id} className="overflow-hidden">
                     <Link to={`/projects/${project.id}`} className="block aspect-video relative overflow-hidden">
-                      <img 
-                        src={project.cover_image_url || "https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?q=80&w=1000"} 
-                        alt={project.title} 
+                      <img
+                        src={project.cover_image_url || "https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?q=80&w=1000"}
+                        alt={project.title}
                         className="object-cover w-full h-full hover:scale-105 transition-transform duration-300"
                       />
                     </Link>
@@ -1258,10 +1261,10 @@ const Profile = () => {
                         <Eye className="h-4 w-4" />
                         <span>{project.views}</span>
                       </div>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="gap-2" 
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="gap-2"
                         asChild
                       >
                         <Link to={`/projects/${project.id}`}>
@@ -1277,9 +1280,9 @@ const Profile = () => {
           </TabsContent>
         </Tabs>
       </div>
-      
+
       {/* Floating Action Button for owner */}
-      {isOwnProfile && (
+      {!isMobile && isOwnProfile && (
         <div className="fixed bottom-8 right-8 z-50">
           {/* Overlay for closing FAB when open */}
           {fabOpen && (

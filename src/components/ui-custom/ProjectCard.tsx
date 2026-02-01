@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTranslation } from "@/hooks/use-translation";
+import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { ShareModal } from "./ShareModal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
@@ -63,9 +64,9 @@ export function ProjectCard({ project, onLike, onComment }: ProjectCardProps) {
     // Prevent navigation if clicking on interactive elements
     if (
       e.target instanceof HTMLElement &&
-      (e.target.closest('button') || 
-       e.target.closest('a') || 
-       e.target.closest('input'))
+      (e.target.closest('button') ||
+        e.target.closest('a') ||
+        e.target.closest('input'))
     ) {
       return;
     }
@@ -126,46 +127,54 @@ export function ProjectCard({ project, onLike, onComment }: ProjectCardProps) {
     }
   };
 
+  const [imgError, setImgError] = useState(false);
+
   return (
-    <div 
+    <div
       className="bg-card rounded-lg border p-4 space-y-4 cursor-pointer hover:border-primary/50 transition-colors"
       onClick={handleCardClick}
     >
-      <div className="relative aspect-video w-full overflow-hidden rounded-lg">
-        <img
-          src={project.thumbnail_url}
-          alt={project.title}
-          className="w-full h-full object-cover"
-        />
+      <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-muted flex items-center justify-center">
+        {!project.thumbnail_url || imgError ? (
+          <div className="p-8 opacity-20 grayscale brightness-150">
+            <img src='/assets/logo.png' alt="Placeholder" className="h-16 w-auto object-contain" />
+          </div>
+        ) : (
+          <img
+            src={project.thumbnail_url}
+            alt={project.title}
+            className="w-full h-full object-cover"
+            onError={() => setImgError(true)}
+          />
+        )}
       </div>
 
       <h3 className="text-lg font-semibold text-start">{project.title}</h3>
 
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3 text-start">
+        <div className="flex items-center gap-3 text-start min-w-0">
           <Link to={`/profile/${project.user.username}`}>
             <Avatar className="h-8 w-8">
               <AvatarImage src={project.user.avatar} alt={project.user.displayName} />
               <AvatarFallback>{project.user.displayName[0]}</AvatarFallback>
             </Avatar>
           </Link>
-          <div>
+          <div className="min-w-0">
             <Link
               to={`/profile/${project.user.username}`}
-              className="font-medium text-sm hover:underline"
+              className="font-medium text-sm hover:underline block truncate"
             >
               {project.user.displayName}
             </Link>
-            
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Heart className="h-3 w-3" />
+          <div className="flex items-center gap-1 text-xs text-purple-600/80">
+            <Heart className={cn("h-3 w-3", localIsLiked ? "fill-purple-600 text-purple-600" : "text-purple-500")} />
             <span>{localLikes}</span>
           </div>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <MessageCircle className="h-3 w-3" />
+          <div className="flex items-center gap-1 text-xs text-purple-600/80">
+            <MessageCircle className="h-3 w-3 text-purple-500" />
             <span>{project.comments}</span>
           </div>
         </div>

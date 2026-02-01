@@ -42,6 +42,11 @@ export function RegisterForm() {
       return;
     }
 
+    if (username.includes(" ")) {
+      setError(isRtl ? "اسم المستخدم لا يمكن أن يحتوي على مسافات" : "Username cannot contain spaces");
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError(t("passwordsNotMatch"));
       return;
@@ -118,10 +123,10 @@ export function RegisterForm() {
   return (
     <>
       <Card className="w-full max-w-2xl mx-auto border border-border/40 bg-[rgba(217,217,217,0.01)] backdrop-blur-[20px] rounded-[24px] shadow-[inset_0px_10px_20px_rgba(115,71,146,0.25),_inset_0px_-5px_15px_rgba(0,0,0,0.4)] relative">
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           size="icon"
-          onClick={() => navigate("/")} 
+          onClick={() => navigate("/")}
           className={`absolute top-4 ${isRtl ? 'right-4' : 'left-4'} rounded-full text-white hover:bg-white/10`}
         >
           <ArrowLeft className={isRtl ? "rotate-180" : ""} />

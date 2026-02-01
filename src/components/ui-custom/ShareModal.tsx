@@ -146,7 +146,7 @@ export function ShareModal({ isOpen, onClose, url, title, description, type, aut
           <div className="flex items-center gap-2 mb-2">
             <img
               src='/assets/logo.png'
-              alt="Artful Connective Hub Logo"
+              alt="Artspace Logo"
               className="h-8 w-auto object-contain"
             />
             <DialogTitle>

@@ -133,6 +133,7 @@ const ProjectDetail = () => {
     const savedLayout = localStorage.getItem('galleryLayout');
     return (savedLayout as 'grid-2' | 'grid-3' | 'grid-4' | 'rows') || 'grid-3';
   });
+  const [coverImgError, setCoverImgError] = useState(false);
 
   // Share modal state
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -413,7 +414,7 @@ const ProjectDetail = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     onClick={() => setIsEditDialogOpen(true)}
                     dir={isRtl ? "rtl" : "ltr"}
                   >
@@ -458,62 +459,62 @@ const ProjectDetail = () => {
                 <span className="text-sm">{project.views} {t("views")}</span>
               </div>
               {/* Actions */}
-            <div className="space-y-2 flex gap-4">
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  className="flex-1 justify-center"
-                  onClick={handleLike}
-                >
-                  <motion.div 
-                    whileTap={{ scale: 1.2 }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-                  >
-                    <Heart className={cn(
-                      `h-4 w-4 ${isRtl ? "ml-2" : "mr-2"}`,
-                      localIsLiked ? "text-red-500 fill-red-500" : ""
-                    )} />
-                  </motion.div>
-                  <AnimatePresence mode="wait">
-                    <motion.span
-                      key={localLikes}
-                      initial={{ y: -10, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      exit={{ y: 10, opacity: 0 }}
-                      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                    >
-                      {localLikes} {t("likes")}
-                    </motion.span>
-                  </AnimatePresence>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="flex-1 justify-center"
-                  onClick={handleShare}
-                >
-                  <Share2 className={`h-4 w-4 ${isRtl ? "ml-2" : "mr-2"}`} />
-                  {t("share")}
-                </Button>
-                {project.external_link && (
+              <div className="space-y-2 flex gap-4">
+                <div className="flex gap-2">
                   <Button
                     variant="outline"
-                    className="w-full justify-start"
-                    asChild
+                    className="flex-1 justify-center"
+                    onClick={handleLike}
                   >
-                    <a
-                      href={project.external_link}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <motion.div
+                      whileTap={{ scale: 1.2 }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 17 }}
                     >
-                      <LinkIcon className={`h-4 w-4 ${isRtl ? "ml-2" : "mr-2"}`} />
-                      {t("visitProject")}
-                    </a>
+                      <Heart className={cn(
+                        `h-4 w-4 ${isRtl ? "ml-2" : "mr-2"}`,
+                        localIsLiked ? "text-red-500 fill-red-500" : ""
+                      )} />
+                    </motion.div>
+                    <AnimatePresence mode="wait">
+                      <motion.span
+                        key={localLikes}
+                        initial={{ y: -10, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: 10, opacity: 0 }}
+                        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                      >
+                        {localLikes} {t("likes")}
+                      </motion.span>
+                    </AnimatePresence>
                   </Button>
-                )}
+                  <Button
+                    variant="outline"
+                    className="flex-1 justify-center"
+                    onClick={handleShare}
+                  >
+                    <Share2 className={`h-4 w-4 ${isRtl ? "ml-2" : "mr-2"}`} />
+                    {t("share")}
+                  </Button>
+                  {project.external_link && (
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start"
+                      asChild
+                    >
+                      <a
+                        href={project.external_link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <LinkIcon className={`h-4 w-4 ${isRtl ? "ml-2" : "mr-2"}`} />
+                        {t("visitProject")}
+                      </a>
+                    </Button>
+                  )}
+                </div>
+
               </div>
 
-            </div>
-              
             </div>
           </div>
 
@@ -522,20 +523,27 @@ const ProjectDetail = () => {
             <h1 className={`text-3xl font-bold font-cairo line-2 leading-[1.5] mb-4 ${isRtl ? "text-right" : "text-left"}`}>{project.title}</h1>
             {/* Tags */}
             <div className={`flex-1 flex-wrap gap-2`}>
-                {project.tags.map((tag, index) => (
-                  <Badge key={index} variant="secondary">
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
+              {project.tags.map((tag, index) => (
+                <Badge key={index} variant="secondary">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
           </div>
           {/* Project image */}
-          <div className="relative aspect-video w-full mb-8 rounded-lg overflow-hidden">
-            <img
-              src={project.cover_image_url || "https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?q=80&w=1000"}
-              alt={project.title}
-              className="object-cover w-full h-full"
-            />
+          <div className="relative aspect-video w-full mb-8 rounded-lg overflow-hidden bg-muted flex items-center justify-center border">
+            {!(project.cover_image_url || (project.image_urls && project.image_urls.length > 0)) || coverImgError ? (
+              <div className="p-8 opacity-20 grayscale brightness-150">
+                <img src='/assets/logo.png' alt="Placeholder" className="h-24 w-auto object-contain" />
+              </div>
+            ) : (
+              <img
+                src={project.cover_image_url || project.image_urls?.[0]}
+                alt={project.title}
+                className="object-cover w-full h-full"
+                onError={() => setCoverImgError(true)}
+              />
+            )}
           </div>
           <div className={cn(
             "gap-4 my-4",
@@ -616,7 +624,7 @@ const ProjectDetail = () => {
                 className="flex-1 justify-center"
                 onClick={handleLike}
               >
-                <motion.div 
+                <motion.div
                   whileTap={{ scale: 1.2 }}
                   transition={{ type: 'spring', stiffness: 400, damping: 17 }}
                 >

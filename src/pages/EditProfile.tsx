@@ -33,6 +33,8 @@ const profileFormSchema = z.object({
     message: "يجب أن يكون اسم المستخدم حرفين على الأقل.",
   }).max(30, {
     message: "لا يمكن أن يتجاوز اسم المستخدم 30 حرفًا.",
+  }).regex(/^[a-zA-Z0-9_]+$/, {
+    message: "اسم المستخدم يجب أن يحتوي على أحرف وأرقام وشرطة سفلية فقط بدون مسافات.",
   }),
   bio: z.string().max(160, {
     message: "لا يمكن أن تتجاوز السيرة الذاتية 160 حرفًا.",
@@ -70,7 +72,7 @@ const EditProfile = () => {
   const [isEmailSaving, setIsEmailSaving] = useState(false);
   const [isPasswordSaving, setIsPasswordSaving] = useState(false);
   const [oldPassword, setOldPassword] = useState("");
-  
+
   // Default values from user context
   const defaultValues: ProfileFormValues = {
     displayName: user?.displayName || "",
@@ -104,6 +106,20 @@ const EditProfile = () => {
     }
     fetchPrefs();
   }, [user?.id]);
+
+  // Update form values when user data is available
+  useEffect(() => {
+    if (user) {
+      form.reset({
+        displayName: user.displayName || "",
+        username: user.username || "",
+        bio: user.bio || "",
+        website: user.website || "",
+        location: user.location || "",
+        allowMessages: user.allowMessages !== false,
+      });
+    }
+  }, [user, form]);
 
   async function handleNotifChange(changes: Partial<NotificationPreferences>) {
     if (!user?.id) return;
@@ -155,9 +171,9 @@ const EditProfile = () => {
     canvas.width = crop.width;
     canvas.height = crop.height;
     const ctx = canvas.getContext('2d');
-    
+
     if (!ctx) return Promise.reject('Canvas context not available');
-    
+
     ctx.drawImage(
       image,
       crop.x * scaleX,
@@ -169,7 +185,7 @@ const EditProfile = () => {
       crop.width,
       crop.height
     );
-    
+
     return new Promise((resolve) => {
       canvas.toBlob((blob) => {
         if (!blob) return;
@@ -180,7 +196,7 @@ const EditProfile = () => {
 
   const handleAvatarChange = async () => {
     if (!completedCrop || !imgRef.current || !imgSrc || !user?.id) return;
-    
+
     const file = await getCroppedImg(imgRef.current, completedCrop);
     if (!file) return;
 
@@ -250,7 +266,7 @@ const EditProfile = () => {
       });
 
       if (metadataError) throw metadataError;
-      
+
       toast({
         title: "تم تحديث الملف الشخصي بنجاح",
         description: "تم تحديث معلومات ملفك الشخصي بنجاح.",
@@ -361,14 +377,14 @@ const EditProfile = () => {
     <Layout>
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-6">{t("editProfile")}</h1>
-        
+
         <Tabs defaultValue="profile" className="space-y-8">
           <TabsList className="rtl:flex-row-reverse rtl:space-x-reverse">
             <TabsTrigger value="profile">{t("profile")}</TabsTrigger>
             <TabsTrigger value="account">{t("accountSettings")}</TabsTrigger>
             <TabsTrigger value="notifications">{t("notifications")}</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="profile" className="space-y-8">
             <Card>
               <CardHeader>
@@ -381,8 +397,8 @@ const EditProfile = () => {
                     <div className="flex flex-col sm:flex-row justify-between gap-8 rtl:flex-row-reverse rtl:space-x-reverse">
                       <div className="flex-shrink-0 flex flex-col items-center justify-center space-y-3">
                         <Avatar className="h-24 w-24">
-                          <AvatarImage 
-                            src={user?.avatar} 
+                          <AvatarImage
+                            src={user?.avatar}
                             style={{ objectFit: 'cover' }}
                           />
                           <AvatarFallback>{user?.displayName?.charAt(0) || "U"}</AvatarFallback>
@@ -394,10 +410,10 @@ const EditProfile = () => {
                           accept="image/*"
                           onChange={onSelectFile}
                         />
-                        
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
+
+                        <Button
+                          size="sm"
+                          variant="outline"
                           onClick={() => fileInputRef.current?.click()}
                           disabled={isUploading}
                           className="rtl:w-full"
@@ -405,7 +421,7 @@ const EditProfile = () => {
                           {isUploading ? t("uploading") : t("changeAvatar")}
                         </Button>
                       </div>
-                      
+
                       <div className="flex-1 space-y-4" dir={isRtl ? "rtl" : "ltr"}>
                         <FormField
                           control={form.control}
@@ -423,7 +439,7 @@ const EditProfile = () => {
                             </FormItem>
                           )}
                         />
-                        
+
                         <FormField
                           control={form.control}
                           name="username"
@@ -442,9 +458,9 @@ const EditProfile = () => {
                         />
                       </div>
                     </div>
-                    
+
                     <Separator />
-                    
+
                     <FormField
                       control={form.control}
                       name="bio"
@@ -465,7 +481,7 @@ const EditProfile = () => {
                         </FormItem>
                       )}
                     />
-                    
+
                     <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                       <FormField
                         control={form.control}
@@ -480,7 +496,7 @@ const EditProfile = () => {
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={form.control}
                         name="location"
@@ -495,7 +511,7 @@ const EditProfile = () => {
                         )}
                       />
                     </div>
-                    
+
                     <div className="flex justify-end rtl:justify-start">
                       <Button type="submit" className="rtl:w-auto">{t("save")}</Button>
                     </div>
@@ -504,7 +520,7 @@ const EditProfile = () => {
               </CardContent>
             </Card>
           </TabsContent>
-          
+
           <TabsContent value="account">
             <Card>
               <CardHeader>
@@ -579,8 +595,8 @@ const EditProfile = () => {
                       <span className="font-medium text-destructive">{t("deleteAccount")}</span>
                       <div className="text-xs text-muted-foreground mt-1">{t("deleteAccountDesc")}</div>
                     </div>
-                    <Button 
-                      variant="destructive" 
+                    <Button
+                      variant="destructive"
                       onClick={() => setIsDeleteModalOpen(true)}
                     >
                       {t("deleteAccount")}
@@ -590,7 +606,7 @@ const EditProfile = () => {
               </CardContent>
             </Card>
           </TabsContent>
-          
+
           <TabsContent value="notifications">
             <Card>
               <CardHeader>

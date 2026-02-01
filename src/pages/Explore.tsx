@@ -23,7 +23,7 @@ const Explore = () => {
   const { t, isRtl } = useTranslation();
   const navigate = useNavigate();
   const { tag: urlTag } = useParams();
-  
+
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState(urlTag ? "hashtags" : "all");
   const [filteredPosts, setFilteredPosts] = useState<Post[]>([]);
@@ -93,25 +93,25 @@ const Explore = () => {
   // Update the useEffect for filtering posts
   useEffect(() => {
     if (!posts) return;
-    
+
     let result = [...posts];
-    
+
     // Filter by search term
     if (searchTerm) {
-      result = result.filter(post => 
+      result = result.filter(post =>
         post.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (post.user?.username.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (post.user?.display_name.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
-    
+
     // Filter by selected tag
     if (selectedTag) {
-      result = result.filter(post => 
+      result = result.filter(post =>
         post.tags?.includes(selectedTag)
       );
     }
-    
+
     // Additional filtering by tab
     switch (activeTab) {
       case "trending":
@@ -123,7 +123,7 @@ const Explore = () => {
         // No additional filtering for "all" and "hashtags"
         break;
     }
-    
+
     setFilteredPosts(result);
   }, [posts, searchTerm, activeTab, selectedTag]);
 
@@ -132,7 +132,7 @@ const Explore = () => {
     const formattedTag = formatTag(tag);
     setSelectedTag(formattedTag);
     setActiveTab("hashtags");
-    
+
     try {
       const posts = await getPostsByTag(formattedTag);
       const transformedPosts = await Promise.all(posts.map(async post => {
@@ -176,7 +176,7 @@ const Explore = () => {
     setTagPosts([]);
     navigate('/explore');
   };
-  
+
   // Add this useEffect to handle the transformation
   useEffect(() => {
     const transformPosts = async () => {
@@ -228,14 +228,12 @@ const Explore = () => {
       <div className="max-w-2xl mx-auto px-2 sm:px-4">
         <div className="mb-6">
           {/* Search Bar */}
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+          <div className="relative mb-4 items-center flex justify-between">
             <Input
               placeholder={t("searchPlaceholder")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-10"
-              dir={isRtl ? "rtl" : "ltr"}
+              className=" bg-[#000]"
             />
             {searchTerm && (
               <Button
@@ -247,25 +245,25 @@ const Explore = () => {
                 <X className="h-4 w-4" />
               </Button>
             )}
+            <Search className={`absolute ${isRtl ? "left-2" : "right-2"} top-1/2 transform -translate-y-1/2 h-6 w-6 text-muted-foreground`} />
           </div>
-          
+
           {/* Tabs */}
-          <Tabs value={activeTab} onValueChange={handleTabChange}>
+          <Tabs value={activeTab} onValueChange={handleTabChange} dir={isRtl ? "rtl" : "ltr"}>
             <TabsList className="w-full">
               <TabsTrigger value="all">
-                <Hash className="h-4 w-4 mr-2" />
                 {t("all")}
               </TabsTrigger>
               <TabsTrigger value="hashtags">
-                <Hash className="h-4 w-4 mr-2" />
+                <Hash className="h-4 w-4 mx-2" />
                 {t("hashtags")}
               </TabsTrigger>
               <TabsTrigger value="trending">
-                <TrendingUp className="h-4 w-4 mr-2" />
+                <TrendingUp className="h-4 w-4 mx-2" />
                 {t("trending")}
               </TabsTrigger>
             </TabsList>
-            
+
             {/* Selected Tag Display */}
             {selectedTag && (
               <div className="mt-4 flex items-center gap-2">
@@ -282,7 +280,7 @@ const Explore = () => {
                 </Button>
               </div>
             )}
-            
+
             {/* Tags Content */}
             <TabsContent value="hashtags" className="mt-4">
               {loadingTags ? (
@@ -334,7 +332,7 @@ const Explore = () => {
             </TabsContent>
           </Tabs>
         </div>
-        
+
         {/* Posts List */}
         <div className="space-y-6">
           {isLoading ? (
@@ -344,8 +342,8 @@ const Explore = () => {
             </div>
           ) : (selectedTag ? tagPosts : postsWithUser).length > 0 ? (
             (selectedTag ? tagPosts : postsWithUser).map((post) => (
-              <PostCard 
-                key={post.id} 
+              <PostCard
+                key={post.id}
                 post={post}
                 onLike={(id) => likePost(id)}
               />
@@ -353,7 +351,7 @@ const Explore = () => {
           ) : (
             <div className="text-center py-12">
               <p className="text-muted-foreground">
-                {selectedTag 
+                {selectedTag
                   ? `${t("noPostsWithTag")} #${formatTagForDisplay(selectedTag)}`
                   : t("noResults")}
               </p>

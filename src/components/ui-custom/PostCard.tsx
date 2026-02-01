@@ -114,7 +114,7 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
           .from("posts")
           .select("*", { count: "exact", head: true })
           .eq("id", post.id);
-          
+
         if (checkError) {
           console.error("Error checking post existence:", checkError);
           return;
@@ -124,7 +124,7 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
           console.error("Post not found");
           return;
         }
-        
+
         // Check if following the post author
         if (user.id !== post.user.id) {
           const { data: isFollowingData } = await supabase
@@ -203,19 +203,19 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
 
         if (error) throw error;
         setIsFollowing(false);
-        
+
         // Refresh the post user's profile to get updated follower count
         const { data: updatedProfile, error: refreshError } = await supabase
           .from("profiles")
           .select("followers_count")
           .eq("id", post.user.id)
           .single();
-          
+
         if (!refreshError && updatedProfile) {
           // Update the post object with the new follower count
           post.user.followers_count = updatedProfile.followers_count || 0;
         }
-        
+
         toast.success(isRtl ? "تم إلغاء المتابعة بنجاح" : "Successfully unfollowed");
       } else {
         const { error } = await supabase
@@ -227,19 +227,19 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
 
         if (error) throw error;
         setIsFollowing(true);
-        
+
         // Refresh the post user's profile to get updated follower count
         const { data: updatedProfile, error: refreshError } = await supabase
           .from("profiles")
           .select("followers_count")
           .eq("id", post.user.id)
           .single();
-          
+
         if (!refreshError && updatedProfile) {
           // Update the post object with the new follower count
           post.user.followers_count = updatedProfile.followers_count || 0;
         }
-        
+
         toast.success(isRtl ? "تم المتابعة بنجاح" : "Successfully followed");
       }
     } catch (error) {
@@ -349,7 +349,7 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
 
   return (
     <div className={`bg-card rounded-lg border p-4 space-y-5 w-full ${isRtl ? 'direction-rtl' : ''}`}>
-      
+
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
           <Link to={`/profile/${post.user.username}`}>
@@ -360,7 +360,7 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
           </Link>
           <div>
             <div className="flex items-center gap-2">
-              <Link 
+              <Link
                 to={`/profile/${post.user.username}`}
                 className="font-medium hover:underline"
               >
@@ -374,9 +374,9 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
                   onClick={async (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    
+
                     if (!isAuthenticated || !user || user.id === post.user.id) return;
-                    
+
                     setIsLoading(true);
                     try {
                       if (isFollowing) {
@@ -387,7 +387,7 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
                             follower_id: user.id,
                             following_id: post.user.id
                           });
-                        
+
                         if (error) throw error;
                         setIsFollowing(false);
                         toast.success(isRtl ? "تم إلغاء المتابعة بنجاح" : "Successfully unfollowed");
@@ -398,7 +398,7 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
                             follower_id: user.id,
                             following_id: post.user.id
                           });
-                        
+
                         if (error) throw error;
                         setIsFollowing(true);
                         toast.success(isRtl ? "تم المتابعة بنجاح" : "Successfully followed");
@@ -427,7 +427,7 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
               )}
             </div>
             <div className="flex text-sm text-muted-foreground">
-              <Link 
+              <Link
                 to={`/profile/${post.user.username}`}
                 className="hover:underline"
               >
@@ -451,12 +451,12 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
               )}
               <span className="mx-1">•</span>
               <span>
-                {formatDistanceToNow(post.createdAt, { 
+                {formatDistanceToNow(post.createdAt, {
                   addSuffix: true,
                   locale: isRtl ? ar : undefined
                 })}
               </span>
-              
+
             </div>
           </div>
         </div>
@@ -467,7 +467,7 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               {canEdit && (
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   onClick={() => setIsEditMode(true)}
                   dir={isRtl ? "rtl" : "ltr"}
                 >
@@ -475,8 +475,8 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
                   {isRtl ? "تعديل" : "Edit"}
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem 
-                className="text-destructive" 
+              <DropdownMenuItem
+                className="text-destructive"
                 onClick={() => setIsDeleteDialogOpen(true)}
                 dir={isRtl ? "rtl" : "ltr"}
               >
@@ -491,7 +491,7 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
               <Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5" /></Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={() => setIsReportDialogOpen(true)}
                 dir={isRtl ? "rtl" : "ltr"}
               >
@@ -522,9 +522,9 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
           </div>
         </div>
       ) : (
-      <Link to={`/post/${post.id}`} className="block">
-        <p className="text-sm whitespace-pre-wrap text-start p-3">{post.content}</p>
-      </Link>
+        <Link to={`/post/${post.id}`} className="block">
+          <p className="text-sm whitespace-pre-wrap text-start p-3">{post.content}</p>
+        </Link>
       )}
 
       {(post.images?.length > 0 && !post.media_urls) && (
@@ -558,7 +558,7 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
         </Link>
       )}
 
-      
+
 
       <div className="flex items-center gap-4 pt-2">
         <Button
@@ -570,12 +570,12 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
               toast.error(isRtl ? "يرجى تسجيل الدخول للإعجاب بالمنشورات" : "Please login to like posts");
               return;
             }
-            
+
             // Optimistic update
             const wasLiked = localIsLiked;
             setLocalIsLiked(!wasLiked);
             setLocalLikes(prev => wasLiked ? Math.max(0, prev - 1) : prev + 1);
-            
+
             try {
               if (wasLiked) {
                 // Unlike the post
@@ -584,7 +584,7 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
                   .delete()
                   .eq('post_id', post.id)
                   .eq('user_id', user?.id);
-                  
+
                 if (error) throw error;
                 toast.success(isRtl ? 'تم إزالة الإعجاب بنجاح' : 'Successfully unliked');
               } else {
@@ -592,14 +592,14 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
                 const { error } = await supabase
                   .from('post_likes')
                   .upsert(
-                    { 
-                      post_id: post.id, 
+                    {
+                      post_id: post.id,
                       user_id: user?.id,
                       created_at: new Date().toISOString()
                     },
                     { onConflict: 'post_id,user_id' }
                   );
-                  
+
                 if (error) throw error;
                 toast.success(isRtl ? 'تم تسجيل الإعجاب بنجاح' : 'Successfully liked');
               }
@@ -612,14 +612,14 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
             }
           }}
         >
-          <motion.div 
+          <motion.div
             whileTap={{ scale: 1.2 }}
             transition={{ type: 'spring', stiffness: 400, damping: 17 }}
           >
-            <Heart 
-              className="h-4 w-4" 
+            <Heart
+              className="h-4 w-4"
               fill={localIsLiked ? "currentColor" : "none"}
-              style={{ color: localIsLiked ? "#3b82f6" : "currentColor" }}
+              style={{ color: localIsLiked ? "#9333ea" : "currentColor" }}
             />
           </motion.div>
           <AnimatePresence mode="wait">
@@ -641,7 +641,7 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
           className="gap-2"
           onClick={() => onComment?.(post.id)}
         >
-          <MessageCircle className="h-4 w-4" />
+          <MessageCircle className="h-4 w-4 text-purple-500/70" />
           <span>{post.comments}</span>
         </Button>
 
@@ -651,7 +651,7 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
           className="gap-2"
           onClick={handleShare}
         >
-          <Share2 className="h-4 w-4" />
+          <Share2 className="h-4 w-4 text-purple-500/70" />
         </Button>
 
         {isAuthenticated && (
@@ -661,23 +661,23 @@ export function PostCard({ post, onLike, onComment, onShare, onDelete }: PostCar
             className="gap-2"
             onClick={handleBookmark}
           >
-            <Bookmark className={`h-4 w-4 ${isBookmarked ? "fill-primary text-primary" : ""}`} />
+            <Bookmark className={`h-4 w-4 ${isBookmarked ? "fill-purple-600 text-purple-600" : "text-purple-500/70"}`} />
           </Button>
         )}
 
         {post.tags && post.tags.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {post.tags.map((tag) => (
-            <Link 
-              key={tag} 
-              to={`/explore/tag/${tag}`}
-              className="text-sm text-primary hover:underline"
-            >
-              #{tag}
-            </Link>
-          ))}
-        </div>
-      )}
+          <div className="flex flex-wrap gap-2">
+            {post.tags.map((tag) => (
+              <Link
+                key={tag}
+                to={`/explore/tag/${tag}`}
+                className="text-sm text-primary hover:underline"
+              >
+                #{tag}
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
 
       <ShareModal

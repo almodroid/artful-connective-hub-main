@@ -1,6 +1,6 @@
 # Supabase Database Setup
 
-This directory contains the database schema for the Artful Connective Hub application. The schema is defined in SQL and can be used to set up your Supabase project.
+This directory contains the database schema for the Artspace application. The schema is defined in SQL and can be used to set up your Supabase project.
 
 ## Schema Overview
 

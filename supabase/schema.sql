@@ -1,4 +1,4 @@
--- Artful Connective Hub Database Schema
+-- Artspace Database Schema
 -- This SQL file contains the schema definition for the Supabase project
 
 -- Enable UUID extension

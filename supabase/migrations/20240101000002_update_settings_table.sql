@@ -21,14 +21,14 @@ END $$;
 INSERT INTO settings (key, value, description, category)
 VALUES
     -- Site settings
-    ('site_name', 'Artful Connective Hub', 'The name of your site', 'site'),
+    ('site_name', 'Artspace', 'The name of your site', 'site'),
     ('site_description', 'A platform for artists to connect and share their work', 'Brief description of your site', 'site'),
     ('site_logo', '', 'URL to your site logo', 'site'),
     ('site_favicon', '', 'URL to your site favicon', 'site'),
     
     -- SEO settings
-    ('meta_title', 'Artful Connective Hub - Artist Community', 'Title for search engines', 'seo'),
-    ('meta_description', 'Join the Artful Connective Hub community to connect with artists, share your work, and discover new art.', 'Description for search engines', 'seo'),
+    ('meta_title', 'Artspace - Artist Community', 'Title for search engines', 'seo'),
+    ('meta_description', 'Join the Artspace community to connect with artists, share your work, and discover new art.', 'Description for search engines', 'seo'),
     ('meta_keywords', 'art, artists, community, gallery, portfolio', 'Keywords for search engines', 'seo'),
     ('google_analytics_id', '', 'Google Analytics tracking ID', 'seo'),
     

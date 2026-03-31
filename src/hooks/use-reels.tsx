@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -86,6 +86,13 @@ export function useReels() {
   const [uploading, setUploading] = useState(false);
   const [page, setPage] = useState(0);
   const { sendInteractionNotification } = useNotificationsApi();
+
+  // Helper function to check if a string is a valid UUID
+  const isUuid = (id: string) => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(id);
+  };
+
 
   // Fetch all reels with pagination
   const fetchReels = async (): Promise<{ reels: Reel[]; hasMore: boolean }> => {
@@ -302,7 +309,12 @@ export function useReels() {
   // Like a reel
   const likeReel = async (reelId: string): Promise<void> => {
     if (!user) {
-      toast.error("يرجى تسجيل الدخول للإعجاب بالفيديوهات");
+      toast.error("يرجى تسجيل الدخول للإعجاب بالريل");
+      return;
+    }
+
+    if (!isUuid(reelId)) {
+      console.log("Skipping like action for non-UUID reel ID:", reelId);
       return;
     }
 
@@ -427,8 +439,22 @@ export function useReels() {
     }
   };
 
+  // Track viewed reels in session to prevent duplicate counts
+  const viewedReelsSession = useRef<Set<string>>(new Set());
+
   // Increment view count for a reel
   const viewReel = async (reelId: string): Promise<void> => {
+    if (!isUuid(reelId)) {
+      console.log("Skipping view increment for non-UUID reel ID:", reelId);
+      return;
+    }
+
+    // Skip if already viewed in this session
+    if (viewedReelsSession.current.has(reelId)) {
+      return;
+    }
+    viewedReelsSession.current.add(reelId);
+
     try {
       // Check if the reel exists and get the owner
       const { data: reel, error: reelError } = await supabase
@@ -506,6 +532,11 @@ export function useReels() {
 
   // Fetch comments for a specific reel
   const fetchReelComments = async (reelId: string): Promise<ReelCommentWithUser[]> => {
+    if (!isUuid(reelId)) {
+      console.log("Skipping fetch comments for non-UUID reel ID:", reelId);
+      return [];
+    }
+
     const { data, error } = await supabase
       .from("reel_comments")
       .select(`
@@ -550,6 +581,11 @@ export function useReels() {
   const addReelComment = async (reelId: string, content: string): Promise<void> => {
     if (!user) {
       toast.error("يرجى تسجيل الدخول للتعليق");
+      return;
+    }
+
+    if (!isUuid(reelId)) {
+      console.log("Skipping comment action for non-UUID reel ID:", reelId);
       return;
     }
 
@@ -709,6 +745,11 @@ export function useReels() {
   const checkIfReelLiked = async (reelId: string): Promise<boolean> => {
     if (!user) return false;
     
+    if (!isUuid(reelId)) {
+      console.log("Skipping check for non-UUID reel ID:", reelId);
+      return false;
+    }
+
     try {
       const { data, error } = await supabase
         .from("reel_likes")
@@ -738,6 +779,11 @@ export function useReels() {
   const deleteReel = async (reelId: string): Promise<boolean> => {
     if (!user) {
       toast.error("You must be logged in to delete a reel");
+      return false;
+    }
+
+    if (!isUuid(reelId)) {
+      console.log("Skipping delete for non-UUID reel ID:", reelId);
       return false;
     }
 
@@ -799,6 +845,11 @@ export function useReels() {
   const reportReel = async (reelId: string, reason: string): Promise<boolean> => {
     if (!user) {
       toast.error("You must be logged in to report a reel");
+      return false;
+    }
+
+    if (!isUuid(reelId)) {
+      console.log("Skipping report for non-UUID reel ID:", reelId);
       return false;
     }
 

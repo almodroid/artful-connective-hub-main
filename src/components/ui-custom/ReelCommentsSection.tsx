@@ -12,6 +12,45 @@ import { Trash2 } from "lucide-react";
 import { Spinner } from "./Loaders";
 import { cn } from "@/lib/utils";
 
+const mockComments: ReelCommentWithUser[] = [
+  {
+    id: "mock-comment-1",
+    reelId: "demo-reel-1",
+    content: "فيديو رائع! 👏",
+    createdAt: new Date(Date.now() - 1000 * 60 * 5),
+    user: {
+      id: "user-1",
+      username: "art_fan",
+      displayName: "محب الفن",
+      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100"
+    }
+  },
+  {
+    id: "mock-comment-2",
+    reelId: "demo-reel-1",
+    content: "جميل جداً، شكراً لمشاركته",
+    createdAt: new Date(Date.now() - 1000 * 60 * 15),
+    user: {
+      id: "user-2",
+      username: "creative_soul",
+      displayName: "روح إبداعية",
+      avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100"
+    }
+  },
+  {
+    id: "mock-comment-3",
+    reelId: "demo-reel-1",
+    content: "هذا العمل يحتاج موهبة خاصة 🔥",
+    createdAt: new Date(Date.now() - 1000 * 60 * 30),
+    user: {
+      id: "user-3",
+      username: "art_lover",
+      displayName: "هاوي فن",
+      avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100"
+    }
+  }
+];
+
 interface ReelCommentsSectionProps {
   reelId: string;
 }
@@ -23,6 +62,10 @@ export function ReelCommentsSection({ reelId }: ReelCommentsSectionProps) {
   const { comments, commentsLoading, refetchComments } = useReelComments(reelId);
   const [newComment, setNewComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const isDemo = reelId === "demo-reel-1" || reelId === "1" || reelId === "demo";
+  const displayComments = isDemo ? mockComments : comments;
+  const totalComments = isDemo ? mockComments.length : comments.length;
 
   const handleSubmitComment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,7 +91,7 @@ export function ReelCommentsSection({ reelId }: ReelCommentsSectionProps) {
   return (
     <div className="space-y-4 py-2">
       <h3 className="text-lg font-medium border-b pb-2">
-        {isRtl ? "التعليقات" : "Comments"} ({comments.length})
+        {isRtl ? "التعليقات" : "Comments"} ({totalComments})
       </h3>
       
       {isAuthenticated && (
@@ -73,17 +116,17 @@ export function ReelCommentsSection({ reelId }: ReelCommentsSectionProps) {
         </form>
       )}
       
-      {commentsLoading ? (
+      {commentsLoading && !isDemo ? (
         <div className="py-4 text-center">
           <Spinner />
         </div>
-      ) : comments.length === 0 ? (
+      ) : displayComments.length === 0 ? (
         <div className="text-center py-6 text-muted-foreground">
           {isRtl ? "لا توجد تعليقات بعد. كن أول من يعلق!" : "No comments yet. Be the first to comment!"}
         </div>
       ) : (
         <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-          {comments.map((comment) => (
+          {displayComments.map((comment) => (
             <CommentItem 
               key={comment.id} 
               comment={comment} 

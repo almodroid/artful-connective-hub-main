@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { User as SupabaseUser } from '@supabase/supabase-js';
@@ -48,6 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
+  const userProfileCache = useRef<Map<string, User>>(new Map());
 
   // Initialize auth state
   useEffect(() => {
@@ -199,7 +200,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } : null);
 
       // Clear cache for this user to ensure fresh data
-      userProfileCache.delete(user.id);
+      userProfileCache.current.delete(user.id);
 
       toast.success('Avatar updated successfully');
     } catch (error) {
@@ -214,13 +215,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Cache for user profiles to prevent unnecessary database calls
-  const userProfileCache = new Map<string, User>();
-
   // Convert Supabase user to our app's User interface
   const mapSupabaseUser = async (supabaseUser: SupabaseUser): Promise<User> => {
     // Check cache first
-    const cachedUser = userProfileCache.get(supabaseUser.id);
+    const cachedUser = userProfileCache.current.get(supabaseUser.id);
     if (cachedUser) {
       return cachedUser;
     }
@@ -309,7 +307,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     // Cache the result
-    userProfileCache.set(supabaseUser.id, mappedUser);
+    userProfileCache.current.set(supabaseUser.id, mappedUser);
     return mappedUser;
   };
 
@@ -474,7 +472,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Clear local state and cache
     setUser(null);
     localStorage.removeItem('artspace_user');
-    userProfileCache.clear(); // Clear the user profile cache
+    userProfileCache.current.clear(); // Clear the user profile cache
     toast.success("تم تسجيل الخروج بنجاح");
   };
 

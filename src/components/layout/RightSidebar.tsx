@@ -23,7 +23,6 @@ export function RightSidebar() {
 
   useEffect(() => {
     if (user) {
-      console.log("User in RightSidebar:", user); // Add this line
       const fetchProfile = async () => {
         try {
           const { data, error } = await supabase
@@ -45,7 +44,6 @@ export function RightSidebar() {
             throw projectsError;
           }
 
-          console.log("Profile data in RightSidebar:", data); // Add this line
           setProfileData({
             username: data.username || "",
             avatar_url: data.avatar_url || "",
@@ -60,7 +58,6 @@ export function RightSidebar() {
       };
       fetchProfile();
     } else {
-      console.log("User is null in RightSidebar"); // Add this line
       setProfileData(null);
     }
   }, [user]);
